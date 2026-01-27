@@ -18,11 +18,11 @@ ENV NODE_ENV=production
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-EXPOSE 3000
+EXPOSE 8998
 
 # 可通过环境变量 PORT 覆盖
 CMD ["node", "src/app.js"]
 
 
 # docker build -t koa-app .
-# docker run -d --name koa-app -p 3000:3000 --env-file .env koa-app
+# docker run -d --name koa-app -p 8998:8998 --env-file .env koa-app
