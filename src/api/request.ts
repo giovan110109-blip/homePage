@@ -5,13 +5,18 @@ import axios, {
 } from 'axios'
 
 const { VITE_API_BASE_URL } = import.meta.env
-// 默认 /api，便于本地代理；生产可在 .env 中覆盖
-const BASE_URL = VITE_API_BASE_URL || '/api'
+// 默认 /api。若提供 VITE_API_BASE_URL 且未带 /api，自动补全，避免打到根路径导致 404
+const BASE_URL = (() => {
+  if (!VITE_API_BASE_URL) return '/api'
+  const trimmed = VITE_API_BASE_URL.replace(/\/$/, '')
+  return trimmed.endsWith('/api') ? trimmed : `${trimmed}/api`
+})()
 
 const service: AxiosInstance = axios.create({
   baseURL: BASE_URL,
   timeout: 10000,
-  withCredentials: true,
+  // 默认不带凭证，避免 CORS 需要指定 allow-credentials
+  withCredentials: false,
 })
 
 // 请求拦截器

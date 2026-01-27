@@ -1,0 +1,37 @@
+const fs = require('fs');
+const path = require('path');
+
+/**
+ * 自动注册路由
+ * @param {Koa} app Koa实例
+ */
+function registerRoutes(app) {
+    const modulesPath = path.join(__dirname, 'modules');
+    
+    // 如果modules目录不存在，创建它
+    if (!fs.existsSync(modulesPath)) {
+        fs.mkdirSync(modulesPath);
+    }
+
+    // 读取modules目录下的所有文件
+    const files = fs.readdirSync(modulesPath);
+    
+    // 过滤出路由文件
+    const routeFiles = files.filter(file => 
+        !file.startsWith('.') && // 排除隐藏文件
+        file.endsWith('.js') // 只处理js文件
+    );
+
+    // 注册每个路由文件
+    routeFiles.forEach(file => {
+        const router = require(path.join(modulesPath, file));
+        // 注册路由
+        app.use(router.routes());
+        app.use(router.allowedMethods());
+        
+        // 输出路由注册信息
+        console.log(`✅ 已注册路由模块: ${file}`);
+    });
+}
+
+module.exports = registerRoutes; 

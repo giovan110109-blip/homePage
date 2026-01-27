@@ -1,102 +1,112 @@
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-blue-50 dark:from-gray-900 dark:via-blue-900 dark:to-blue-900 relative">
+  <div
+    class="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-blue-50 dark:from-gray-900 dark:via-blue-900 dark:to-blue-900 relative"
+  >
     <!-- Background blur effects -->
     <div class="absolute inset-0 overflow-hidden">
-      <div class="absolute -top-40 -right-40 w-80 h-80 bg-blue-300/20 dark:bg-blue-500/10 rounded-full blur-3xl"></div>
-      <div class="hidden absolute -bottom-40 -left-40 w-80 h-80 bg-purple-300/20 dark:bg-purple-500/10 rounded-full blur-3xl"></div>
-      <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-pink-300/10 dark:bg-pink-500/5 rounded-full blur-3xl"></div>
+      <div
+        class="absolute -top-40 -right-40 w-80 h-80 bg-blue-300/20 dark:bg-blue-500/10 rounded-full blur-3xl"
+      ></div>
+      <div
+        class="hidden absolute -bottom-40 -left-40 w-80 h-80 bg-purple-300/20 dark:bg-purple-500/10 rounded-full blur-3xl"
+      ></div>
+      <div
+        class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-pink-300/10 dark:bg-pink-500/5 rounded-full blur-3xl"
+      ></div>
     </div>
-    
+
     <!-- Content overlay -->
     <div class="relative z-10">
       <div class="guestbook-container">
         <div class="guestbook-card">
           <!-- Header -->
           <div class="header">
-      
             <h1 class="title">留言板</h1>
-            <p class="subtitle">在这里留下你的想法和建议，我会认真阅读每一条留言 💬。</p>
+            <p class="subtitle">
+              在这里留下你的想法和建议，我会认真阅读每一条留言 💬。
+            </p>
           </div>
 
           <!-- Message Form -->
           <div class="message-form-section">
             <h2 class="section-title">发表留言</h2>
-            <form @submit.prevent="submitMessage" class="message-form">
-              <div class="form-group">
-                <label for="name" class="form-label">昵称 *</label>
-                <input 
-                  id="name"
+            <el-form
+              ref="formRef"
+              :model="formData"
+              :rules="formRules"
+              @submit.prevent="submitMessage"
+              class="message-form"
+              label-width="80px"
+            >
+              <el-form-item label="昵称" prop="name">
+                <el-input
                   v-model="formData.name"
-                  type="text"
-                  class="form-input"
                   placeholder="请输入你的昵称"
-                  required
+                  clearable
                 />
-              </div>
+              </el-form-item>
 
-              <div class="form-group">
-                <label for="email" class="form-label">邮箱 *</label>
-                <input 
-                  id="email"
+              <el-form-item label="邮箱" prop="email">
+                <el-input
                   v-model="formData.email"
                   type="email"
-                  class="form-input"
                   placeholder="请输入你的邮箱"
-                  required
+                  clearable
                 />
-              </div>
+              </el-form-item>
 
-              <div class="form-group">
-                <label for="website" class="form-label">网站 (可选)</label>
-                <input 
-                  id="website"
+              <el-form-item label="网站" prop="website">
+                <el-input
                   v-model="formData.website"
                   type="url"
-                  class="form-input"
                   placeholder="https://example.com"
+                  clearable
                 />
-              </div>
+              </el-form-item>
 
-              <div class="form-group">
-                <label for="message" class="form-label">留言内容 *</label>
-                <textarea 
-                  id="message"
+              <el-form-item label="留言内容" prop="message">
+                <el-input
                   v-model="formData.message"
-                  class="form-textarea"
+                  type="textarea"
                   placeholder="请输入你的留言..."
-                  rows="5"
-                  required
-                ></textarea>
-              </div>
+                  :rows="5"
+                />
+              </el-form-item>
 
-              <button type="submit" class="submit-button">
+              <el-button
+                type="primary"
+                :loading="submitting"
+                @click="submitWithValidation"
+              >
                 提交留言
-              </button>
-            </form>
+              </el-button>
+            </el-form>
           </div>
 
           <!-- Messages List -->
           <div class="messages-section">
             <h2 class="section-title">留言列表</h2>
-            
+
             <div v-if="messages.length === 0" class="empty-state">
               <p>还没有留言，成为第一个留言的人吧！</p>
             </div>
 
             <div v-else class="messages-list" ref="messageListRef">
-              <div 
+              <div
                 v-for="(message, index) in displayedMessages"
-                :key="index"
+                :key="message.id || index"
                 :class="['message-item', `note-color-${index % 5}`]"
               >
                 <div class="message-header">
                   <div class="user-info">
                     <h3 class="user-name">{{ message.name }}</h3>
-                    <span class="message-time">{{ formatDate(message.time) }}</span>
+                    <span class="message-time">{{
+                      formatDate(message.createdAt)
+                    }}</span>
                   </div>
                   <div class="message-actions">
-                    <EmojiReaction :message-id="index" />
-                    <a 
+                    <EmojiReaction :message-id="message.id || index" :reactions="message.reactions" />
+                    <a
                       v-if="message.website"
                       :href="message.website"
                       target="_blank"
@@ -107,20 +117,54 @@
                     </a>
                   </div>
                 </div>
-                <p class="message-content">{{ message.message }}</p>
+                <div class="message-meta">
+                  <p class="message-content">{{ message.content }}</p>
+                  <span
+                    v-if="message.os || message.browser || message.deviceType"
+                    class="meta-chip"
+                  >
+                    <component
+                      v-if="getOsIcon(message.os)"
+                      :is="getOsIcon(message.os)"
+                      class="meta-icon"
+                    />
+                    {{ message.os || "未知OS" }}
+                    <span class="meta-sep">·</span>
+                    <component
+                      v-if="getBrowserIcon(message.browser)"
+                      :is="getBrowserIcon(message.browser)"
+                      class="meta-icon"
+                    />
+                    {{ message.browser || "未知浏览器" }}
+                    <template v-if="message.deviceType">
+                      <span class="meta-sep">·</span>
+                      <component
+                        :is="getDeviceIcon(message.deviceType)"
+                        class="meta-icon"
+                      />
+                      {{ message.deviceType }}
+                    </template>
+                  </span>
+                  <span v-if="message.referer" class="meta-chip"
+                    >来源：{{ formatReferer(message.referer) }}</span
+                  >
+                </div>
               </div>
-              
+
               <!-- 加载更多提示 -->
               <div v-if="isLoading" class="loading-state">
                 <div class="spinner"></div>
                 <p>加载中...</p>
               </div>
-              
+
               <div v-if="hasMoreMessages && !isLoading" class="load-more-hint">
                 向下滑动加载更多
               </div>
-              
-              <div v-if="!hasMoreMessages && displayedMessages.length > 0" class="no-more-state">
+
+              <div
+                v-if="!hasMoreMessages && displayedMessages.length > 0"
+                class="no-more-state"
+              >
                 已加载全部留言
               </div>
             </div>
@@ -132,253 +176,293 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { ExternalLink } from 'lucide-vue-next'
-import EmojiReaction from '@/components/EmojiReaction.vue'
+import { ref, computed, onMounted, onUnmounted } from "vue";
+import {
+  ExternalLink,
+  Apple,
+  Chrome,
+  Compass,
+  Monitor,
+  Laptop,
+  Smartphone,
+  Globe,
+} from "lucide-vue-next";
+import { ElMessage } from "element-plus";
+import type { FormInstance } from "element-plus";
+import EmojiReaction from "@/components/EmojiReaction.vue";
+import request from "@/api/request";
 
-interface Message {
-  name: string
-  email: string
-  website?: string
-  message: string
-  time: Date
+interface MessageItem {
+  id: string;
+  name: string;
+  email: string;
+  website?: string;
+  content: string;
+  createdAt: string;
+  reactions?: Record<string, number>;
+  status?: string;
+  browser?: string;
+  os?: string;
+  deviceType?: string;
+  referer?: string;
+  language?: string;
+  location?: string | null;
 }
 
 interface FormData {
-  name: string
-  email: string
-  website: string
-  message: string
+  name: string;
+  email: string;
+  website: string;
+  message: string;
 }
 
-// 模拟接口：获取更多留言
-const mockFetchMoreMessages = async (page: number, pageSize: number = 10): Promise<Message[]> => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      const allMessages = generateMockMessages()
-      const start = page * pageSize
-      const end = start + pageSize
-      resolve(allMessages.slice(start, end))
-    }, 500) // 模拟网络延迟
-  })
-}
-
-// 生成所有模拟消息
-const generateMockMessages = (): Message[] => {
-  const names = ['测试用户', '小张', '李四', '王五', '赵六', '孙七', '周八', '吴九', '郑十', '冯十一', '陈十二', '楚十三', '戴十四', '易十五', '范十六', '高十七', '郭十八', '韦十九', '何二十']
-  const messages = [
-    '这是一个测试留言，页面看起来很棒！',
-    '很喜欢你的作品，继续加油！',
-    '能否分享一下开发经验？',
-    '设计得真不错，很有创意！',
-    '代码质量很高，学到了很多东西。',
-    '请问这个项目开源吗？很想研究一下。',
-    '动画效果做得太棒了！',
-    '后端处理速度很快，用户体验很好。',
-    '能不能写一篇教程讲讲实现细节？',
-    '我是你的忠实粉丝，期待你的新作品！',
-    '响应式设计做得很完美，在手机上也很流畅。',
-    '有没有考虑做成 PWA 应用？',
-    '界面设计精美，交互流畅，非常赞！',
-    '请问支持暗黑模式吗？我很喜欢这个功能。',
-    '这个项目的技术栈是什么？想学习一下。',
-    '分享一下部署的经验吧，对初学者很有帮助。',
-    '性能优化做得很好，加载速度飞快！',
-    '希望能看到更多案例展示。',
-    '代码注释详细，易于理解，赞赞赞！',
-    '能否提供源码供学习参考？'
-  ]
-
-  const result: Message[] = []
-  for (let i = 0; i < 50; i++) {
-    result.push({
-      name: names[i % names.length],
-      email: `user${i}@example.com`,
-      website: i % 3 === 0 ? `https://example${i}.com` : undefined,
-      message: messages[i % messages.length],
-      time: new Date(Date.now() - (i % 30) * 24 * 60 * 60 * 1000)
-    })
-  }
-  return result
-}
-
+const formRef = ref<FormInstance>();
 const formData = ref<FormData>({
-  name: '',
-  email: '',
-  website: '',
-  message: ''
-})
+  name: "",
+  email: "",
+  website: "",
+  message: "",
+});
 
-const messages = ref<Message[]>([
-  {
-    name: '测试用户',
-    email: 'test@example.com',
-    website: 'https://example.com',
-    message: '这是一个测试留言，页面看起来很棒！',
-    time: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000)
-  },
-  {
-    name: '小张',
-    email: 'zhang@example.com',
-    message: '很喜欢你的作品，继续加油！',
-    time: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000)
-  },
-  {
-    name: '李四',
-    email: 'li@example.com',
-    website: 'https://blog.example.com',
-    message: '能否分享一下开发经验？',
-    time: new Date()
-  },
-  {
-    name: '王五',
-    email: 'wang@example.com',
-    message: '设计得真不错，很有创意！',
-    time: new Date(Date.now() - 3 * 60 * 60 * 1000)
-  },
-  {
-    name: '赵六',
-    email: 'zhao@example.com',
-    website: 'https://portfolio.example.com',
-    message: '代码质量很高，学到了很多东西。',
-    time: new Date(Date.now() - 5 * 60 * 60 * 1000)
-  },
-  {
-    name: '孙七',
-    email: 'sun@example.com',
-    message: '请问这个项目开源吗？很想研究一下。',
-    time: new Date(Date.now() - 1 * 60 * 60 * 1000)
-  },
-  {
-    name: '周八',
-    email: 'zhou@example.com',
-    website: 'https://dev.example.com',
-    message: '动画效果做得太棒了！',
-    time: new Date(Date.now() - 12 * 60 * 60 * 1000)
-  },
-  {
-    name: '吴九',
-    email: 'wu@example.com',
-    message: '后端处理速度很快，用户体验很好。',
-    time: new Date(Date.now() - 18 * 60 * 60 * 1000)
-  },
-  {
-    name: '郑十',
-    email: 'zheng@example.com',
-    website: 'https://tech.example.com',
-    message: '能不能写一篇教程讲讲实现细节？',
-    time: new Date(Date.now() - 1.5 * 24 * 60 * 60 * 1000)
-  },
-  {
-    name: '冯十一',
-    email: 'feng@example.com',
-    message: '我是你的忠实粉丝，期待你的新作品！',
-    time: new Date(Date.now() - 2.5 * 24 * 60 * 60 * 1000)
-  }
-])
+const formRules = {
+  name: [
+    { required: true, message: "请输入昵称", trigger: "blur" },
+    { min: 1, max: 50, message: "昵称长度在 1 到 50 之间", trigger: "blur" },
+  ],
+  email: [
+    { required: true, message: "请输入邮箱", trigger: "blur" },
+    {
+      type: "email",
+      message: "请输入有效的邮箱地址",
+      trigger: "blur",
+    },
+  ],
+  website: [
+    {
+      type: "url",
+      message: "请输入有效的网址",
+      trigger: "blur",
+    },
+  ],
+  message: [
+    { required: true, message: "请输入留言内容", trigger: "blur" },
+    { min: 1, max: 2000, message: "留言长度在 1 到 2000 之间", trigger: "blur" },
+  ],
+};
 
-// 分页相关
-const currentPage = ref(1)
-const pageSize = 10
-const totalMessages = ref(messages.value.length)
-const isLoading = ref(false)
-const messageListRef = ref<HTMLElement>()
+const messages = ref<MessageItem[]>([]);
+const totalMessages = ref(0);
+const page = ref(1);
+const pageSize = 10;
+const isLoading = ref(false);
+const submitting = ref(false);
+const messageListRef = ref<HTMLElement>();
 
-const displayedMessages = computed(() => {
-  return messages.value.slice(0, currentPage.value * pageSize)
-})
+const displayedMessages = computed(() => messages.value);
+const hasMoreMessages = computed(
+  () => messages.value.length < totalMessages.value,
+);
 
-const hasMoreMessages = computed(() => {
-  return displayedMessages.value.length < totalMessages.value
-})
+const mapMessage = (item: any): MessageItem | null => {
+  const id = String(item?._id ?? item?.id ?? "");
+  if (!id) return null;
+  const location = item?.location
+    ? typeof item.location === "string"
+      ? item.location
+      : [item.location.city, item.location.region, item.location.country]
+          .filter(Boolean)
+          .join(" · ")
+    : null;
+  const referer = typeof item?.referer === "string" ? item.referer : "";
+  return {
+    id,
+    name: item.name,
+    email: item.email,
+    website: item.website,
+    content: item.content ?? item.message,
+    createdAt: item.createdAt ?? item.time ?? new Date().toISOString(),
+    reactions: item.reactions,
+    status: item.status,
+    browser: item.browser,
+    os: item.os,
+    deviceType: item.deviceType,
+    referer,
+    language: item.language,
+    location,
+  };
+};
 
-// 加载更多消息
-const loadMoreMessages = async () => {
-  if (isLoading.value || !hasMoreMessages.value) return
-  
-  isLoading.value = true
+const fetchMessages = async (reset = false) => {
+  if (isLoading.value) return;
+  isLoading.value = true;
   try {
-    const moreMessages = await mockFetchMoreMessages(currentPage.value, pageSize)
-    if (moreMessages.length > 0) {
-      messages.value.push(...moreMessages)
-      totalMessages.value = messages.value.length
-      currentPage.value++
+    const targetPage = reset ? 1 : page.value;
+    const res = await request.get("/messages", {
+      params: { page: targetPage, pageSize, status: "approved" },
+    });
+    const list = (res as any)?.data ?? (res as any)?.items ?? res ?? [];
+    const meta = (res as any)?.meta ?? (res as any)?.pagination ?? {};
+    const mapped = Array.isArray(list)
+      ? list.map(mapMessage).filter((m): m is MessageItem => Boolean(m))
+      : [];
+
+    if (reset) {
+      messages.value = [];
+      page.value = 1;
+    }
+
+    messages.value = reset ? mapped : [...messages.value, ...mapped];
+    totalMessages.value = Number(
+      meta.total ?? totalMessages.value ?? messages.value.length,
+    );
+
+    if (mapped.length && !reset) {
+      page.value += 1;
+    } else if (reset && mapped.length) {
+      page.value = 2;
     }
   } catch (error) {
-    console.error('加载留言失败:', error)
+    console.error("加载留言失败:", error);
+    ElMessage.error("加载留言失败，请稍后再试");
   } finally {
-    isLoading.value = false
+    isLoading.value = false;
   }
-}
+};
 
-// 检测滚动到底部
+const loadMoreMessages = () => {
+  if (isLoading.value || !hasMoreMessages.value) return;
+  fetchMessages();
+};
+
 const handleScroll = () => {
-  if (!messageListRef.value) return
-  
-  const { scrollTop, scrollHeight, clientHeight } = document.documentElement
-  // 距离底部300px时触发加载
+  const { scrollTop, scrollHeight, clientHeight } = document.documentElement;
   if (scrollHeight - scrollTop - clientHeight < 300) {
-    loadMoreMessages()
+    loadMoreMessages();
   }
-}
+};
 
 onMounted(() => {
-  // 初始加载第一页数据
-  totalMessages.value = generateMockMessages().length
-  window.addEventListener('scroll', handleScroll)
-})
+  fetchMessages(true);
+  window.addEventListener("scroll", handleScroll);
+});
 
 onUnmounted(() => {
-  window.removeEventListener('scroll', handleScroll)
-})
+  window.removeEventListener("scroll", handleScroll);
+});
 
-const submitMessage = () => {
-  if (!formData.value.name || !formData.value.email || !formData.value.message) {
-    alert('请填写所有必填项')
-    return
+const submitMessage = async () => {
+  if (submitting.value) return;
+  submitting.value = true;
+  try {
+    await request.post("/messages", {
+      name: formData.value.name,
+      email: formData.value.email,
+      website: formData.value.website || undefined,
+      content: formData.value.message,
+    });
+
+    formData.value = {
+      name: "",
+      email: "",
+      website: "",
+      message: "",
+    };
+    
+    // 重置表单验证状态
+    formRef.value?.resetFields();
+    ElMessage.success("提交成功，待审核通过后展示");
+    
+    // 重新加载列表
+    fetchMessages(true);
+  } catch (error) {
+    console.error("提交留言失败:", error);
+    const msg =
+      (error as any)?.response?.data?.message || "提交失败，请稍后再试";
+    ElMessage.error(msg);
+  } finally {
+    submitting.value = false;
   }
+};
 
-  messages.value.unshift({
-    name: formData.value.name,
-    email: formData.value.email,
-    website: formData.value.website || undefined,
-    message: formData.value.message,
-    time: new Date()
-  })
-  
-  totalMessages.value = messages.value.length
-
-  // 重置表单
-  formData.value = {
-    name: '',
-    email: '',
-    website: '',
-    message: ''
-  }
-
-  alert('感谢你的留言！')
-}
-
-const formatDate = (date: Date) => {
-  const now = new Date()
-  const diff = now.getTime() - date.getTime()
-  const days = Math.floor(diff / (24 * 60 * 60 * 1000))
-  
-  if (days === 0) {
-    const hours = Math.floor(diff / (60 * 60 * 1000))
-    if (hours === 0) {
-      const minutes = Math.floor(diff / (60 * 1000))
-      return `${minutes}分钟前`
+const submitWithValidation = () => {
+  formRef.value?.validate((valid: boolean) => {
+    if (valid) {
+      submitMessage();
     }
-    return `${hours}小时前`
+  });
+};
+
+const formatDate = (value: string | Date) => {
+  const date = value instanceof Date ? value : new Date(value);
+  const now = new Date();
+  const diff = now.getTime() - date.getTime();
+  const days = Math.floor(diff / (24 * 60 * 60 * 1000));
+
+  if (days === 0) {
+    const hours = Math.floor(diff / (60 * 60 * 1000));
+    if (hours === 0) {
+      const minutes = Math.floor(diff / (60 * 1000));
+      return `${minutes}分钟前`;
+    }
+    return `${hours}小时前`;
   } else if (days === 1) {
-    return '昨天'
+    return "昨天";
   } else if (days < 7) {
-    return `${days}天前`
+    return `${days}天前`;
   } else {
-    return date.toLocaleDateString('zh-CN')
+    return date.toLocaleDateString("zh-CN");
   }
-}
+};
+
+const formatReferer = (ref: string) => {
+  if (!ref) return "";
+  try {
+    const url = new URL(ref);
+    return url.host + url.pathname.replace(/\/$/, "");
+  } catch {
+    return ref;
+  }
+};
+
+const osIconMap: Record<string, any> = {
+  macos: Apple,
+  mac: Apple,
+  windows: Laptop,
+  win: Laptop,
+  linux: Monitor,
+};
+
+const browserIconMap: Record<string, any> = {
+  chrome: Chrome,
+  safari: Compass,
+  edge: Compass,
+  firefox: Compass,
+};
+
+const deviceIconMap: Record<string, any> = {
+  desktop: Monitor,
+  laptop: Laptop,
+  mobile: Smartphone,
+  tablet: Smartphone,
+};
+
+const getOsIcon = (os?: string) => {
+  if (!os) return null;
+  const key = os.toLowerCase();
+  return osIconMap[key] || Globe;
+};
+
+const getBrowserIcon = (browser?: string) => {
+  if (!browser) return null;
+  const key = browser.toLowerCase();
+  return browserIconMap[key] || Globe;
+};
+
+const getDeviceIcon = (device?: string) => {
+  if (!device) return null;
+  const key = device.toLowerCase();
+  return deviceIconMap[key] || Monitor;
+};
 </script>
 
 <style scoped lang="scss">
@@ -404,11 +488,36 @@ $color-dark-text-lighter: #f3f4f6;
 
 // 便签颜色
 $note-colors: (
-  0: (#fef3c7, #fde68a, #92400e, #78350f),
-  1: (#fce7f3, #fbcfe8, #831843, #500724),
-  2: (#cffafe, #a5f3fc, #164e63, #0e3a47),
-  3: (#c7d2fe, #a5b4fc, #312e81, #1e1b4b),
-  4: (#d1fae5, #a7f3d0, #064e3b, #042f2e)
+  0: (
+    #fef3c7,
+    #fde68a,
+    #92400e,
+    #78350f,
+  ),
+  1: (
+    #fce7f3,
+    #fbcfe8,
+    #831843,
+    #500724,
+  ),
+  2: (
+    #cffafe,
+    #a5f3fc,
+    #164e63,
+    #0e3a47,
+  ),
+  3: (
+    #c7d2fe,
+    #a5b4fc,
+    #312e81,
+    #1e1b4b,
+  ),
+  4: (
+    #d1fae5,
+    #a7f3d0,
+    #064e3b,
+    #042f2e,
+  ),
 );
 
 // 间距变量
@@ -512,6 +621,17 @@ $font-4xl: 36px;
   }
 }
 
+.message-form {
+  --el-fill-color-light: transparent;
+  --el-border-color: #e5e7eb;
+  --el-text-color-regular: $color-text-dark;
+}
+
+.dark .message-form {
+  --el-border-color: #374151;
+  --el-text-color-regular: #d1d5db;
+}
+
 .section-title {
   font-size: $font-2xl;
   font-weight: 600;
@@ -583,7 +703,11 @@ $font-4xl: 36px;
 
 .submit-button {
   padding: $spacing-xs $spacing-lg;
-  background: linear-gradient(135deg, $color-primary 0%, $color-primary-dark 100%);
+  background: linear-gradient(
+    135deg,
+    $color-primary 0%,
+    $color-primary-dark 100%
+  );
   color: white;
   font-weight: 600;
   border: none;
@@ -660,6 +784,56 @@ $font-4xl: 36px;
   align-items: flex-start;
   margin-bottom: $spacing-xs;
   gap: $spacing-xs;
+}
+
+.message-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: $spacing-xs;
+}
+
+.meta-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: $font-xs;
+  font-weight: 600;
+  background: rgba(16, 185, 129, 0.12);
+  color: #047857;
+
+  .dark & {
+    background: rgba(16, 185, 129, 0.2);
+    color: #34d399;
+  }
+}
+
+.meta-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: $font-xs;
+  background: rgba(255, 255, 255, 0.6);
+  color: $color-text-gray-dark;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  gap: 4px;
+
+  .dark & {
+    background: rgba(255, 255, 255, 0.05);
+    color: $color-dark-text;
+    border-color: rgba(255, 255, 255, 0.08);
+  }
+}
+
+.meta-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.meta-sep {
+  opacity: 0.6;
 }
 
 .user-info {
@@ -785,7 +959,8 @@ $font-4xl: 36px;
 }
 
 @keyframes fadeInOut {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 0.5;
   }
   50% {

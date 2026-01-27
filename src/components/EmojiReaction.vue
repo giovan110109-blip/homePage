@@ -5,7 +5,7 @@
       v-if="showPicker"
       class="emoji-picker"
       :class="{ 'emoji-picker-expanded': expandedPicker }"
-      @mouseleave="handlePickerMouseLeave"
+      @mouseleave="!expandedPicker && (showPicker = false)"
     >
       <div class="emoji-picker-scroll">
         <button 
@@ -22,7 +22,7 @@
       <button 
         class="emoji-expand-btn"
         :class="{ 'emoji-expand-btn-active': expandedPicker }"
-        @click.stop="expandedPicker = !expandedPicker"
+        @click.stop="toggleExpand"
       >
         <ChevronDown class="w-4 h-4" />
       </button>
@@ -56,8 +56,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { Smile, ChevronDown } from 'lucide-vue-next'
+import { ElMessage } from 'element-plus'
+import request from '@/api/request'
 
 interface Emoji {
   id: string
@@ -93,6 +95,10 @@ const props = defineProps({
   messageId: {
     type: [String, Number],
     required: true
+  },
+  reactions: {
+    type: Object as () => Record<string, number>,
+    default: () => ({})
   }
 })
 
@@ -100,14 +106,20 @@ const showPicker = ref(false)
 const expandedPicker = ref(false)
 const reactionCounts = ref<Record<string, number>>({})
 const myReactions = ref<Set<string>>(new Set())
+const reacting = ref(false)
+
+const sanitizeCounts = (counts?: Record<string, number>) => {
+  return Object.fromEntries(
+    Object.entries(counts || {}).filter(([, value]) => Number(value) > 0)
+  ) as Record<string, number>
+}
 
 const allEmojis = computed(() => {
   return expandedPicker.value ? [...emojis, ...moreEmojis] : emojis
 })
 
-const handlePickerMouseLeave = () => {
-  showPicker.value = false
-  expandedPicker.value = false
+const toggleExpand = () => {
+  expandedPicker.value = !expandedPicker.value
 }
 
 const hasReactions = computed(() => Object.keys(reactionCounts.value).length > 0)
@@ -123,30 +135,39 @@ const triggerTooltip = computed(() => {
   return reactions
 })
 
-const toggleReaction = (emojiId: string) => {
-  if (myReactions.value.has(emojiId)) {
-    // 取消表态
-    myReactions.value.delete(emojiId)
-    reactionCounts.value[emojiId]--
-    if (reactionCounts.value[emojiId] <= 0) {
-      delete reactionCounts.value[emojiId]
+const toggleReaction = async (emojiId: string) => {
+  if (reacting.value) return
+  reacting.value = true
+  const isMine = myReactions.value.has(emojiId)
+  const action = isMine ? 'remove' : 'add'
+  try {
+    const res = await request.post(`/messages/${props.messageId}/react`, { type: emojiId, action })
+    const counts = (res as any)?.data ?? res
+    if (counts && typeof counts === 'object') {
+      reactionCounts.value = sanitizeCounts(counts)
     }
-  } else {
-    // 添加表态
-    myReactions.value.add(emojiId)
-    if (reactionCounts.value[emojiId]) {
-      reactionCounts.value[emojiId]++
+    if (action === 'add') {
+      myReactions.value.add(emojiId)
     } else {
-      reactionCounts.value[emojiId] = 1
+      myReactions.value.delete(emojiId)
     }
+  } catch (error) {
+    console.error('表态失败', error)
+    ElMessage.error('表态失败，请稍后重试')
+  } finally {
+    reacting.value = false
+    showPicker.value = false
   }
-  showPicker.value = false
 }
 
 const getEmojiIcon = (emojiId: string): string => {
   const emoji = emojis.find(e => e.id === emojiId) || moreEmojis.find(e => e.id === emojiId)
   return emoji ? emoji.icon : ''
 }
+
+watch(() => props.reactions, (val) => {
+  reactionCounts.value = sanitizeCounts(val)
+}, { immediate: true, deep: true })
 </script>
 
 <style scoped>
@@ -184,7 +205,7 @@ const getEmojiIcon = (emojiId: string): string => {
 
 .emoji-picker-expanded {
   flex-wrap: wrap;
-  width: 240px;
+  width: 200px;
   max-height: 200px;
   overflow-y: auto;
 }
@@ -198,7 +219,7 @@ const getEmojiIcon = (emojiId: string): string => {
   }
   
   .emoji-picker-expanded {
-    width: 280px;
+    width: 220px;
     max-height: 250px;
   }
 }
@@ -232,8 +253,8 @@ const getEmojiIcon = (emojiId: string): string => {
 }
 
 .emoji-btn {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   border: none;
   background: #f3f4f6;
   border-radius: 6px;
