@@ -30,57 +30,58 @@
           <!-- Message Form -->
           <div class="message-form-section">
             <h2 class="section-title">发表留言</h2>
-            <el-form
-              ref="formRef"
-              :model="formData"
-              :rules="formRules"
-              @submit.prevent="submitMessage"
-              class="message-form"
-              label-width="80px"
-            >
-              <el-form-item label="昵称" prop="name">
-                <el-input
+            <form @submit.prevent="submitMessage" class="message-form">
+              <div class="form-group">
+                <label for="name" class="form-label">昵称 *</label>
+                <input
+                  id="name"
                   v-model="formData.name"
+                  type="text"
+                  class="form-input"
                   placeholder="请输入你的昵称"
-                  clearable
+                  required
                 />
-              </el-form-item>
+              </div>
 
-              <el-form-item label="邮箱" prop="email">
-                <el-input
+              <div class="form-group">
+                <label for="email" class="form-label">邮箱 *</label>
+                <input
+                  id="email"
                   v-model="formData.email"
                   type="email"
+                  class="form-input"
                   placeholder="请输入你的邮箱"
-                  clearable
+                  required
                 />
-              </el-form-item>
+              </div>
 
-              <el-form-item label="网站" prop="website">
-                <el-input
+              <div class="form-group">
+                <label for="website" class="form-label">网站 (可选)</label>
+                <input
+                  id="website"
                   v-model="formData.website"
                   type="url"
+                  class="form-input"
                   placeholder="https://example.com"
-                  clearable
                 />
-              </el-form-item>
+              </div>
 
-              <el-form-item label="留言内容" prop="message">
-                <el-input
+              <div class="form-group">
+                <label for="message" class="form-label">留言内容 *</label>
+                <textarea
+                  id="message"
                   v-model="formData.message"
-                  type="textarea"
+                  class="form-textarea"
                   placeholder="请输入你的留言..."
-                  :rows="5"
-                />
-              </el-form-item>
+                  rows="5"
+                  required
+                ></textarea>
+              </div>
 
-              <el-button
-                type="primary"
-                :loading="submitting"
-                @click="submitWithValidation"
-              >
-                提交留言
-              </el-button>
-            </el-form>
+              <button type="submit" class="submit-button" :disabled="submitting">
+                {{ submitting ? '提交中...' : '提交留言' }}
+              </button>
+            </form>
           </div>
 
           <!-- Messages List -->
@@ -188,7 +189,6 @@ import {
   Globe,
 } from "lucide-vue-next";
 import { ElMessage } from "element-plus";
-import type { FormInstance } from "element-plus";
 import EmojiReaction from "@/components/EmojiReaction.vue";
 import request from "@/api/request";
 
@@ -216,39 +216,12 @@ interface FormData {
   message: string;
 }
 
-const formRef = ref<FormInstance>();
 const formData = ref<FormData>({
   name: "",
   email: "",
   website: "",
   message: "",
 });
-
-const formRules = {
-  name: [
-    { required: true, message: "请输入昵称", trigger: "blur" },
-    { min: 1, max: 50, message: "昵称长度在 1 到 50 之间", trigger: "blur" },
-  ],
-  email: [
-    { required: true, message: "请输入邮箱", trigger: "blur" },
-    {
-      type: "email",
-      message: "请输入有效的邮箱地址",
-      trigger: "blur",
-    },
-  ],
-  website: [
-    {
-      type: "url",
-      message: "请输入有效的网址",
-      trigger: "blur",
-    },
-  ],
-  message: [
-    { required: true, message: "请输入留言内容", trigger: "blur" },
-    { min: 1, max: 2000, message: "留言长度在 1 到 2000 之间", trigger: "blur" },
-  ],
-};
 
 const messages = ref<MessageItem[]>([]);
 const totalMessages = ref(0);
@@ -351,6 +324,14 @@ onUnmounted(() => {
 });
 
 const submitMessage = async () => {
+  if (
+    !formData.value.name ||
+    !formData.value.email ||
+    !formData.value.message
+  ) {
+    ElMessage.warning("请填写所有必填项");
+    return;
+  }
   if (submitting.value) return;
   submitting.value = true;
   try {
@@ -367,11 +348,8 @@ const submitMessage = async () => {
       website: "",
       message: "",
     };
-    
-    // 重置表单验证状态
-    formRef.value?.resetFields();
+
     ElMessage.success("提交成功，待审核通过后展示");
-    
     // 重新加载列表
     fetchMessages(true);
   } catch (error) {
@@ -382,14 +360,6 @@ const submitMessage = async () => {
   } finally {
     submitting.value = false;
   }
-};
-
-const submitWithValidation = () => {
-  formRef.value?.validate((valid: boolean) => {
-    if (valid) {
-      submitMessage();
-    }
-  });
 };
 
 const formatDate = (value: string | Date) => {
