@@ -25,4 +25,6 @@ CMD ["node", "src/app.js"]
 
 
 # docker build -t koa-app .
-# docker run -d --name koa-app -p 8998:8998 --env-file .env koa-app
+# 若 .env 位于仓库根目录，请在 server 目录运行：
+# docker run -d --name koa-app -p 8998:8998 --env-file ../.env koa-app
+# find . -name '._*' -delete
