@@ -1,0 +1,22 @@
+{
+  "name": "Decanter",
+  "title": "你好👋",
+  "bio": "万事顺意。",
+  "avatar": "https://qiniu.giovan.cn/avatars/229ec626-8148-4d5f-b0dc-6f3b8b07f396.jpg",
+  "email": "14945447@qq.com",
+  "wechat": "14945447",
+  "location": "中国.四川.成都",
+  "website": "https://blog.fis.ink",
+  "socialLinks": [
+    {
+      "platform": "GitHub",
+      "url": "https://github.com/fishcpy",
+      "icon": "github"
+    },
+    {
+      "platform": "Blog",
+      "url": "https://blog.fis.ink",
+      "icon": "globe"
+    }
+  ]
+}
