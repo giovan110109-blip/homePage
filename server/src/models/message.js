@@ -16,6 +16,7 @@ const MessageSchema = new mongoose.Schema({
     name: { type: String, required: true, trim: true },                 // 留言者姓名/昵称
     email: { type: String, required: true, trim: true },                // 联系邮箱
     website: { type: String, trim: true },                              // 个人网站（可选）
+    avatar: { type: String, trim: true },                               // 头像（前端生成的 data URL）
     content: { type: String, required: true, trim: true },              // 留言内容
     status: { type: String, enum: ['pending', 'approved'], default: 'pending' }, // 审核状态
     ip: { type: String, trim: true },                                   // 客户端 IP

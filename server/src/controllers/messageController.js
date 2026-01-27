@@ -22,6 +22,7 @@ class MessageController extends BaseController {
                 name: payload.name,
                 email: payload.email,
                 website: payload.website,
+                avatar: payload.avatar,
                 content: payload.content,
                 // 暂时取消人工审核，直接标记为通过
                 status: 'approved',

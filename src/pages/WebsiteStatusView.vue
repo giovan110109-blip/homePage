@@ -37,13 +37,6 @@
                     <div class="status-dot"></div>
                     <span>{{ getStatusText(website.status) }}</span>
                   </div>
-                  <button 
-                    @click="removeWebsite(index)"
-                    class="delete-btn"
-                    title="删除"
-                  >
-                    <Trash2 class="w-4 h-4" />
-                  </button>
                 </div>
 
                 <!-- Website Info -->
@@ -232,10 +225,6 @@ const addWebsite = () => {
     url: '',
     description: ''
   }
-}
-
-const removeWebsite = (index: number) => {
-  websites.value.splice(index, 1)
 }
 
 const checkWebsite = async (index: number) => {

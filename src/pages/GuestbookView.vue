@@ -60,9 +60,11 @@
                 <input
                   id="website"
                   v-model="formData.website"
-                  type="url"
+                  type="text"
+                  inputmode="url"
                   class="form-input"
-                  placeholder="https://example.com"
+                  placeholder="例如：example.com 或 https://example.com"
+                  autocomplete="url"
                 />
               </div>
 
@@ -78,8 +80,12 @@
                 ></textarea>
               </div>
 
-              <button type="submit" class="submit-button" :disabled="submitting">
-                {{ submitting ? '提交中...' : '提交留言' }}
+              <button
+                type="submit"
+                class="submit-button"
+                :disabled="submitting"
+              >
+                {{ submitting ? "提交中..." : "提交留言" }}
               </button>
             </form>
           </div>
@@ -100,13 +106,22 @@
               >
                 <div class="message-header">
                   <div class="user-info">
-                    <h3 class="user-name">{{ message.name }}</h3>
+                    <div class="flex items-end gap-20px" >
+                      <div
+                        v-if="message.avatar"
+                        v-html="message.avatar"
+                      ></div>
+                      <h3 class="user-name">{{ message.name }}</h3>
+                    </div>
                     <span class="message-time">{{
                       formatDate(message.createdAt)
                     }}</span>
                   </div>
                   <div class="message-actions">
-                    <EmojiReaction :message-id="message.id || index" :reactions="message.reactions" />
+                    <EmojiReaction
+                      :message-id="message.id || index"
+                      :reactions="message.reactions"
+                    />
                     <a
                       v-if="message.website"
                       :href="message.website"
@@ -118,8 +133,8 @@
                     </a>
                   </div>
                 </div>
+                <p class="message-content">{{ message.content }}</p>
                 <div class="message-meta">
-                  <p class="message-content">{{ message.content }}</p>
                   <span
                     v-if="message.os || message.browser || message.deviceType"
                     class="meta-chip"
@@ -146,9 +161,9 @@
                       {{ message.deviceType }}
                     </template>
                   </span>
-                  <span v-if="message.referer" class="meta-chip"
-                    >来源：{{ formatReferer(message.referer) }}</span
-                  >
+                  <span v-if="message.location" class="meta-chip">
+                    来源：{{ formatLocation(message.location) }}
+                  </span>
                 </div>
               </div>
 
@@ -177,7 +192,6 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from "vue";
 import {
   ExternalLink,
   Apple,
@@ -191,12 +205,14 @@ import {
 import { ElMessage } from "element-plus";
 import EmojiReaction from "@/components/EmojiReaction.vue";
 import request from "@/api/request";
+import { buildAvatarSvg } from "@/utils/avatarSvg";
 
 interface MessageItem {
   id: string;
   name: string;
   email: string;
   website?: string;
+  avatar?: string;
   content: string;
   createdAt: string;
   reactions?: Record<string, number>;
@@ -239,19 +255,24 @@ const hasMoreMessages = computed(
 const mapMessage = (item: any): MessageItem | null => {
   const id = String(item?._id ?? item?.id ?? "");
   if (!id) return null;
-  const location = item?.location
-    ? typeof item.location === "string"
-      ? item.location
-      : [item.location.city, item.location.region, item.location.country]
-          .filter(Boolean)
-          .join(" · ")
-    : null;
+  const location = (() => {
+    if (!item?.location) return null;
+    // 如果是字符串直接返回
+    if (typeof item.location === "string") return item.location;
+    // 对象场景：优先“国家 省份 城市”顺序
+    const country = item.location.country || item.location.countryName || "";
+    const region = item.location.region || item.location.province || "";
+    const city = item.location.city || "";
+    const parts = [country, region, city].filter(Boolean);
+    return parts.length ? parts.join(" ") : null;
+  })();
   const referer = typeof item?.referer === "string" ? item.referer : "";
   return {
     id,
     name: item.name,
     email: item.email,
     website: item.website,
+    avatar: item.avatar,
     content: item.content ?? item.message,
     createdAt: item.createdAt ?? item.time ?? new Date().toISOString(),
     reactions: item.reactions,
@@ -264,6 +285,9 @@ const mapMessage = (item: any): MessageItem | null => {
     location,
   };
 };
+
+const svgToDataUrl = (svg: string) =>
+  svg ? `data:image/svg+xml;utf8,${encodeURIComponent(svg)}` : "";
 
 const fetchMessages = async (reset = false) => {
   if (isLoading.value) return;
@@ -279,12 +303,23 @@ const fetchMessages = async (reset = false) => {
       ? list.map(mapMessage).filter((m): m is MessageItem => Boolean(m))
       : [];
 
+    // 为缺少头像的记录生成一个
+    const mappedWithAvatar = await Promise.all(
+      mapped.map(async (m) => {
+        if (m.avatar) return m;
+        const svg = await buildAvatarSvg();
+        return { ...m, avatar: svg };
+      }),
+    );
+
     if (reset) {
       messages.value = [];
       page.value = 1;
     }
 
-    messages.value = reset ? mapped : [...messages.value, ...mapped];
+    messages.value = reset
+      ? mappedWithAvatar
+      : [...messages.value, ...mappedWithAvatar];
     totalMessages.value = Number(
       meta.total ?? totalMessages.value ?? messages.value.length,
     );
@@ -314,7 +349,7 @@ const handleScroll = () => {
   }
 };
 
-onMounted(() => {
+onMounted(async () => {
   fetchMessages(true);
   window.addEventListener("scroll", handleScroll);
 });
@@ -335,10 +370,15 @@ const submitMessage = async () => {
   if (submitting.value) return;
   submitting.value = true;
   try {
+    const websiteNormalized = normalizeWebsite(formData.value.website);
+    const avatarSvg = await buildAvatarSvg();
+    const avatar = svgToDataUrl(avatarSvg) || undefined;
+
     await request.post("/messages", {
       name: formData.value.name,
       email: formData.value.email,
-      website: formData.value.website || undefined,
+      website: websiteNormalized || undefined,
+      avatar,
       content: formData.value.message,
     });
 
@@ -359,6 +399,28 @@ const submitMessage = async () => {
     ElMessage.error(msg);
   } finally {
     submitting.value = false;
+  }
+};
+
+// 规范化网站输入：自动补全协议，非法则置空
+const normalizeWebsite = (url: string) => {
+  if (!url) return "";
+  let u = url.trim();
+  if (!u) return "";
+  // 已包含协议且合法
+  try {
+    new URL(u);
+    return u;
+  } catch {}
+  // 缺失协议时补全 https://
+  if (!/^https?:\/\//i.test(u)) {
+    u = `https://${u}`;
+  }
+  try {
+    new URL(u);
+    return u;
+  } catch {
+    return "";
   }
 };
 
@@ -391,6 +453,27 @@ const formatReferer = (ref: string) => {
     return url.host + url.pathname.replace(/\/$/, "");
   } catch {
     return ref;
+  }
+};
+
+// 格式化 location 字段为“国家 省份 城市”格式
+const formatLocation = (loc: string | undefined | null) => {
+  if (!loc) return "";
+  // 已是格式化字符串
+  if (typeof loc === "string") {
+    // 若包含空格或分隔符，直接返回
+    if (loc.includes("·") || loc.includes(" ")) return loc;
+    return loc;
+  }
+  try {
+    const obj = typeof loc === "string" ? JSON.parse(loc) : loc;
+    if (!obj) return "";
+    const country = obj.country || obj.countryName || "";
+    const region = obj.region || obj.province || "";
+    const city = obj.city || "";
+    return [country, region, city].filter(Boolean).join(" ");
+  } catch {
+    return String(loc);
   }
 };
 
@@ -761,6 +844,7 @@ $font-4xl: 36px;
   flex-wrap: wrap;
   gap: 8px;
   margin-bottom: $spacing-xs;
+  margin-top: $spacing-xs;
 }
 
 .meta-badge {

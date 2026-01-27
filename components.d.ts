@@ -12,6 +12,8 @@ export {}
 declare module 'vue' {
   export interface GlobalComponents {
     ApiButton: typeof import('./src/components/Api-Button.vue')['default']
+    Background: typeof import('./src/components/widgets/Background.vue')['default']
+    Border: typeof import('./src/components/widgets/Border.vue')['default']
     Button: typeof import('./src/components/ui/Button.vue')['default']
     Card: typeof import('./src/components/ui/Card.vue')['default']
     DotGrid: typeof import('./src/components/DotGrid.vue')['default']
@@ -39,5 +41,6 @@ declare module 'vue' {
     SplitText: typeof import('./src/components/SplitText.vue')['default']
     TenYearPromise: typeof import('./src/components/ui/TenYearPromise.vue')['default']
     ThemeToggle: typeof import('./src/components/ui/ThemeToggle.vue')['default']
+    VueColorAvatar: typeof import('./src/components/VueColorAvatar.vue')['default']
   }
 }
