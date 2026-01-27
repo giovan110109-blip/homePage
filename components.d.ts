@@ -14,7 +14,6 @@ declare module 'vue' {
     ApiButton: typeof import('./src/components/Api-Button.vue')['default']
     Button: typeof import('./src/components/ui/Button.vue')['default']
     Card: typeof import('./src/components/ui/Card.vue')['default']
-    Components: typeof import('./src/components/index.vue')['default']
     DotGrid: typeof import('./src/components/DotGrid.vue')['default']
     ElButton: typeof import('element-plus/es')['ElButton']
     ElCard: typeof import('element-plus/es')['ElCard']

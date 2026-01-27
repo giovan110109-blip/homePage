@@ -1,21 +1,10 @@
 import { createRouter, createWebHashHistory, type RouteRecordRaw } from 'vue-router'
-import HomeView from '@/pages/HomeView.vue'
-import AboutView from '@/pages/AboutView.vue'
-import WebsiteStatusView from '@/pages/WebsiteStatusView.vue'
-import Admin from '@/pages/admin/AdminLayout.vue'
-import GuestbookView from '@/pages/GuestbookView.vue'
-
-// import ArticlesView from '@/pages/ArticlesView.vue'
-// import PortfolioView from '@/pages/PortfolioView.vue'
-// import SitesView from '@/pages/SitesView.vue'
-// import SponsorView from '@/pages/SponsorView.vue'
-
 // 定义路由配置
 const routes: RouteRecordRaw[] = [
   {
     path: '/',
     name: 'home',
-    component: HomeView,
+    component: () => import('@/pages/HomeView.vue'),
     meta: {
       title: '首页'
     }
@@ -23,7 +12,7 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/about',
     name: 'about',
-    component: AboutView,
+    component: () => import('@/pages/AboutView.vue'),
     meta: {
       title: '关于我'
     }
@@ -31,7 +20,7 @@ const routes: RouteRecordRaw[] = [
     {
     path: '/sites',
     name: 'sites',
-    component: WebsiteStatusView,
+    component: () => import('@/pages/WebsiteStatusView.vue'),
     meta: {
       title: '网站'
     }
@@ -39,7 +28,7 @@ const routes: RouteRecordRaw[] = [
     {
     path: '/note',
     name: 'note',
-    component: GuestbookView,
+    component: () => import('@/pages/GuestbookView.vue'),
     meta: {
       title: '留言板'
     }
@@ -47,23 +36,23 @@ const routes: RouteRecordRaw[] = [
     {
     path: '/admin',
     name: 'admin',
-    component: Admin,
+    component: () => import('@/pages/admin/AdminLayout.vue'),
     meta: {
       title: '后台管理'
     }
   },
-  // {
-  //   path: '/sponsor',
-  //   name: 'sponsor',
-  //   component: SponsorView,
-  //   meta: {
-  //     title: '赞助支持'
-  //   }
-  // },
+  {
+    path: '/sponsor',
+    name: 'sponsor',
+    component: () => import('@/pages/SponsorView.vue'),
+    meta: {
+      title: '赞助支持'
+    }
+  },
   {
     path: '/:pathMatch(.*)*',
     name: 'not-found',
-    component: HomeView,
+    component: () => import('@/pages/HomeView.vue'),
     meta: {
       title: '首页'
     }

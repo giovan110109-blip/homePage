@@ -382,6 +382,7 @@ const formatDate = (date: Date) => {
 </script>
 
 <style scoped lang="scss">
+@use "sass:list";
 // 颜色变量
 $color-primary: #3b82f6;
 $color-primary-dark: #2563eb;
@@ -639,10 +640,10 @@ $font-4xl: 36px;
   // 便签样式
   @each $index, $colors in $note-colors {
     &.note-color-#{$index} {
-      $light-start: nth($colors, 1);
-      $light-end: nth($colors, 2);
-      $dark-start: nth($colors, 3);
-      $dark-end: nth($colors, 4);
+      $light-start: list.nth($colors, 1);
+      $light-end: list.nth($colors, 2);
+      $dark-start: list.nth($colors, 3);
+      $dark-end: list.nth($colors, 4);
 
       background: linear-gradient(135deg, $light-start 0%, $light-end 100%);
 

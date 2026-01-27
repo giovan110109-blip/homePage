@@ -1,4 +1,4 @@
-import { defineConfig } from "vite";
+import { defineConfig, splitVendorChunkPlugin } from "vite";
 import vue from "@vitejs/plugin-vue";
 import path from "path";
 import Inspector from "unplugin-vue-dev-locator/vite";
@@ -6,14 +6,74 @@ import AutoImport from "unplugin-auto-import/vite";
 import Components from "unplugin-vue-components/vite";
 import { ElementPlusResolver } from "unplugin-vue-components/resolvers";
 
+const coreDeps = ["vue", "vue-router", "pinia"];
+const elementDeps = ["element-plus"];
+const iconDeps = ["lucide-vue-next", "@heroicons/vue"];
+const headlessDeps = ["@headlessui/vue"];
+const motionDeps = ["gsap"];
+
 // https://vite.dev/config/
 export default defineConfig({
   build: {
-    sourcemap: "hidden",
+    target: "es2020",
+    sourcemap: false,
+    cssCodeSplit: true,
+    minify: "terser",
+    terserOptions: {
+      compress: {
+        drop_console: true,
+        drop_debugger: true,
+      },
+    },
+    rollupOptions: {
+      output: {
+        entryFileNames: "js/[name]-[hash].js",
+        chunkFileNames: "js/[name]-[hash].js",
+        assetFileNames: ({ name }) => {
+          if (!name) return "assets/[name]-[hash][extname]";
+          if (/\.(png|jpe?g|gif|svg|webp|avif)$/.test(name)) {
+            return "img/[name]-[hash][extname]";
+          }
+          if (/\.(css)$/.test(name)) {
+            return "css/[name]-[hash][extname]";
+          }
+          if (/\.(woff2?|ttf|eot|otf)$/.test(name)) {
+            return "fonts/[name]-[hash][extname]";
+          }
+          return "assets/[name]-[hash][extname]";
+        },
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return;
+
+          if (coreDeps.some((dep) => id.includes(`/node_modules/${dep}/`))) {
+            return "vendor-core";
+          }
+
+          if (elementDeps.some((dep) => id.includes(`/node_modules/${dep}/`))) {
+            return "vendor-element";
+          }
+
+          if (headlessDeps.some((dep) => id.includes(`/node_modules/${dep}/`))) {
+            return "vendor-headless";
+          }
+
+          if (iconDeps.some((dep) => id.includes(`/node_modules/${dep}/`))) {
+            return "vendor-icons";
+          }
+
+          if (motionDeps.some((dep) => id.includes(`/node_modules/${dep}/`))) {
+            return "vendor-motion";
+          }
+
+          return "vendor";
+        },
+      },
+    },
   },
   plugins: [
     vue(),
     Inspector(),
+    splitVendorChunkPlugin(),
     AutoImport({
       imports: [
         "vue", // 自动导入vue的ref、reactive、computed等
@@ -32,9 +92,13 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"), // ✅ 定义 @ = src
     },
   },
-  server: {
-    historyApiFallback: {
-      index: "/index.html",
-    },
+  optimizeDeps: {
+    include: [
+      ...coreDeps,
+      ...elementDeps,
+      ...headlessDeps,
+      ...iconDeps,
+      ...motionDeps,
+    ],
   },
 });

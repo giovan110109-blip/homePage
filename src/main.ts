@@ -1,10 +1,13 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import './style.css'
+import './style.scss'
 import App from './App.vue'
 import router from './router'
 import ElementPlus from 'element-plus' // 引入Element Plus核心库
 import 'element-plus/dist/index.css' // 引入Element Plus样式
+
+const { VITE_SITE_TITLE } = import.meta.env
 
 // 创建Vue应用实例
 const app = createApp(App)
@@ -16,6 +19,10 @@ const pinia = createPinia()
 app.use(pinia)
 app.use(router)
 app.use(ElementPlus)
+
+if (VITE_SITE_TITLE) {
+  document.title = VITE_SITE_TITLE
+}
 
 // 处理404页面重定向
 router.isReady().then(() => {
