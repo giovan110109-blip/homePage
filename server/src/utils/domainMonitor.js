@@ -1,23 +1,32 @@
+// 站点/证书检测工具
 const http = require('http');
 const https = require('https');
 const tls = require('tls');
 
+// 请求超时时间（毫秒）
 const DEFAULT_TIMEOUT = 10000;
+// 证书即将过期阈值（天）
 const CERT_EXPIRING_DAYS = 30;
 
+// 规范化 URL，支持输入域名（自动补 https://）
+// 步骤：1) 判空 2) trim 3) 检查是否已有协议 4) 默认加 https
 const ensureUrl = (input) => {
   if (!input) return null;
   const trimmed = String(input).trim();
-  module.exports = { checkDomain };
+  if (!trimmed) return null;
   if (/^https?:\/\//i.test(trimmed)) return trimmed;
   return `https://${trimmed}`;
 };
 
+// 发起 HEAD 请求，用于获取响应状态与测量延迟
+// 步骤：1) 解析 URL 2) 选择 http/https 库 3) 记录开始时间
+//      4) 发起 HEAD 5) 计算延迟并返回状态码
 const requestHead = (url) => new Promise((resolve, reject) => {
   const urlObj = new URL(url);
   const lib = urlObj.protocol === 'https:' ? https : http;
 
   const start = Date.now();
+  // 组装请求参数（https 额外加 SNI 以适配多域名证书）
   const req = lib.request(
     {
       method: 'HEAD',
@@ -30,6 +39,7 @@ const requestHead = (url) => new Promise((resolve, reject) => {
         : {}),
     },
     (res) => {
+      // 收到响应后计算延迟
       const latency = Date.now() - start;
       resolve({
         statusCode: res.statusCode || null,
@@ -43,14 +53,18 @@ const requestHead = (url) => new Promise((resolve, reject) => {
     }
   );
 
+  // 超时直接终止请求
   req.on('timeout', () => {
     req.destroy(new Error('Request timeout'));
   });
 
+  // 网络错误直接 reject
   req.on('error', (err) => reject(err));
   req.end();
 });
 
+// 将常见错误转换为可读信息
+// 步骤：优先匹配错误码，再匹配错误文本关键词
 const formatErrorMessage = (error) => {
   const code = error?.code;
   const message = String(error?.message || '').toLowerCase();
@@ -67,12 +81,16 @@ const formatErrorMessage = (error) => {
   return '连接失败';
 };
 
+// 获取 TLS 证书信息
+// 步骤：1) 直连 443 端口 2) 读取证书 3) 解析有效期
+//      4) 计算剩余天数 5) 标记状态（有效/即将过期/过期）
 const checkCertificate = (host) => new Promise((resolve) => {
   if (!host) {
     resolve({ status: 'none', error: 'Invalid host' });
     return;
   }
 
+  // 直接建立 TLS 连接获取证书
   const socket = tls.connect(
     {
       host,
@@ -83,6 +101,7 @@ const checkCertificate = (host) => new Promise((resolve) => {
     },
     () => {
       try {
+        // 从 TLS 连接拿到服务端证书
         const cert = socket.getPeerCertificate();
         if (!cert || !cert.valid_to) {
           resolve({ status: 'none' });
@@ -90,12 +109,14 @@ const checkCertificate = (host) => new Promise((resolve) => {
           return;
         }
 
+        // 解析证书有效期
         const validFrom = cert.valid_from ? new Date(cert.valid_from) : null;
         const validTo = cert.valid_to ? new Date(cert.valid_to) : null;
         const now = new Date();
         const daysRemaining = validTo ? Math.ceil((validTo.getTime() - now.getTime()) / 86400000) : null;
         const isValidNow = !!(validFrom && validTo && now >= validFrom && now <= validTo);
 
+        // 根据时间判断证书状态
         let status = 'valid';
         if (!isValidNow) status = 'expired';
         else if (daysRemaining !== null && daysRemaining <= CERT_EXPIRING_DAYS) status = 'expiring';
@@ -118,17 +139,23 @@ const checkCertificate = (host) => new Promise((resolve) => {
     }
   );
 
+  // TLS 连接错误
   socket.on('error', (err) => {
     resolve({ status: 'error', error: err.message || 'TLS connection failed' });
   });
 
+  // TLS 连接超时
   socket.on('timeout', () => {
     socket.destroy();
     resolve({ status: 'error', error: 'TLS timeout' });
   });
 });
 
+// 综合检测：延迟 + HTTP 状态码 + 证书信息
+// 步骤：1) 规范化 URL 2) 并行请求 HEAD + 证书
+//      3) 成功返回数据 4) 失败返回错误信息
 const checkDomain = async (inputUrl) => {
+  // 先统一 URL 形态
   const normalizedUrl = ensureUrl(inputUrl);
   if (!normalizedUrl) {
     return {
@@ -140,15 +167,18 @@ const checkDomain = async (inputUrl) => {
     };
   }
 
+  // 解析域名
   const urlObj = new URL(normalizedUrl);
   const host = urlObj.hostname;
 
   try {
+    // 并行获取 HTTP 状态与证书信息
     const [head, ssl] = await Promise.all([
       requestHead(normalizedUrl),
       checkCertificate(host),
     ]);
 
+    // 成功响应
     return {
       status: 'online',
       message: head.statusMessage || '连接成功',
@@ -159,6 +189,7 @@ const checkDomain = async (inputUrl) => {
       ssl,
     };
   } catch (error) {
+    // 失败时保底返回证书信息（有些站点 HTTP 不通但证书仍可取）
     return {
       status: 'offline',
       message: formatErrorMessage(error),

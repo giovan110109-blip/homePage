@@ -41,6 +41,9 @@ importers:
       pinia:
         specifier: ^3.0.3
         version: 3.0.4(typescript@5.3.3)(vue@3.5.27(typescript@5.3.3))
+      pinia-plugin-persistedstate:
+        specifier: ^3.2.1
+        version: 3.2.3(pinia@3.0.4(typescript@5.3.3)(vue@3.5.27(typescript@5.3.3)))
       tailwind-merge:
         specifier: ^3.3.0
         version: 3.4.0
@@ -3063,6 +3066,11 @@ packages:
   pify@2.3.0:
     resolution: {integrity: sha512-udgsAY+fTnvv7kI7aaxbqwWNb0AHiB0qBO89PZKPkoTmGOgdbrHDKD+0B2X4uTfJ/FT1R09r9gTsjUjNJotuog==}
     engines: {node: '>=0.10.0'}
+
+  pinia-plugin-persistedstate@3.2.3:
+    resolution: {integrity: sha512-Cm819WBj/s5K5DGw55EwbXDtx+EZzM0YR5AZbq9XE3u0xvXwvX2JnWoFpWIcdzISBHqy9H1UiSIUmXyXqWsQRQ==}
+    peerDependencies:
+      pinia: ^2.0.0
 
   pinia@3.0.4:
     resolution: {integrity: sha512-l7pqLUFTI/+ESXn6k3nu30ZIzW5E2WZF/LaHJEpoq6ElcLD+wduZoB2kBN19du6K/4FDpPMazY2wJr+IndBtQw==}
@@ -6833,6 +6841,10 @@ snapshots:
   picomatch@4.0.3: {}
 
   pify@2.3.0: {}
+
+  pinia-plugin-persistedstate@3.2.3(pinia@3.0.4(typescript@5.3.3)(vue@3.5.27(typescript@5.3.3))):
+    dependencies:
+      pinia: 3.0.4(typescript@5.3.3)(vue@3.5.27(typescript@5.3.3))
 
   pinia@3.0.4(typescript@5.3.3)(vue@3.5.27(typescript@5.3.3)):
     dependencies:

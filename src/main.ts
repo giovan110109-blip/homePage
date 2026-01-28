@@ -1,12 +1,13 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
+import piniaPluginPersistedstate from 'pinia-plugin-persistedstate'
 import './style.scss'
 import App from './App.vue'
 import router from './router'
 import ElementPlus from 'element-plus' // 引入Element Plus核心库
 import 'element-plus/dist/index.css' // 引入Element Plus样式
 import 'element-plus/theme-chalk/dark/css-vars.css' // 引入 Element Plus 暗黑模式变量
-
+import 'element-plus/theme-chalk/display.css'
 const { VITE_SITE_TITLE } = import.meta.env
 
 // 创建Vue应用实例
@@ -16,6 +17,7 @@ const app = createApp(App)
 const pinia = createPinia()
 
 // 使用插件
+pinia.use(piniaPluginPersistedstate)
 app.use(pinia)
 app.use(router)
 app.use(ElementPlus)

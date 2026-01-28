@@ -75,6 +75,17 @@ class MessageController extends BaseController {
         }
     }
 
+    // DELETE /api/messages/:id  删除留言
+    async remove(ctx) {
+        try {
+            const removed = await messageService.deleteById(ctx.params.id);
+            if (!removed) this.throwHttpError('Message not found', HttpStatus.NOT_FOUND);
+            this.ok(ctx, removed, 'Message deleted');
+        } catch (err) {
+            this.fail(ctx, err);
+        }
+    }
+
     // POST /api/messages/:id/react  body: { type: '<emojiId>', action?: 'add' | 'remove' }  表态/取消表态
     async react(ctx) {
         try {

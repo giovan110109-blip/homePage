@@ -92,7 +92,7 @@
 
                 <!-- Status Details -->
                 <div class="status-details">
-                  <div v-if="website.statusCode" class="detail-item">
+                  <!-- <div v-if="website.statusCode" class="detail-item">
                     <span class="detail-label">HTTP 状态码：</span>
                     <span
                       class="detail-value"
@@ -104,7 +104,7 @@
                   <div v-if="website.message" class="detail-item">
                     <span class="detail-label">信息：</span>
                     <span class="detail-value">{{ formatMessage(website.message) }}</span>
-                  </div>
+                  </div> -->
                   <div v-if="website.ssl" class="detail-item">
                     <span class="detail-label">证书状态：</span>
                     <span
@@ -206,6 +206,57 @@ const websites = ref<Website[]>([
     name: "个人主页",
     url: "https://www.giovan.cn",
     description: "我的个人主页",
+    status: "online",
+    latency: 0,
+    statusCode: 0,
+    message: null,
+    lastCheck: new Date(Date.now() - 5 * 60 * 1000),
+    uptime: 0,
+    checking: false,
+    ssl: {
+      status: "valid",
+      validTo: null,
+      daysRemaining: null,
+    },
+  },
+  {
+    name: "服务",
+    url: "https://serve.giovan.cn",
+    description: "后端服务",
+    status: "online",
+    latency: 0,
+    statusCode: 0,
+    message: null,
+    lastCheck: new Date(Date.now() - 5 * 60 * 1000),
+    uptime: 0,
+    checking: false,
+    ssl: {
+      status: "valid",
+      validTo: null,
+      daysRemaining: null,
+    },
+  },
+   {
+    name: "UptimeKuma",
+    url: "https://monitor.giovan.cn",
+    description: "UptimeKuma",
+    status: "online",
+    latency: 0,
+    statusCode: 0,
+    message: null,
+    lastCheck: new Date(Date.now() - 5 * 60 * 1000),
+    uptime: 0,
+    checking: false,
+    ssl: {
+      status: "valid",
+      validTo: null,
+      daysRemaining: null,
+    },
+  },
+     {
+    name: "webDav",
+    url: "https://file.giovan.cn",
+    description: "webDav",
     status: "online",
     latency: 0,
     statusCode: 0,

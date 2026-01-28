@@ -16,10 +16,25 @@ function registerRoutes(app) {
     // 读取modules目录下的所有文件
     const files = fs.readdirSync(modulesPath);
     
+    const allowList = new Set([
+        'health.js',
+        'message.js',
+        'upload.js',
+        'monitor.js',
+        'adminAuth.js',
+        'adminMessages.js',
+        'siteInfo.js',
+        'adminSiteInfo.js',
+        'sponsor.js',
+        'adminSponsors.js',
+        'adminSponsorMethods.js'
+    ]);
+
     // 过滤出路由文件
     const routeFiles = files.filter(file => 
         !file.startsWith('.') && // 排除隐藏文件
-        file.endsWith('.js') // 只处理js文件
+        file.endsWith('.js') && // 只处理js文件
+        allowList.has(file)
     );
 
     // 注册每个路由文件

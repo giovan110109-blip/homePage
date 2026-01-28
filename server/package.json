@@ -4,7 +4,8 @@
   "scripts": {
     "start": "node src/app.js",
     "dev": "nodemon src/app.js",
-    "start:prod": "NODE_ENV=production node src/app.js"
+    "start:prod": "NODE_ENV=production node src/app.js",
+    "seed:sponsors": "node src/scripts/seedSponsors.js"
   },
   "dependencies": {
     "@koa/cors": "^5.0.0",

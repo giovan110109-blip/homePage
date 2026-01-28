@@ -22,61 +22,33 @@
         </div>
 
         <div class="qr-codes">
-          <div 
+          <div
+            v-for="(method, index) in displayMethods"
+            :key="method._id || method.name || index"
             class="qr-card"
-            :ref="el => qrCardRefs[0] = el as HTMLElement"
-            @mousemove="(event) => handleQrCardMouseMove(event, 0)"
-            @mouseleave="() => handleQrCardMouseLeave(0)"
+            :ref="el => qrCardRefs[index] = el as HTMLElement"
+            @mousemove="(event) => handleQrCardMouseMove(event, index)"
+            @mouseleave="() => handleQrCardMouseLeave(index)"
           >
             <!-- 鼠标跟随效果 -->
-            <div 
-              v-if="qrCardEffects[0]?.show"
+            <div
+              v-if="qrCardEffects[index]?.show"
               class="absolute w-40 h-40 rounded-full blur-2xl transition-all duration-75 ease-out pointer-events-none z-0"
               :style="{
-                left: qrCardEffects[0]?.x - 80 + 'px',
-                top: qrCardEffects[0]?.y - 80 + 'px',
-                background: 'radial-gradient(circle, rgba(7, 193, 96, 0.6) 0%, rgba(7, 193, 96, 0.3) 30%, rgba(7, 193, 96, 0.15) 60%, transparent 90%)',
-                boxShadow: '0 0 80px rgba(7, 193, 96, 0.5), 0 0 160px rgba(7, 193, 96, 0.3)'
+                left: qrCardEffects[index]?.x - 80 + 'px',
+                top: qrCardEffects[index]?.y - 80 + 'px'
               }"
             ></div>
-            <div class="qr-icon">
-              <img  class='w-32px h-32px' src="../../src/assets/微信.png" alt="微信二维码">
+            <div class="qr-icon" v-if="method.icon">
+              <img class="w-32px h-32px" :src="method.icon" :alt="method.name" />
             </div>
-            <h3>微信支付</h3>
+            <h3>{{ method.name }}</h3>
             <div class="qr-placeholder">
-              <img src="../../src/assets/wx.jpg" alt="微信二维码">
+              <img v-if="method.qrCode" :src="method.qrCode" :alt="method.name" />
+              <span v-else>暂无二维码</span>
             </div>
-            <p class="qr-description">扫一扫，请我喝杯咖啡</p>
+            <p class="qr-description">{{ method.description || '扫一扫，请我喝杯咖啡' }}</p>
           </div>
-          
-          <div 
-            class="qr-card"
-            :ref="el => qrCardRefs[1] = el as HTMLElement"
-            @mousemove="(event) => handleQrCardMouseMove(event, 1)"
-            @mouseleave="() => handleQrCardMouseLeave(1)"
-          >
-            <!-- 鼠标跟随效果 -->
-            <div 
-              v-if="qrCardEffects[1]?.show"
-              class="absolute w-40 h-40 rounded-full blur-2xl transition-all duration-75 ease-out pointer-events-none z-0"
-              :style="{
-                left: qrCardEffects[1]?.x - 80 + 'px',
-                top: qrCardEffects[1]?.y - 80 + 'px',
-                background: 'radial-gradient(circle, rgba(22, 119, 255, 0.6) 0%, rgba(22, 119, 255, 0.3) 30%, rgba(22, 119, 255, 0.15) 60%, transparent 90%)',
-                boxShadow: '0 0 80px rgba(22, 119, 255, 0.5), 0 0 160px rgba(22, 119, 255, 0.3)'
-              }"
-            ></div>
-            <div class="qr-icon">
-                <img  class='w-32px h-32px' src="../../src/assets/支付宝.png" alt="支付宝二维码">
-            </div>
-            <h3>支付宝</h3>
-            <div class="qr-placeholder">
-              <img src="../../src/assets/zfb.jpg" alt="支付宝二维码">
-            </div>
-            <p class="qr-description">扫一扫，请我喝杯咖啡</p>
-          </div>
-          
-
         </div>
         
         <!-- <div class="notice">
@@ -90,21 +62,22 @@
         
         <div class="sponsors-table">
           <h2>赞助名单</h2>
-          <table>
+          <el-empty v-if="!sponsors.length" description="暂无赞助记录" class="empty-state" />
+          <table v-else>
             <thead>
-            <tr>
-                <th>赞助者</th>
-                <th>日期</th>
-                <th>寄语</th>
-                <th>金额</th>
-              </tr>
+              <tr>
+                  <th>赞助者</th>
+                  <th>日期</th>
+                  <th>寄语</th>
+                  <th>金额</th>
+                </tr>
             </thead>
             <tbody>
-              <tr v-for="(sponsor, index) in sponsors" :key="index">
+              <tr v-for="(sponsor, index) in sponsors" :key="sponsor._id || index">
                 <td>{{ sponsor.name }}</td>
-                <td>{{ sponsor.date }}</td>
-                <td>{{ sponsor.message }}</td>
-                <td>{{ sponsor.amount }}</td>
+                <td>{{ formatDate(sponsor.date || sponsor.createdAt) }}</td>
+                <td>{{ sponsor.message || '-' }}</td>
+                <td>{{ formatAmount(sponsor.amount) }}</td>
               </tr>
             </tbody>
           </table>
@@ -116,11 +89,49 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { Heart, Mail, ExternalLink } from 'lucide-vue-next'
-import sponsorsData from '@/data/sponsors.json'
+import request from '@/api/request'
+import wechatIcon from '@/assets/微信.png'
+import wechatQr from '@/assets/wx.jpg'
+import alipayIcon from '@/assets/支付宝.png'
+import alipayQr from '@/assets/zfb.jpg'
 
-const sponsors = ref(sponsorsData)
+type SponsorMethod = {
+  _id?: string
+  name: string
+  icon?: string
+  qrCode?: string
+  description?: string
+}
+
+type Sponsor = {
+  _id?: string
+  name: string
+  amount: number
+  message?: string
+  date?: string
+  createdAt?: string
+}
+
+const sponsors = ref<Sponsor[]>([])
+const methods = ref<SponsorMethod[]>([])
+const fallbackMethods: SponsorMethod[] = [
+  {
+    name: '微信支付',
+    icon: wechatIcon,
+    qrCode: wechatQr,
+    description: '扫一扫，请我喝杯咖啡',
+  },
+  {
+    name: '支付宝',
+    icon: alipayIcon,
+    qrCode: alipayQr,
+    description: '扫一扫，请我喝杯咖啡',
+  },
+]
+
+const displayMethods = computed(() => (methods.value.length ? methods.value : fallbackMethods))
 
 const qrCardRefs = ref<HTMLElement[]>([])
 const qrCardEffects = reactive<Record<number, { x: number; y: number; show: boolean }>>({})
@@ -142,6 +153,36 @@ const handleQrCardMouseLeave = (index: number) => {
     qrCardEffects[index].show = false
   }
 }
+
+const fetchSponsorMethods = async () => {
+  const res = await request.get('/sponsor-methods')
+  const payload = (res as any)?.data || res || {}
+  methods.value = Array.isArray(payload.data) ? payload.data : (Array.isArray(payload) ? payload : [])
+}
+
+const fetchSponsors = async () => {
+  const res = await request.get('/sponsors')
+  const payload = (res as any)?.data || res || {}
+  const data = payload.data || payload
+  sponsors.value = Array.isArray(data) ? data : []
+}
+
+const formatDate = (value?: string) => {
+  if (!value) return '-'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return date.toLocaleDateString('zh-CN')
+}
+
+const formatAmount = (value?: number) => {
+  if (value === undefined || value === null) return '-'
+  return `${Number(value).toFixed(2)} 元`
+}
+
+onMounted(() => {
+  fetchSponsorMethods()
+  fetchSponsors()
+})
 </script>
 
 <style scoped>
@@ -466,6 +507,10 @@ const handleQrCardMouseLeave = (index: number) => {
 
 .sponsors-table tbody tr:last-child td {
   border-bottom: none;
+}
+
+.empty-state {
+  padding: 24px 0 12px;
 }
 
 @media (max-width: 768px) {

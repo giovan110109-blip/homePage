@@ -29,6 +29,8 @@ const connectDB = require('./config/db');
 const logger = require('./middleware/logger');
 const errorHandler = require('./middleware/errorHandler');
 const requestInfo = require('./middleware/requestInfo');
+const rateLimitTimestamp = require('./middleware/rateLimitTimestamp');
+const adminAuth = require('./middleware/adminAuth');
 
 // 连接数据库
 connectDB();
@@ -48,12 +50,21 @@ app.use(koaBody({
 }));
 
 // CORS
-app.use(cors({ origin: '*' }));
+app.use(cors({
+  origin: '*',
+  allowHeaders: ['Content-Type', 'Authorization', 'x-request-timestamp'],
+}));
 
 // 全局中间件：日志、请求信息、错误处理
 app.use(logger);
 app.use(requestInfo);
 app.use(errorHandler);
+app.use(rateLimitTimestamp({
+  windowMs: Number(process.env.RATE_LIMIT_WINDOW_MS) || 10 * 1000,
+  max: Number(process.env.RATE_LIMIT_MAX) || 20,
+  maxSkewMs: Number(process.env.RATE_LIMIT_SKEW_MS) || 5 * 60 * 1000,
+}));
+app.use(adminAuth);
 
 // 注册路由
 registerRoutes(app);

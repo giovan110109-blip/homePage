@@ -1,4 +1,5 @@
 import { createRouter, createWebHashHistory, type RouteRecordRaw } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 // 定义路由配置
 const routes: RouteRecordRaw[] = [
   {
@@ -38,9 +39,18 @@ const routes: RouteRecordRaw[] = [
     name: 'admin',
     component: () => import('@/pages/admin/AdminLayout.vue'),
     meta: {
-      title: '后台管理'
+        title: '后台管理',
+        requiresAuth: true
     }
   },
+    {
+      path: '/admin/login',
+      name: 'admin-login',
+      component: () => import('@/pages/admin/AdminLogin.vue'),
+      meta: {
+        title: '后台登录'
+      }
+    },
   {
     path: '/sponsor',
     name: 'sponsor',
@@ -63,6 +73,15 @@ const routes: RouteRecordRaw[] = [
 const router = createRouter({
   history: createWebHashHistory(),
   routes,
+})
+
+router.beforeEach((to, _from, next) => {
+  const authStore = useAuthStore()
+  if (to.meta?.requiresAuth && !authStore.isLoggedIn) {
+    next({ name: 'admin-login', query: { redirect: to.fullPath } })
+    return
+  }
+  next()
 })
 
 export default router

@@ -127,6 +127,7 @@ import {
   Phone,
 } from "lucide-vue-next";
 import { usePersonalStore } from "@/stores/personal";
+import { useSiteInfoStore } from "@/stores/siteInfo";
 import Button from "@/components/ui/Button.vue";
 import Card from "@/components/ui/Card.vue";
 import TenYearPromise from "@/components/ui/TenYearPromise.vue";
@@ -149,6 +150,11 @@ const handleGlobalMouseLeave = () => {
 };
 
 const personalStore = usePersonalStore();
+const siteInfoStore = useSiteInfoStore();
+
+onMounted(() => {
+  siteInfoStore.fetchSiteInfo();
+});
 
 const scrollToSection = (sectionId: string) => {
   const element = document.getElementById(sectionId);

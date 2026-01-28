@@ -1,6 +1,9 @@
 <template>
   <el-container class="admin-container">
-    <el-aside class="admin-sidebar" :width="sidebarCollapsed ? '64px' : '240px'">
+    <el-aside
+      class="admin-sidebar hidden-sm-and-down"
+      :width="sidebarCollapsed ? '64px' : '240px'"
+    >
       <el-scrollbar class="sidebar-scroll">
         <el-menu
           class="admin-menu"
@@ -8,7 +11,11 @@
           :collapse="sidebarCollapsed"
           @select="activeMenu = $event"
         >
-          <el-menu-item v-for="item in menuItems" :key="item.id" :index="item.id">
+          <el-menu-item
+            v-for="item in menuItems"
+            :key="item.id"
+            :index="item.id"
+          >
             <component :is="item.icon" class="nav-icon" />
             <span class="nav-label">{{ item.label }}</span>
           </el-menu-item>
@@ -17,56 +24,112 @@
     </el-aside>
 
     <el-main class="admin-main">
+      <div class="admin-header">
+        <div class="header-left">
+          <el-button class="mobile-menu-btn hidden-md-and-up" type="primary" plain @click="mobileMenuOpen = true">
+            菜单
+          </el-button>
+          <div>
+            <div class="header-title">管理后台</div>
+            <div class="header-subtitle">欢迎回来，{{ authStore.user?.username || 'admin' }}</div>
+          </div>
+        </div>
+        <div class="header-actions">
+          <el-button type="danger" plain size="small" @click="handleLogout">退出登录</el-button>
+        </div>
+      </div>
       <div class="content-wrapper">
         <KeepAlive>
           <component :is="currentComponent" />
         </KeepAlive>
       </div>
     </el-main>
+
+    <el-drawer
+      v-model="mobileMenuOpen"
+      title="菜单"
+      size="70%"
+      direction="ltr"
+      class="hidden-md-and-up"
+    >
+      <el-menu
+        class="admin-menu"
+        :default-active="activeMenu"
+        @select="handleMobileSelect"
+      >
+        <el-menu-item
+          v-for="item in menuItems"
+          :key="item.id"
+          :index="item.id"
+        >
+          <component :is="item.icon" class="nav-icon" />
+          <span class="nav-label">{{ item.label }}</span>
+        </el-menu-item>
+      </el-menu>
+    </el-drawer>
   </el-container>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { LayoutDashboard, MessageSquare, Settings, Users } from 'lucide-vue-next'
-import DashboardPage from './components/DashboardPage.vue'
-import UsersPage from './components/UsersPage.vue'
-import MessagesPage from './components/MessagesPage.vue'
-import SettingsPage from './components/SettingsPage.vue'
+import {
+  LayoutDashboard,
+  MessageSquare,
+  Settings,
+  Heart,
+  Users,
+} from "lucide-vue-next";
+import DashboardPage from "./components/DashboardPage.vue";
+import UsersPage from "./components/UsersPage.vue";
+import MessagesPage from "./components/MessagesPage.vue";
+import SettingsPage from "./components/SettingsPage.vue";
+import SponsorsPage from "./components/SponsorsPage.vue";
+import { useAuthStore } from "@/stores/auth";
+import { useRouter } from "vue-router";
 
-const sidebarCollapsed = ref(false)
-const activeMenu = ref('dashboard')
+const sidebarCollapsed = ref(false);
+const activeMenu = ref("dashboard");
+const mobileMenuOpen = ref(false);
+const authStore = useAuthStore();
+const router = useRouter();
 
 const menuItems = [
-  { id: 'dashboard', label: '仪表板', icon: LayoutDashboard },
-  { id: 'users', label: '用户管理', icon: Users },
-  { id: 'messages', label: '留言管理', icon: MessageSquare },
-  { id: 'settings', label: '系统设置', icon: Settings }
-]
+  { id: "dashboard", label: "仪表板", icon: LayoutDashboard },
+  { id: "users", label: "用户管理", icon: Users },
+  { id: "messages", label: "留言管理", icon: MessageSquare },
+  { id: "sponsors", label: "赞助管理", icon: Heart },
+  { id: "settings", label: "系统设置", icon: Settings },
+];
 
 // 动态组件映射
 const componentMap: Record<string, any> = {
   dashboard: DashboardPage,
   users: UsersPage,
   messages: MessagesPage,
-  settings: SettingsPage
-}
+  sponsors: SponsorsPage,
+  settings: SettingsPage,
+};
 
 // 根据activeMenu返回对应的组件
 const currentComponent = computed(() => {
-  return componentMap[activeMenu.value] || DashboardPage
-})
+  return componentMap[activeMenu.value] || DashboardPage;
+});
+
+const handleMobileSelect = (value: string) => {
+  activeMenu.value = value;
+  mobileMenuOpen.value = false;
+};
+
+const handleLogout = () => {
+  authStore.logout();
+  router.replace('/admin/login');
+};
 </script>
 
 <style scoped lang="scss">
 .admin-container {
-  min-height: 100%;
-  height: 100%;
+  height:calc(100vh - 65px);
   background: linear-gradient(135deg, #f0f4f8 0%, #d9e2ec 100%);
   transition: background 0.3s ease;
-}
-:deep(.el-aside){
-  height: 100% !important;
 }
 
 .admin-sidebar {
@@ -104,6 +167,47 @@ const currentComponent = computed(() => {
   min-height: 0;
   display: flex;
   flex-direction: column;
+}
+
+.admin-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  padding: 16px 18px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  backdrop-filter: blur(12px);
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.header-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.header-subtitle {
+  font-size: 12px;
+  color: #6b7280;
+  margin-top: 2px;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.mobile-menu-btn {
+  height: 34px;
+  padding: 0 12px;
 }
 
 .content-wrapper {
@@ -297,6 +401,12 @@ const currentComponent = computed(() => {
   .admin-main {
     width: 100%;
     padding: 16px;
+  }
+
+  .admin-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
   }
 }
 </style>

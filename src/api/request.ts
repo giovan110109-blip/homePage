@@ -3,6 +3,8 @@ import axios, {
   type AxiosResponse,
   type InternalAxiosRequestConfig,
 } from 'axios'
+import { useAuthStore } from '@/stores/auth'
+import router from '@/router'
 
 const { VITE_API_BASE_URL, VITE_API_BASE_URL_LOCAL } = import.meta.env
 const RAW_BASE_URL = import.meta.env.DEV
@@ -28,6 +30,16 @@ service.interceptors.request.use(
     // 可在此处添加 token 等通用 header
     // const token = localStorage.getItem('token')
     // if (token) config.headers.Authorization = `Bearer ${token}`
+    config.headers = config.headers || {}
+    config.headers['x-request-timestamp'] = Date.now().toString()
+
+    const url = config.url || ''
+    if (url.startsWith('/admin')) {
+      const authStore = useAuthStore()
+      if (authStore.token) {
+        config.headers.Authorization = `Bearer ${authStore.token}`
+      }
+    }
     return config
   },
   (error) => Promise.reject(error)
@@ -42,6 +54,13 @@ service.interceptors.response.use(
   (error) => {
     // 统一处理错误
     // 可根据 error.response.status 做全局错误提示
+    const status = error?.response?.status
+    const url = error?.config?.url || ''
+    if (status === 401 && url.startsWith('/admin') && url !== '/admin/login') {
+      const authStore = useAuthStore()
+      authStore.logout()
+      router.replace({ name: 'admin-login', query: { redirect: '/admin' } })
+    }
     return Promise.reject(error)
   }
 )
