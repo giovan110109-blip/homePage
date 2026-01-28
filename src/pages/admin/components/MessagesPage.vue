@@ -165,9 +165,9 @@ const fetchMessages = async () => {
   loading.value = true
   try {
     const res = await request.get('/admin/messages', { params: filter.toParams() })
-    const payload = res || {}
-    messages.value = payload.data || []
-    total.value = payload.meta?.total || 0
+    const payload = res as any
+    messages.value = Array.isArray(payload?.data) ? payload.data : []
+    total.value = payload?.meta?.total || 0
   } catch (error: any) {
     ElMessage.error(error?.message || '加载留言失败')
   } finally {

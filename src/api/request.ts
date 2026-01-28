@@ -1,4 +1,5 @@
 import axios, {
+  AxiosHeaders,
   type AxiosInstance,
   type AxiosResponse,
   type InternalAxiosRequestConfig,
@@ -30,7 +31,9 @@ service.interceptors.request.use(
     // 可在此处添加 token 等通用 header
     // const token = localStorage.getItem('token')
     // if (token) config.headers.Authorization = `Bearer ${token}`
-    config.headers = config.headers || {}
+    if (!config.headers) {
+      config.headers = new AxiosHeaders()
+    }
     config.headers['x-request-timestamp'] = Date.now().toString()
 
     const url = config.url || ''
