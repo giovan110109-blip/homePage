@@ -1,5 +1,6 @@
 import { createRouter, createWebHashHistory, type RouteRecordRaw } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import request from '@/api/request'
 // 定义路由配置
 const routes: RouteRecordRaw[] = [
   {
@@ -82,6 +83,14 @@ router.beforeEach((to, _from, next) => {
     return
   }
   next()
+})
+
+router.afterEach((to) => {
+  if (to.path.startsWith('/admin')) return
+  const key = `access-log:${to.path}`
+  if (sessionStorage.getItem(key)) return
+  sessionStorage.setItem(key, '1')
+  request.post('/access-logs/ping', { path: to.fullPath, title: to.meta?.title }).catch(() => undefined)
 })
 
 export default router

@@ -15,7 +15,7 @@
               <el-option label="已审核" value="approved" />
               <el-option label="待审核" value="pending" />
             </el-select>
-            <el-button type="primary" @click="fetchMessages">查询</el-button>
+            <el-button type="primary" @click="handleFetch">查询</el-button>
             <el-button plain @click="handleReset">重置</el-button>
           </div>
         </div>
@@ -97,8 +97,8 @@
           :page-sizes="[10, 20, 50]"
           layout="total, sizes, prev, pager, next"
           :total="total"
-          @size-change="fetchMessages"
-          @current-change="fetchMessages"
+          @size-change="handleFetch"
+          @current-change="handleFetch"
         />
       </div>
     </el-card>
@@ -125,6 +125,7 @@ import { computed, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import request from '@/api/request'
 import { useMessageFilterForm } from '@/composables/useMessageFilterForm'
+import { useTableFetch } from '@/composables/useTableFetch'
 import { Globe, Monitor, Smartphone, MapPin, Apple, Laptop } from 'lucide-vue-next'
 
 interface MessageItem {
@@ -149,9 +150,9 @@ interface MessageItem {
 }
 
 const filter = useMessageFilterForm()
-const loading = ref(false)
-const total = ref(0)
-const messages = ref<MessageItem[]>([])
+const { data: messages, total, loading, fetch: fetchMessages } = useTableFetch<MessageItem, Record<string, any>>(
+  (params) => request.get('/admin/messages', { params })
+)
 const drawerVisible = ref(false)
 const currentRow = ref<MessageItem | null>(null)
 
@@ -161,23 +162,17 @@ const filteredMessages = computed(() => {
   return messages.value.filter((item) => item.content?.includes(keyword))
 })
 
-const fetchMessages = async () => {
-  loading.value = true
+const handleFetch = async () => {
   try {
-    const res = await request.get('/admin/messages', { params: filter.toParams() })
-    const payload = res as any
-    messages.value = Array.isArray(payload?.data) ? payload.data : []
-    total.value = payload?.meta?.total || 0
+    await fetchMessages(filter.toParams())
   } catch (error: any) {
     ElMessage.error(error?.message || '加载留言失败')
-  } finally {
-    loading.value = false
   }
 }
 
 const handleReset = () => {
   filter.reset()
-  fetchMessages()
+  handleFetch()
 }
 
 const handleView = (row: MessageItem) => {
@@ -190,7 +185,7 @@ const handleApprove = async (row: MessageItem) => {
     await ElMessageBox.confirm('确认审核通过该留言吗？', '提示', { type: 'warning' })
     await request.patch(`/admin/messages/${row._id}/approve`)
     ElMessage.success('已审核')
-    fetchMessages()
+    handleFetch()
   } catch (error: any) {
     if (error?.message) ElMessage.error(error.message)
   }
@@ -201,7 +196,7 @@ const handleDelete = async (row: MessageItem) => {
     await ElMessageBox.confirm('确认删除该留言吗？此操作不可恢复。', '提示', { type: 'warning' })
     await request.delete(`/admin/messages/${row._id}`)
     ElMessage.success('已删除')
-    fetchMessages()
+    handleFetch()
   } catch (error: any) {
     if (error?.message) ElMessage.error(error.message)
   }
@@ -235,34 +230,11 @@ const getDeviceIcon = (device?: string) => {
 }
 
 onMounted(() => {
-  fetchMessages()
+  handleFetch()
 })
 </script>
 
 <style scoped lang="scss">
-.page-content {
-  animation: fadeIn 0.3s ease;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-
-.page-header {
-  margin-bottom: 32px;
-}
-
-.page-title {
-  font-size: 28px;
-  font-weight: 700;
-  color: #1f2937;
-  margin: 0 0 8px 0;
-}
-
-.page-subtitle {
-  font-size: 14px;
-  color: #9ca3af;
-  margin: 0;
-}
 
 .card-header {
   display: flex;
@@ -308,11 +280,6 @@ onMounted(() => {
   flex-wrap: wrap;
 }
 
-.pagination {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 16px;
-}
 
 .detail {
   display: flex;
@@ -343,14 +310,4 @@ onMounted(() => {
   background: #111827;
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
 </style>

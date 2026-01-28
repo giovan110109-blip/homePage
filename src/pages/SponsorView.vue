@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-blue-50 dark:from-gray-900 dark:via-blue-900 dark:to-blue-900 relative">
+  <div class="sponsor-page min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-blue-50 dark:from-gray-900 dark:via-blue-900 dark:to-blue-900 relative">
     <!-- Background blur effects -->
     <div class="absolute inset-0 overflow-hidden">
       <div class="absolute -top-40 -right-40 w-80 h-80 bg-blue-300/20 dark:bg-blue-500/10 rounded-full blur-3xl"></div>
@@ -215,11 +215,6 @@ onMounted(() => {
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
 }
 
-.dark .sponsor-card {
-  background: rgba(17, 24, 39, 0.7);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-}
 
 .header {
   margin-bottom: 48px;
@@ -239,9 +234,6 @@ onMounted(() => {
   letter-spacing: -0.5px;
 }
 
-.dark .title {
-  color: rgba(255, 255, 255, 0.95);
-}
 
 .subtitle {
   font-size: 18px;
@@ -249,9 +241,6 @@ onMounted(() => {
   font-weight: 400;
 }
 
-.dark .subtitle {
-  color: rgba(255, 255, 255, 0.6);
-}
 
 .qr-codes {
   display: flex;
@@ -278,10 +267,6 @@ onMounted(() => {
   overflow: hidden;
 }
 
-.dark .qr-card {
-  background: #1f2937;
-  border: 1px solid #374151;
-}
 
 .qr-icon {
   display: flex;
@@ -301,9 +286,6 @@ onMounted(() => {
   margin: 16px 0 24px 0;
 }
 
-.dark .qr-card h3 {
-  color: white;
-}
 
 .qr-placeholder {
   width: 160px;
@@ -317,10 +299,6 @@ onMounted(() => {
   border: 1px solid #e5e7eb;
 }
 
-.dark .qr-placeholder {
-  background: #374151;
-  border: 1px solid #4b5563;
-}
 
 .qr-placeholder img {
   width: 140px;
@@ -334,9 +312,6 @@ onMounted(() => {
   margin-bottom: 16px;
 }
 
-.dark .qr-description {
-  color: rgba(255, 255, 255, 0.7);
-}
 
 .afdian-link {
   display: inline-flex;
@@ -353,19 +328,11 @@ onMounted(() => {
   border: 1px solid #e5e7eb;
 }
 
-.dark .afdian-link {
-  background: #374151;
-  color: #f9fafb;
-  border: 1px solid #4b5563;
-}
 
 .afdian-link:hover {
   background: #f3f4f6;
 }
 
-.dark .afdian-link:hover {
-  background: #4b5563;
-}
 
 .notice {
   background: #f8fafc;
@@ -382,11 +349,6 @@ onMounted(() => {
   gap: 12px;
 }
 
-.dark .notice {
-  background: #1e293b;
-  border: 1px solid #334155;
-  color: #cbd5e1;
-}
 
 .notice-text {
   color: #1e40af;
@@ -397,18 +359,12 @@ onMounted(() => {
   text-align: left;
 }
 
-.dark .notice-text {
-  color: #cbd5e1;
-}
 
 .notice-text strong {
   color: #dc2626;
   font-weight: 600;
 }
 
-.dark .notice-text strong {
-  color: #f87171;
-}
 
 .email {
   color: #2563eb;
@@ -420,18 +376,11 @@ onMounted(() => {
   font-family: monospace;
 }
 
-.dark .email {
-  color: #93c5fd;
-  background: #334155;
-}
 
 .email:hover {
   background: #e2e8f0;
 }
 
-.dark .email:hover {
-  background: #475569;
-}
 
 .sponsors-table {
   margin-bottom: 48px;
@@ -445,9 +394,6 @@ onMounted(() => {
   text-align: center;
 }
 
-.dark .sponsors-table h2 {
-  color: white;
-}
 
 .sponsors-table table {
   width: 100%;
@@ -458,10 +404,6 @@ onMounted(() => {
   border: 1px solid #e5e7eb;
 }
 
-.dark .sponsors-table table {
-  background: #111827;
-  border: 1px solid #374151;
-}
 
 .sponsors-table th,
 .sponsors-table td {
@@ -470,10 +412,6 @@ onMounted(() => {
   border-bottom: 1px solid #f3f4f6;
 }
 
-.dark .sponsors-table th,
-.dark .sponsors-table td {
-  border-bottom: 1px solid #374151;
-}
 
 .sponsors-table th {
   background: #f9fafb;
@@ -483,27 +421,17 @@ onMounted(() => {
   letter-spacing: 0.025em;
 }
 
-.dark .sponsors-table th {
-  background: #1f2937;
-  color: #f3f4f6;
-}
 
 .sponsors-table td {
   color: #6b7280;
   font-size: 14px;
 }
 
-.dark .sponsors-table td {
-  color: #d1d5db;
-}
 
 .sponsors-table tbody tr:hover {
   background: #f9fafb;
 }
 
-.dark .sponsors-table tbody tr:hover {
-  background: #1f2937;
-}
 
 .sponsors-table tbody tr:last-child td {
   border-bottom: none;

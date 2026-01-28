@@ -31,6 +31,7 @@ const errorHandler = require('./middleware/errorHandler');
 const requestInfo = require('./middleware/requestInfo');
 const rateLimitTimestamp = require('./middleware/rateLimitTimestamp');
 const adminAuth = require('./middleware/adminAuth');
+const accessLogger = require('./middleware/accessLogger');
 
 // 连接数据库
 connectDB();
@@ -64,6 +65,7 @@ app.use(rateLimitTimestamp({
   max: Number(process.env.RATE_LIMIT_MAX) || 20,
   maxSkewMs: Number(process.env.RATE_LIMIT_SKEW_MS) || 5 * 60 * 1000,
 }));
+app.use(accessLogger);
 app.use(adminAuth);
 
 // 注册路由

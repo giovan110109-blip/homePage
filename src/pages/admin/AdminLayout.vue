@@ -76,11 +76,13 @@ import {
   MessageSquare,
   Settings,
   Heart,
+  Activity,
   Users,
 } from "lucide-vue-next";
 import DashboardPage from "./components/DashboardPage.vue";
 import UsersPage from "./components/UsersPage.vue";
 import MessagesPage from "./components/MessagesPage.vue";
+import AccessLogsPage from "./components/AccessLogsPage.vue";
 import SettingsPage from "./components/SettingsPage.vue";
 import SponsorsPage from "./components/SponsorsPage.vue";
 import { useAuthStore } from "@/stores/auth";
@@ -96,6 +98,7 @@ const menuItems = [
   { id: "dashboard", label: "仪表板", icon: LayoutDashboard },
   { id: "users", label: "用户管理", icon: Users },
   { id: "messages", label: "留言管理", icon: MessageSquare },
+  { id: "accessLogs", label: "访问记录", icon: Activity },
   { id: "sponsors", label: "赞助管理", icon: Heart },
   { id: "settings", label: "系统设置", icon: Settings },
 ];
@@ -105,6 +108,7 @@ const componentMap: Record<string, any> = {
   dashboard: DashboardPage,
   users: UsersPage,
   messages: MessagesPage,
+  accessLogs: AccessLogsPage,
   sponsors: SponsorsPage,
   settings: SettingsPage,
 };
@@ -220,40 +224,7 @@ const handleLogout = () => {
   flex-direction: column;
 }
 
-.page-content {
-  animation: fadeIn 0.3s ease;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
 
-.page-header {
-  margin-bottom: 32px;
-}
-
-.page-title {
-  font-size: 28px;
-  font-weight: 700;
-  color: #1f2937;
-  margin: 0 0 8px 0;
-}
-
-.page-subtitle {
-  font-size: 14px;
-  color: #9ca3af;
-  margin: 0;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
 
 :deep(.el-card) {
   background: rgba(255, 255, 255, 0.92);

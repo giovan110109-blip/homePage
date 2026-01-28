@@ -27,7 +27,9 @@ function registerRoutes(app) {
         'adminSiteInfo.js',
         'sponsor.js',
         'adminSponsors.js',
-        'adminSponsorMethods.js'
+        'adminSponsorMethods.js',
+        'adminAccessLogs.js',
+        'accessLogs.js'
     ]);
 
     // 过滤出路由文件

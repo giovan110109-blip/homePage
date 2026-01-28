@@ -102,29 +102,6 @@ const getTagType = (type: string) => {
 </script>
 
 <style scoped lang="scss">
-.page-content {
-  animation: fadeIn 0.3s ease;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-
-.page-header {
-  margin-bottom: 32px;
-}
-
-.page-title {
-  font-size: 28px;
-  font-weight: 700;
-  color: #1f2937;
-  margin: 0 0 8px 0;
-}
-
-.page-subtitle {
-  font-size: 14px;
-  color: #9ca3af;
-  margin: 0;
-}
 
 .dashboard-grid {
   display: grid;
@@ -173,14 +150,4 @@ const getTagType = (type: string) => {
   color: #1f2937;
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
 </style>

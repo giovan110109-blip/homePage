@@ -1,6 +1,6 @@
 <template>
   <div
-    class="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-blue-50 dark:from-gray-900 dark:via-blue-900 dark:to-blue-900 relative"
+    class="guestbook-page min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-blue-50 dark:from-gray-900 dark:via-blue-900 dark:to-blue-900 relative"
   >
     <!-- Background blur effects -->
     <div class="absolute inset-0 overflow-hidden">
@@ -543,12 +543,6 @@ const getDeviceIcon = (device?: string) => {
   padding: $spacing-2xl;
   border: 1px solid rgba(255, 255, 255, 0.3);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-
-  .dark & {
-    background: rgba(17, 24, 39, 0.7);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-  }
 }
 
 .header {
@@ -568,20 +562,12 @@ const getDeviceIcon = (device?: string) => {
   color: $color-text-dark;
   margin-bottom: $spacing-xs;
   letter-spacing: -0.5px;
-
-  .dark & {
-    color: $color-text-light;
-  }
 }
 
 .subtitle {
   font-size: $font-xl;
   color: $color-text-gray;
   font-weight: 400;
-
-  .dark & {
-    color: rgba(255, 255, 255, 0.6);
-  }
 }
 
 .message-form-section {
@@ -590,11 +576,6 @@ const getDeviceIcon = (device?: string) => {
   background: $color-bg-light;
   border-radius: $radius-lg;
   border: 1px solid $color-border;
-
-  .dark & {
-    background: $color-bg-dark;
-    border: 1px solid $color-dark-border;
-  }
 }
 
 .message-form {
@@ -603,10 +584,6 @@ const getDeviceIcon = (device?: string) => {
   --el-text-color-regular: $color-text-dark;
 }
 
-.dark .message-form {
-  --el-border-color: #374151;
-  --el-text-color-regular: #d1d5db;
-}
 
 .section-title {
   font-size: $font-2xl;
@@ -615,11 +592,6 @@ const getDeviceIcon = (device?: string) => {
   margin-bottom: $spacing-lg;
   padding-bottom: $spacing-xs;
   border-bottom: 2px solid $color-border;
-
-  .dark & {
-    color: white;
-    border-bottom-color: $color-dark-border;
-  }
 }
 
 .message-form {
@@ -638,10 +610,6 @@ const getDeviceIcon = (device?: string) => {
   font-weight: 500;
   color: $color-dark-border;
   margin-bottom: $spacing-xs;
-
-  .dark & {
-    color: $color-dark-text;
-  }
 }
 
 .form-input,
@@ -655,20 +623,10 @@ const getDeviceIcon = (device?: string) => {
   font-family: inherit;
   transition: all 0.2s ease;
 
-  .dark & {
-    background: $color-bg-darker;
-    border-color: $color-dark-border-light;
-    color: $color-dark-text-lighter;
-  }
-
   &:focus {
     outline: none;
     border-color: $color-primary;
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-
-    .dark & {
-      border-color: #60a5fa;
-    }
   }
 }
 
@@ -711,10 +669,6 @@ const getDeviceIcon = (device?: string) => {
   padding: 40px $spacing-md;
   color: $color-text-gray-light;
   font-size: $font-lg;
-
-  .dark & {
-    color: $color-dark-text-light;
-  }
 }
 
 .messages-list {
@@ -731,10 +685,6 @@ const getDeviceIcon = (device?: string) => {
 
   &:hover {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-
-    .dark & {
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    }
   }
 
   // 便签样式
@@ -746,10 +696,6 @@ const getDeviceIcon = (device?: string) => {
       $dark-end: list.nth($colors, 4);
 
       background: linear-gradient(135deg, $light-start 0%, $light-end 100%);
-
-      .dark & {
-        background: linear-gradient(135deg, $dark-start 0%, $dark-end 100%);
-      }
     }
   }
 }
@@ -779,11 +725,6 @@ const getDeviceIcon = (device?: string) => {
   font-weight: 600;
   background: rgba(16, 185, 129, 0.12);
   color: #047857;
-
-  .dark & {
-    background: rgba(16, 185, 129, 0.2);
-    color: #34d399;
-  }
 }
 
 .meta-chip {
@@ -796,12 +737,6 @@ const getDeviceIcon = (device?: string) => {
   color: $color-text-gray-dark;
   border: 1px solid rgba(0, 0, 0, 0.05);
   gap: 4px;
-
-  .dark & {
-    background: rgba(255, 255, 255, 0.05);
-    color: $color-dark-text;
-    border-color: rgba(255, 255, 255, 0.08);
-  }
 }
 
 .meta-icon {
@@ -832,19 +767,11 @@ const getDeviceIcon = (device?: string) => {
   font-weight: 600;
   color: $color-text-dark;
   margin: 0;
-
-  .dark & {
-    color: white;
-  }
 }
 
 .message-time {
   font-size: $font-xs;
   color: $color-text-gray-light;
-
-  .dark & {
-    color: $color-dark-text-light;
-  }
 }
 
 .website-link {
@@ -860,19 +787,9 @@ const getDeviceIcon = (device?: string) => {
   transition: all 0.2s ease;
   flex-shrink: 0;
 
-  .dark & {
-    background: $color-dark-border;
-    color: $color-dark-text;
-  }
-
   &:hover {
     background: $color-border;
     color: $color-text-dark;
-
-    .dark & {
-      background: $color-dark-border-light;
-      color: $color-dark-text-lighter;
-    }
   }
 }
 
@@ -882,10 +799,6 @@ const getDeviceIcon = (device?: string) => {
   line-height: 1.6;
   margin: 0;
   word-break: break-word;
-
-  .dark & {
-    color: $color-dark-text;
-  }
 }
 
 // 加载状态样式
@@ -896,10 +809,6 @@ const getDeviceIcon = (device?: string) => {
   justify-content: center;
   padding: $spacing-2xl $spacing-md;
   color: $color-text-gray;
-
-  .dark & {
-    color: $color-dark-text-light;
-  }
 }
 
 .spinner {
@@ -910,11 +819,6 @@ const getDeviceIcon = (device?: string) => {
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
   margin-bottom: $spacing-md;
-
-  .dark & {
-    border-color: $color-dark-border;
-    border-top-color: #60a5fa;
-  }
 }
 
 @keyframes spin {
@@ -929,10 +833,6 @@ const getDeviceIcon = (device?: string) => {
   color: $color-text-gray-light;
   font-size: $font-sm;
   animation: fadeInOut 2s ease-in-out infinite;
-
-  .dark & {
-    color: $color-dark-text-light;
-  }
 }
 
 @keyframes fadeInOut {
@@ -950,10 +850,6 @@ const getDeviceIcon = (device?: string) => {
   padding: $spacing-lg;
   color: $color-text-gray-light;
   font-size: $font-sm;
-
-  .dark & {
-    color: $color-dark-text-light;
-  }
 }
 
 @media (max-width: 768px) {
