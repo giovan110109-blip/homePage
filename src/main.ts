@@ -1,11 +1,11 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
-import './style.css'
 import './style.scss'
 import App from './App.vue'
 import router from './router'
 import ElementPlus from 'element-plus' // 引入Element Plus核心库
 import 'element-plus/dist/index.css' // 引入Element Plus样式
+import 'element-plus/theme-chalk/dark/css-vars.css' // 引入 Element Plus 暗黑模式变量
 
 const { VITE_SITE_TITLE } = import.meta.env
 

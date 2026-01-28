@@ -1,37 +1,34 @@
 <template>
-  <div class="admin-container">
-    <!-- Main Content -->
-    <div class="admin-content">
-      <!-- Sidebar -->
-      <aside class="admin-sidebar" :class="{ collapsed: sidebarCollapsed }">
-        <nav class="sidebar-nav">
-          <div
-            v-for="item in menuItems"
-            :key="item.id"
-            class="nav-item"
-            :class="{ active: activeMenu === item.id }"
-            @click="activeMenu = item.id"
-          >
+  <el-container class="admin-container">
+    <el-aside class="admin-sidebar" :width="sidebarCollapsed ? '64px' : '240px'">
+      <el-scrollbar class="sidebar-scroll">
+        <el-menu
+          class="admin-menu"
+          :default-active="activeMenu"
+          :collapse="sidebarCollapsed"
+          @select="activeMenu = $event"
+        >
+          <el-menu-item v-for="item in menuItems" :key="item.id" :index="item.id">
             <component :is="item.icon" class="nav-icon" />
             <span class="nav-label">{{ item.label }}</span>
-          </div>
-        </nav>
-      </aside>
+          </el-menu-item>
+        </el-menu>
+      </el-scrollbar>
+    </el-aside>
 
-      <!-- Page Content -->
-      <main class="admin-main">
-        <div class="content-wrapper">
-          <KeepAlive>
-            <component :is="currentComponent" />
-          </KeepAlive>
-        </div>
-      </main>
-    </div>
-  </div>
+    <el-main class="admin-main">
+      <div class="content-wrapper">
+        <KeepAlive>
+          <component :is="currentComponent" />
+        </KeepAlive>
+      </div>
+    </el-main>
+  </el-container>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { computed, ref } from 'vue'
+import { LayoutDashboard, MessageSquare, Settings, Users } from 'lucide-vue-next'
 import DashboardPage from './components/DashboardPage.vue'
 import UsersPage from './components/UsersPage.vue'
 import MessagesPage from './components/MessagesPage.vue'
@@ -41,10 +38,10 @@ const sidebarCollapsed = ref(false)
 const activeMenu = ref('dashboard')
 
 const menuItems = [
-  { id: 'dashboard', label: '仪表板', icon: 'Dashboard' },
-  { id: 'users', label: '用户管理', icon: 'Users' },
-  { id: 'messages', label: '留言管理', icon: 'MessageSquare' },
-  { id: 'settings', label: '系统设置', icon: 'Settings' }
+  { id: 'dashboard', label: '仪表板', icon: LayoutDashboard },
+  { id: 'users', label: '用户管理', icon: Users },
+  { id: 'messages', label: '留言管理', icon: MessageSquare },
+  { id: 'settings', label: '系统设置', icon: Settings }
 ]
 
 // 动态组件映射
@@ -63,75 +60,40 @@ const currentComponent = computed(() => {
 
 <style scoped lang="scss">
 .admin-container {
-  display: flex;
   min-height: 100%;
   height: 100%;
   background: linear-gradient(135deg, #f0f4f8 0%, #d9e2ec 100%);
   transition: background 0.3s ease;
 }
-
-.admin-container .admin-content {
-  flex: 1;
-  display: flex;
-  gap: 0;
+:deep(.el-aside){
+  height: 100% !important;
 }
 
 .admin-sidebar {
-  width: 240px;
+  height: 100%;
   background: rgba(255, 255, 255, 0.92);
   backdrop-filter: blur(10px);
   border-right: 1px solid rgba(0, 0, 0, 0.08);
-  padding: 16px 0;
   transition: all 0.3s ease;
-  overflow-y: auto;
-  flex-shrink: 0;
 }
 
-.sidebar-nav {
-  display: flex;
-  flex-direction: column;
+.sidebar-scroll {
+  height: 100%;
 }
 
-.nav-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 14px 20px;
-  color: #64748b;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  border-left: 3px solid transparent;
-  margin: 0 8px;
-  border-radius: 0 8px 8px 0;
+.admin-menu {
+  height: 100%;
+  border-right: none;
 }
 
 .nav-icon {
-  width: 20px;
-  height: 20px;
-  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
 }
 
 .nav-label {
   font-size: 14px;
   font-weight: 500;
-}
-
-.nav-item:hover {
-  background: rgba(59, 130, 246, 0.08);
-  color: #3b82f6;
-}
-
-.nav-item.active {
-  background: rgba(59, 130, 246, 0.12);
-  color: #3b82f6;
-  border-left-color: #3b82f6;
-}
-
-.admin-sidebar.collapsed {
-  width: 0;
-  padding: 0;
-  border-right: none;
-  overflow: hidden;
 }
 
 .admin-main {
@@ -324,14 +286,12 @@ const currentComponent = computed(() => {
 
 @media (max-width: 768px) {
   .admin-sidebar {
-    &:not(.collapsed) {
-      position: fixed;
-      top: 0;
-      left: 0;
-      bottom: 0;
-      z-index: 100;
-      box-shadow: 2px 0 12px rgba(0, 0, 0, 0.15);
-    }
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 100;
+    box-shadow: 2px 0 12px rgba(0, 0, 0, 0.15);
   }
 
   .admin-main {

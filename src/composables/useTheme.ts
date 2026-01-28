@@ -18,6 +18,7 @@ export function useTheme() {
   const applyTheme = (t: Theme, saveToStorage = true) => {
     document.documentElement.classList.remove('light', 'dark')
     document.documentElement.classList.add(t)
+    document.documentElement.style.colorScheme = t
     if (saveToStorage && isUserSet.value) {
       localStorage.setItem('theme', t)
     } else if (!isUserSet.value) {
