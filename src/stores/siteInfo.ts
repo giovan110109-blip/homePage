@@ -1,31 +1,6 @@
 import { defineStore } from 'pinia'
 import request from '@/api/request'
-
-export interface SiteInfo {
-  name: string
-  title: string
-  bio: string
-  avatar: string
-  email: string
-  wechat: string
-  location: string
-  website: string
-  socialLinks: Array<{ platform: string; url: string; icon?: string }>
-  siteName: string
-  siteTitle: string
-  siteDescription: string
-  siteLogo: string
-  icp: string
-  icpLink: string
-  publicSecurity: string
-  publicSecurityLink: string
-  footerContact: {
-    email: string
-    phone: string
-    wechat: string
-    address: string
-  }
-}
+import type { SiteInfo } from '@/types/common'
 
 const defaultSiteInfo: SiteInfo = {
   name: '',

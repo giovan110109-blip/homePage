@@ -1,37 +1,41 @@
 <template>
-  <el-container class="admin-container">
-    <el-header class="admin-header">
-      <div class="header-left">
+  <el-container class="h-screen bg-gradient-to-br from-blue-50 via-blue-50 to-slate-100 transition-all duration-300 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+    <!-- 顶部导航栏 -->
+    <el-header class="flex items-center justify-between h-16 px-6 bg-white border-b border-slate-200 shadow-sm dark:bg-slate-900 dark:border-slate-700">
+      <div class="flex items-center gap-3">
         <el-button
-          class="mobile-menu-btn hidden-md-and-up"
           type="primary"
           plain
+          size="small"
           @click="mobileMenuOpen = true"
+          class="lg:hidden"
         >
           菜单
         </el-button>
         <div>
-          <div class="header-title">管理后台</div>
-          <div class="header-subtitle">
+          <div class="text-lg font-bold text-gray-900 dark:text-white">管理后台</div>
+          <div class="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
             欢迎回来，{{ authStore.user?.username || "admin" }}
           </div>
         </div>
       </div>
-      <div class="header-actions">
+      <div class="flex items-center gap-3">
         <el-button type="danger" plain size="small" @click="handleLogout"
           >退出登录</el-button
         >
       </div>
     </el-header>
 
-    <el-container class="admin-body">
+    <!-- 主容器 -->
+    <el-container class="flex-1 min-h-0">
+      <!-- 侧边栏 -->
       <el-aside
-        class="admin-sidebar hidden-sm-and-down"
+        class="hidden lg:block h-full bg-white/95 border-r border-slate-200 backdrop-blur-md transition-all duration-300 dark:bg-slate-900/95 dark:border-slate-700"
         :width="sidebarCollapsed ? '64px' : '240px'"
       >
-        <el-scrollbar class="sidebar-scroll">
+        <el-scrollbar class="h-full">
           <el-menu
-            class="admin-menu"
+            class="border-r-0"
             :default-active="activeMenu"
             :collapse="sidebarCollapsed"
             @select="activeMenu = $event"
@@ -40,16 +44,18 @@
               v-for="item in menuItems"
               :key="item.id"
               :index="item.id"
+              class="transition-all duration-200"
             >
-              <component :is="item.icon" class="nav-icon mr-10px" />
-              <span class="nav-label">{{ item.label }}</span>
+              <component :is="item.icon" class="w-4.5 h-4.5" />
+              <span class="ml-2.5">{{ item.label }}</span>
             </el-menu-item>
           </el-menu>
         </el-scrollbar>
       </el-aside>
 
-      <el-main class="admin-main">
-        <div class="content-wrapper">
+      <!-- 主内容区 -->
+      <el-main class="flex flex-col p-4 lg:p-4 overflow-y-auto bg-transparent min-h-0">
+        <div class="w-full flex-1 flex flex-col h-full">
           <KeepAlive>
             <component :is="currentComponent" />
           </KeepAlive>
@@ -57,25 +63,26 @@
       </el-main>
     </el-container>
 
-    <el-footer class="admin-footer">
+    <!-- 底部栏 -->
+    <el-footer class="h-12 flex items-center justify-center text-xs text-gray-600 bg-white border-t border-slate-200 dark:text-gray-400 dark:bg-slate-900 dark:border-slate-700">
       <span>© 2026 管理后台</span>
     </el-footer>
 
+    <!-- 移动端抽屉菜单 -->
     <el-drawer
       v-model="mobileMenuOpen"
       title="菜单"
       size="70%"
       direction="ltr"
-      class="hidden-md-and-up"
+      class="lg:hidden"
     >
       <el-menu
-        class="admin-menu"
         :default-active="activeMenu"
         @select="handleMobileSelect"
       >
         <el-menu-item v-for="item in menuItems" :key="item.id" :index="item.id">
-          <component :is="item.icon" class="nav-icon " />
-          <span class="nav-label">{{ item.label }}</span>
+          <component :is="item.icon" class="w-4.5 h-4.5" />
+          <span class="ml-2.5">{{ item.label }}</span>
         </el-menu-item>
       </el-menu>
     </el-drawer>
@@ -140,260 +147,3 @@ const handleLogout = () => {
   router.replace("/admin/login");
 };
 </script>
-
-<style scoped lang="scss">
-.admin-container {
-  height: 100vh;
-  background: linear-gradient(135deg, #f0f4f8 0%, #d9e2ec 100%);
-  transition: background 0.3s ease;
-}
-
-.admin-body {
-  flex: 1;
-  min-height: 0;
-}
-
-.admin-sidebar {
-  height: 100%;
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(10px);
-  border-right: 1px solid rgba(0, 0, 0, 0.08);
-  transition: all 0.3s ease;
-}
-
-.sidebar-scroll {
-  height: 100%;
-}
-
-.admin-menu {
-  height: 100%;
-  border-right: none;
-}
-
-.nav-icon {
-  width: 18px;
-  height: 18px;
-}
-
-.nav-label {
-  font-size: 14px;
-  font-weight: 500;
-  display: inline-block;
-  padding-left: 10px;
-}
-
-.admin-main {
-  flex: 1;
-  padding: 12px 16px 16px;
-  overflow-y: auto;
-  background: transparent;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.admin-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 64px;
-  padding: 0 24px;
-  border-radius: 0;
-  background: #ffffff;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
-  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.06);
-}
-
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.header-title {
-  font-size: 18px;
-  font-weight: 700;
-  color: #1f2937;
-}
-
-.header-subtitle {
-  font-size: 12px;
-  color: #6b7280;
-  margin-top: 2px;
-}
-
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.mobile-menu-btn {
-  height: 34px;
-  padding: 0 12px;
-}
-
-.content-wrapper {
-  max-width: 100%;
-  margin: 0 auto;
-  flex: 1;
-  width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-.admin-footer {
-  text-align: center;
-  color: #6b7280;
-  font-size: 12px;
-  padding: 10px 16px;
-  background: #ffffff;
-  border-top: 1px solid rgba(148, 163, 184, 0.2);
-  height: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-
-:deep(.el-card) {
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  border-radius: 12px;
-  transition: all 0.2s ease;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
-}
-
-:deep(.el-card):hover {
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
-}
-
-:deep(.el-button.is-primary) {
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-  border: none;
-}
-
-:deep(.el-button.is-primary):hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
-}
-
-:deep(.el-button.is-plain):hover {
-  background-color: rgba(59, 130, 246, 0.1) !important;
-}
-
-
-:deep(.el-input .el-input__wrapper) {
-  background: rgba(255, 255, 255, 0.8);
-  border-color: rgba(0, 0, 0, 0.1);
-  transition: all 0.2s ease;
-}
-
-:deep(.el-input .el-input__wrapper):hover {
-  border-color: rgba(59, 130, 246, 0.5);
-}
-
-:deep(.el-input.is-focus .el-input__wrapper) {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
-}
-
-:deep(.el-input .el-input__inner) {
-  color: #1f2937;
-}
-
-:deep(.el-input .el-input__inner::placeholder) {
-  color: #9ca3af;
-}
-
-:deep(.el-table) {
-  background: transparent;
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-:deep(.el-table th) {
-  background: rgba(59, 130, 246, 0.08);
-  color: #1f2937;
-  font-weight: 600;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
-}
-
-:deep(.el-table td) {
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-  color: #374151;
-}
-
-:deep(.el-table tr):hover > td {
-  background: rgba(59, 130, 246, 0.05) !important;
-}
-
-:deep(.el-form-item) {
-  margin-bottom: 24px;
-}
-
-:deep(.el-form-item__label) {
-  color: #374151;
-  font-weight: 500;
-}
-
-:deep(.el-form-item__content) {
-  color: #6b7280;
-}
-
-:deep(.el-tag) {
-  border-radius: 4px;
-  padding: 4px 12px;
-  font-size: 12px;
-  font-weight: 500;
-  border: none;
-}
-
-:deep(.el-tag.is-success) {
-  background: rgba(16, 185, 129, 0.1);
-  color: #059669;
-}
-
-:deep(.el-tag.is-info) {
-  background: rgba(59, 130, 246, 0.1);
-  color: #2563eb;
-}
-
-:deep(.el-tag.is-warning) {
-  background: rgba(245, 158, 11, 0.1);
-  color: #b45309;
-}
-
-:deep(.el-tag.is-danger) {
-  background: rgba(239, 68, 68, 0.1);
-  color: #dc2626;
-}
-
-:deep(.el-switch .is-checked) {
-  background-color: #3b82f6;
-}
-
-@media (max-width: 768px) {
-  .admin-sidebar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    bottom: 0;
-    z-index: 100;
-    box-shadow: 2px 0 12px rgba(0, 0, 0, 0.15);
-  }
-
-  .admin-main {
-    width: 100%;
-    padding: 16px;
-  }
-
-  .admin-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-}
-</style>

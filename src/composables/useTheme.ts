@@ -1,4 +1,3 @@
-import { ref, watchEffect, onMounted, computed } from 'vue'
 
 type Theme = 'light' | 'dark'
 

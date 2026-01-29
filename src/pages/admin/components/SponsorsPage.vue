@@ -1,14 +1,14 @@
 <template>
-  <div class="page-content">
-    <div class="page-header">
-      <h2 class="page-title">赞助管理</h2>
-      <p class="page-subtitle">管理赞助记录与赞助方式</p>
+  <div class="w-full h-full flex flex-col overflow-auto">
+    <div class="mb-6">
+      <h2 class="text-2xl font-bold text-gray-900 dark:text-white">赞助管理</h2>
+      <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">管理赞助记录与赞助方式</p>
     </div>
 
     <el-card shadow="hover">
-      <el-tabs v-model="activeTab" class="admin-tabs">
+      <el-tabs v-model="activeTab">
         <el-tab-pane label="赞助记录" name="records">
-          <div class="card-toolbar">
+          <div class="flex justify-end gap-3 mb-4">
             <el-button type="primary" @click="openSponsorDialog()">新增记录</el-button>
             <el-button plain @click="fetchSponsors">刷新</el-button>
           </div>
@@ -38,7 +38,7 @@
             </template>
           </el-table>
 
-          <div class="pagination">
+          <div class="mt-6 flex justify-center">
             <el-pagination
               v-model:current-page="sponsorQuery.page"
               v-model:page-size="sponsorQuery.pageSize"
@@ -61,13 +61,13 @@
             <el-table-column prop="name" label="名称" width="160" />
             <el-table-column prop="icon" label="图标" width="120">
               <template #default="scope">
-                <img v-if="scope.row.icon" :src="scope.row.icon" alt="icon" class="method-icon" />
+                <img v-if="scope.row.icon" :src="scope.row.icon" alt="icon" class="w-9 h-9 rounded object-cover" />
                 <span v-else>-</span>
               </template>
             </el-table-column>
             <el-table-column prop="qrCode" label="二维码" width="140">
               <template #default="scope">
-                <img v-if="scope.row.qrCode" :src="scope.row.qrCode" alt="qr" class="method-qr" />
+                <img v-if="scope.row.qrCode" :src="scope.row.qrCode" alt="qr" class="w-9 h-9 rounded object-cover" />
                 <span v-else>-</span>
               </template>
             </el-table-column>
@@ -345,31 +345,3 @@ onMounted(() => {
   fetchSponsors()
 })
 </script>
-
-<style scoped lang="scss">
-
-.admin-tabs {
-  margin-top: 8px;
-}
-
-.card-toolbar {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-
-.method-icon,
-.method-qr {
-  width: 36px;
-  height: 36px;
-  border-radius: 6px;
-  object-fit: cover;
-}
-
-.w-full {
-  width: 100%;
-}
-
-</style>

@@ -1,15 +1,15 @@
 <template>
-  <div class="page-content">
-    <div class="page-header">
-      <h2 class="page-title">留言管理</h2>
-      <p class="page-subtitle">管理所有的留言内容</p>
+  <div class="w-full h-full flex flex-col overflow-auto">
+    <div class="mb-6">
+      <h2 class="text-2xl font-bold text-gray-900 dark:text-white">留言管理</h2>
+      <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">管理所有的留言内容</p>
     </div>
 
     <el-card shadow="hover" class="h-full flex flex-col">
       <template #header>
-        <div class="card-header">
-          <span>留言列表</span>
-          <div class="filters">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <span class="font-semibold text-gray-900 dark:text-white">留言列表</span>
+          <div class="flex gap-3 flex-wrap">
             <el-input
               v-model="filter.form.keyword"
               placeholder="搜索留言内容..."
@@ -61,26 +61,26 @@
         ></el-table-column>
         <el-table-column prop="browser" label="浏览器" width="160">
           <template #default="scope">
-            <span class="info-cell">
-              <Globe class="info-icon" />
+            <span class="inline-flex items-center gap-1.5">
+              <Globe class="w-3.5 h-3.5 text-gray-500" />
               {{ scope.row.browser || "-" }}
             </span>
           </template>
         </el-table-column>
         <el-table-column prop="os" label="操作系统" width="160">
           <template #default="scope">
-            <span class="info-cell">
-              <component :is="getOsIcon(scope.row.os)" class="info-icon" />
+            <span class="inline-flex items-center gap-1.5">
+              <component :is="getOsIcon(scope.row.os)" class="w-3.5 h-3.5 text-gray-500" />
               {{ scope.row.os || "-" }}
             </span>
           </template>
         </el-table-column>
         <el-table-column prop="deviceType" label="设备" width="120">
           <template #default="scope">
-            <span class="info-cell">
+            <span class="inline-flex items-center gap-1.5">
               <component
                 :is="getDeviceIcon(scope.row.deviceType)"
-                class="info-icon"
+                class="w-3.5 h-3.5 text-gray-500"
               />
               {{ scope.row.deviceType || "-" }}
             </span>
@@ -88,8 +88,8 @@
         </el-table-column>
         <el-table-column prop="location" label="定位" width="200">
           <template #default="scope">
-            <span class="info-cell">
-              <MapPin class="info-icon" />
+            <span class="inline-flex items-center gap-1.5">
+              <MapPin class="w-3.5 h-3.5 text-gray-500" />
               {{ formatLocation(scope.row.location) }}
             </span>
           </template>
@@ -136,7 +136,7 @@
         </el-table-column>
       </el-table>
 
-      <div class="pagination">
+      <div class="mt-6 flex justify-center">
         <el-pagination
           v-model:current-page="filter.form.page"
           v-model:page-size="filter.form.pageSize"
@@ -150,7 +150,7 @@
     </el-card>
 
     <el-drawer v-model="drawerVisible" title="留言详情" size="40%">
-      <div class="detail">
+      <div class="flex flex-col gap-3 text-sm">
         <div><strong>留言者：</strong>{{ currentRow?.name }}</div>
         <div><strong>邮箱：</strong>{{ currentRow?.email }}</div>
         <div><strong>网站：</strong>{{ currentRow?.website || "-" }}</div>
@@ -307,18 +307,8 @@ onMounted(() => {
 });
 </script>
 
-<style scoped lang="scss">
-
-.card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  font-weight: 600;
-  color: #1f2937;
-}
-
-.avatar-html {
+<style scoped>
+:deep(.avatar-html) {
   width: 36px;
   height: 36px;
   border-radius: 50%;
@@ -329,39 +319,9 @@ onMounted(() => {
   background: #e5e7eb;
 }
 
-.avatar-html :deep(svg) {
+:deep(.avatar-html svg) {
   width: 36px;
   height: 36px;
-}
-
-.info-cell {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.info-icon {
-  width: 14px;
-  height: 14px;
-  color: #6b7280;
-}
-
-.filters {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.detail {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  font-size: 14px;
-}
-
-.detail-content {
-  white-space: pre-wrap;
 }
 
 :deep(.el-table .cell),

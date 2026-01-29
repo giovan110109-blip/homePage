@@ -1,13 +1,13 @@
 <template>
-  <div class="page-content">
-    <div class="page-header">
-      <h2 class="page-title">访问记录</h2>
-      <p class="page-subtitle">查看网站访问日志</p>
+  <div class="w-full h-full flex flex-col overflow-auto">
+    <div class="mb-6">
+      <h2 class="text-2xl font-bold text-gray-900 dark:text-white">访问记录</h2>
+      <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">查看网站访问日志</p>
     </div>
 
     <el-card shadow="hover">
       <template #header>
-        <div class="card-header">
+        <div class="flex items-center justify-between font-semibold text-gray-900 dark:text-white">
           <span>访问列表</span>
           <el-button type="primary" @click="handleFetch">刷新</el-button>
         </div>
@@ -22,24 +22,24 @@
         </el-table-column>
         <el-table-column prop="os" label="操作系统" width="140">
           <template #default="scope">
-            <span class="info-cell">
-              <component :is="getOsIcon(scope.row.os)" class="info-icon" />
+            <span class="inline-flex items-center gap-1.5">
+              <component :is="getOsIcon(scope.row.os)" class="w-3.5 h-3.5 text-gray-500" />
               {{ scope.row.os || '-' }}
             </span>
           </template>
         </el-table-column>
         <el-table-column prop="browser" label="浏览器" width="140">
           <template #default="scope">
-            <span class="info-cell">
-              <Globe class="info-icon" />
+            <span class="inline-flex items-center gap-1.5">
+              <Globe class="w-3.5 h-3.5 text-gray-500" />
               {{ scope.row.browser || '-' }}
             </span>
           </template>
         </el-table-column>
         <el-table-column prop="deviceType" label="设备" width="120">
           <template #default="scope">
-            <span class="info-cell">
-              <component :is="getDeviceIcon(scope.row.deviceType)" class="info-icon" />
+            <span class="inline-flex items-center gap-1.5">
+              <component :is="getDeviceIcon(scope.row.deviceType)" class="w-3.5 h-3.5 text-gray-500" />
               {{ scope.row.deviceType || '-' }}
             </span>
           </template>
@@ -54,7 +54,7 @@
         </el-table-column>
       </el-table>
 
-      <div class="pagination">
+      <div class="mt-6 flex justify-center">
         <el-pagination
           v-model:current-page="query.page"
           v-model:page-size="query.pageSize"
@@ -143,26 +143,3 @@ onMounted(() => {
   handleFetch()
 })
 </script>
-
-<style scoped lang="scss">
-.card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  font-weight: 600;
-  color: #1f2937;
-}
-
-.info-cell {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.info-icon {
-  width: 14px;
-  height: 14px;
-  color: #6b7280;
-}
-</style>

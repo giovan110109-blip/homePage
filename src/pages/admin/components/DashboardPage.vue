@@ -1,61 +1,61 @@
 <template>
-  <div class="page-content">
-    <div class="page-header">
-      <h2 class="page-title">仪表板</h2>
-      <p class="page-subtitle">欢迎回到管理后台</p>
+  <div class="w-full h-full flex flex-col overflow-auto">
+    <div class="mb-6">
+      <h2 class="text-2xl font-bold text-gray-900 dark:text-white">仪表板</h2>
+      <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">欢迎回到管理后台</p>
     </div>
 
     <!-- Dashboard Stats -->
-    <div class="dashboard-grid">
-      <el-card class="stat-card" shadow="hover">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+      <el-card shadow="hover">
         <template #header>
-          <div class="stat-header">
+          <div class="flex justify-between items-center font-semibold text-gray-900 dark:text-white">
             <span>总访问</span>
             <Eye class="w-5 h-5" />
           </div>
         </template>
-        <div class="stat-number">24,563</div>
-        <div class="stat-trend">↑ 12% 相比上周</div>
+        <div class="text-3xl font-bold bg-gradient-to-r from-blue-500 to-blue-600 bg-clip-text text-transparent mb-2">24,563</div>
+        <div class="text-sm text-green-600 dark:text-green-400 font-medium">↑ 12% 相比上周</div>
       </el-card>
 
-      <el-card class="stat-card" shadow="hover">
+      <el-card shadow="hover">
         <template #header>
-          <div class="stat-header">
+          <div class="flex justify-between items-center font-semibold text-gray-900 dark:text-white">
             <span>活跃用户</span>
             <Users class="w-5 h-5" />
           </div>
         </template>
-        <div class="stat-number">1,243</div>
-        <div class="stat-trend">↑ 8% 相比上周</div>
+        <div class="text-3xl font-bold bg-gradient-to-r from-blue-500 to-blue-600 bg-clip-text text-transparent mb-2">1,243</div>
+        <div class="text-sm text-green-600 dark:text-green-400 font-medium">↑ 8% 相比上周</div>
       </el-card>
 
-      <el-card class="stat-card" shadow="hover">
+      <el-card shadow="hover">
         <template #header>
-          <div class="stat-header">
+          <div class="flex justify-between items-center font-semibold text-gray-900 dark:text-white">
             <span>留言数</span>
             <MessageSquare class="w-5 h-5" />
           </div>
         </template>
-        <div class="stat-number">563</div>
-        <div class="stat-trend">↑ 24% 相比上周</div>
+        <div class="text-3xl font-bold bg-gradient-to-r from-blue-500 to-blue-600 bg-clip-text text-transparent mb-2">563</div>
+        <div class="text-sm text-green-600 dark:text-green-400 font-medium">↑ 24% 相比上周</div>
       </el-card>
 
-      <el-card class="stat-card" shadow="hover">
+      <el-card shadow="hover">
         <template #header>
-          <div class="stat-header">
+          <div class="flex justify-between items-center font-semibold text-gray-900 dark:text-white">
             <span>项目数</span>
             <Briefcase class="w-5 h-5" />
           </div>
         </template>
-        <div class="stat-number">45</div>
-        <div class="stat-trend">↑ 5% 相比上周</div>
+        <div class="text-3xl font-bold bg-gradient-to-r from-blue-500 to-blue-600 bg-clip-text text-transparent mb-2">45</div>
+        <div class="text-sm text-green-600 dark:text-green-400 font-medium">↑ 5% 相比上周</div>
       </el-card>
     </div>
 
     <!-- Recent Activity -->
-    <el-card class="activity-card" shadow="hover">
+    <el-card shadow="hover">
       <template #header>
-        <div class="card-header">
+        <div class="flex items-center justify-between gap-4 font-semibold text-gray-900 dark:text-white">
           <span>最近活动</span>
           <Clock class="w-5 h-5" />
         </div>
@@ -106,52 +106,3 @@ const getTagType = (type: string) => {
   return typeMap[type] || "info";
 };
 </script>
-
-<style scoped lang="scss">
-.dashboard-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 20px;
-  margin-bottom: 32px;
-}
-
-.stat-card {
-  width: 100%;
-}
-
-.stat-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-weight: 600;
-  color: #1f2937;
-}
-
-.stat-number {
-  font-size: 32px;
-  font-weight: 700;
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  margin-bottom: 8px;
-}
-
-.stat-trend {
-  font-size: 12px;
-  color: #10b981;
-  font-weight: 500;
-}
-
-.activity-card {
-  width: 100%;
-}
-
-.card-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-weight: 600;
-  color: #1f2937;
-}
-</style>

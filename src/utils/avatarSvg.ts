@@ -1,7 +1,7 @@
 import { WidgetType } from "@/enums/avatar.ts";
 import { AVATAR_LAYER, NONE } from "@/utils/constant";
 import { widgetData } from "@/utils/dynamic-data";
-import { getRandomAvatarOption } from "@/utils";
+import { getRandomAvatarOption } from "@/utils/avatar";
 
 /**
  * 构建头像 SVG 字符串（与 VueColorAvatar 相同渲染逻辑）。

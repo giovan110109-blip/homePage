@@ -1,16 +1,16 @@
 <template>
-  <div class="page-content">
-    <div class="page-header">
-      <h2 class="page-title">系统设置</h2>
-      <p class="page-subtitle">配置系统参数和选项</p>
+  <div class="w-full h-full flex flex-col overflow-auto">
+    <div class="mb-6">
+      <h2 class="text-2xl font-bold text-gray-900 dark:text-white">系统设置</h2>
+      <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">配置系统参数和选项</p>
     </div>
 
     <el-card shadow="hover">
 
       <el-form label-width="120px">
-        <el-tabs v-model="activeTab" class="settings-tabs">
+        <el-tabs v-model="activeTab" class="mb-2">
           <el-tab-pane label="个人信息" name="profile">
-            <div class="tab-grid">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 lg:gap-6">
               <div>
                 <el-form-item label="名称">
                   <el-input v-model="form.name" />
@@ -23,13 +23,13 @@
                 </el-form-item>
                 <el-form-item label="头像">
                   <el-upload
-                    class="avatar-uploader"
+                    class="inline-flex w-24 h-24 rounded-lg border border-dashed border-blue-200 items-center justify-center cursor-pointer overflow-hidden bg-slate-50"
                     action="/api/upload"
                     :show-file-list="false"
                     :on-success="handleAvatarSuccess"
                   >
-                    <el-image v-if="form.avatar" :src="form.avatar" class="avatar-image" fit="cover" />
-                    <div v-else class="avatar-placeholder">上传头像</div>
+                    <el-image v-if="form.avatar" :src="form.avatar" class="w-full h-full object-cover" fit="cover" />
+                    <div v-else class="text-xs text-slate-500">上传头像</div>
                   </el-upload>
                 </el-form-item>
               </div>
@@ -54,7 +54,7 @@
           </el-tab-pane>
 
           <el-tab-pane label="网站信息" name="site">
-            <div class="tab-grid">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 lg:gap-6">
               <div>
                 <el-form-item label="网站名称">
                   <el-input v-model="form.siteName" />
@@ -75,7 +75,7 @@
           </el-tab-pane>
 
           <el-tab-pane label="备案与底部" name="footer">
-            <div class="tab-grid">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 lg:gap-6">
               <div>
                 <el-form-item label="ICP备案号">
                   <el-input v-model="form.icp" />
@@ -230,45 +230,10 @@ onMounted(() => {
 })
 </script>
 
-<style scoped lang="scss">
-
-.settings-tabs {
-  margin-bottom: 8px;
-}
-
-.tab-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px 24px;
-}
-
-.avatar-uploader {
-  width: 90px;
-  height: 90px;
-  border-radius: 12px;
-  border: 1px dashed #cbd5f5;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  overflow: hidden;
-  background: #f8fafc;
-}
-
-.avatar-image {
-  width: 100%;
-  height: 100%;
-}
-
-.avatar-placeholder {
-  font-size: 12px;
-  color: #64748b;
-}
-
-@media (max-width: 900px) {
-  .tab-grid {
-    grid-template-columns: 1fr;
+<style scoped>
+@media (max-width: 1024px) {
+  .grid {
+    grid-template-columns: 1fr !important;
   }
 }
-
 </style>

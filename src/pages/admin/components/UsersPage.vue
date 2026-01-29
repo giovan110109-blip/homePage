@@ -1,13 +1,13 @@
 <template>
-  <div class="page-content">
-    <div class="page-header">
-      <h2 class="page-title">用户管理</h2>
-      <p class="page-subtitle">管理系统中的所有用户</p>
+  <div class="w-full h-full flex flex-col overflow-auto">
+    <div class="mb-6">
+      <h2 class="text-2xl font-bold text-gray-900 dark:text-white">用户管理</h2>
+      <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">管理系统中的所有用户</p>
     </div>
 
     <el-card shadow="hover">
       <template #header>
-        <div class="card-header">
+        <div class="flex items-center justify-between font-semibold text-gray-900 dark:text-white">
           <span>用户列表</span>
           <el-button type="primary" size="small">添加用户</el-button>
         </div>
@@ -49,15 +49,3 @@ const users = ref([
   { name: 'Diana', email: 'diana@example.com', role: '编辑', status: '活跃' }
 ])
 </script>
-
-<style scoped lang="scss">
-
-.card-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-weight: 600;
-  color: #1f2937;
-}
-
-</style>
