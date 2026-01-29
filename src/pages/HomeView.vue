@@ -38,8 +38,8 @@
               class="w-64 h-64 lg:w-80 lg:h-80 rounded-full overflow-hidden border-4 border-white/20 dark:border-white/10 shadow-2xl backdrop-blur-sm"
             >
               <img
-                :src="personalStore.info.avatar"
-                :alt="personalStore.fullName"
+                :src="siteInfoStore.info.avatar"
+                :alt="siteInfoStore.info.name"
                 class="w-full h-full object-cover"
               />
             </div>
@@ -55,7 +55,7 @@
           <div class="animate-fade-in-up">
             <div class="mb-6">
               <SplitText
-                :text="personalStore.info.title"
+                :text="siteInfoStore.info.title"
                 class-name="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 dark:text-white"
                 :delay="100"
                 :duration="0.8"
@@ -69,7 +69,7 @@
             </div>
 
             <SplitText
-              :text="`我是 ${personalStore.fullName}`"
+              :text="`我是 ${siteInfoStore.info.name}`"
               class-name="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white mb-4"
               :delay="120"
               :duration="0.6"
@@ -82,7 +82,7 @@
             />
 
             <SplitText
-              :text="personalStore.info.bio"
+              :text="siteInfoStore.info.bio"
               class-name="text-base sm:text-lg text-gray-700 dark:text-gray-300 mb-8 leading-relaxed"
               :delay="80"
               :duration="0.5"
@@ -126,7 +126,6 @@ import {
   Github,
   Phone,
 } from "lucide-vue-next";
-import { usePersonalStore } from "@/stores/personal";
 import { useSiteInfoStore } from "@/stores/siteInfo";
 import Button from "@/components/ui/Button.vue";
 import Card from "@/components/ui/Card.vue";
@@ -149,7 +148,6 @@ const handleGlobalMouseLeave = () => {
   }
 };
 
-const personalStore = usePersonalStore();
 const siteInfoStore = useSiteInfoStore();
 
 onMounted(() => {

@@ -78,11 +78,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import { usePersonalStore } from '@/stores/personal'
+import { ref, onMounted } from 'vue'
+import { useSiteInfoStore } from '@/stores/siteInfo'
 import ThemeToggle from '@/components/ui/ThemeToggle.vue'
 
-const personalStore = usePersonalStore()
+const siteInfoStore = useSiteInfoStore()
+
+onMounted(() => {
+  siteInfoStore.fetchSiteInfo()
+})
 const mobileMenuOpen = ref(false)
 
 const navigation = [

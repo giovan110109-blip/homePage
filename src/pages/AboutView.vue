@@ -32,19 +32,19 @@
             <div class="sticky top-8">
               <div class="text-center animate-fade-in-up">
                 <img
-                  :src="personalStore.avatar"
-                  :alt="personalStore.fullName"
+                  :src="siteInfoStore.info.avatar"
+                  :alt="siteInfoStore.info.name"
                   class="w-32 h-32 rounded-full mx-auto object-cover mb-4"
                 />
                 <h2 class="text-lg font-medium text-gray-900 dark:text-white mb-1">
-                  {{ personalStore.fullName }}
+                  {{ siteInfoStore.info.name }}
                 </h2>
                 <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                  {{ personalStore.info.title }}
+                  {{ siteInfoStore.info.title }}
                 </p>
                 <div class="flex items-center justify-center text-gray-500 dark:text-gray-400 text-sm mb-6">
                   <MapPin class="w-3 h-3 mr-1" />
-                  {{ personalStore.info.location }}
+                  {{ siteInfoStore.info.location }}
                 </div>
               </div>
             </div>
@@ -73,7 +73,7 @@
               <h3 class="relative z-10 text-xl font-medium text-gray-900 dark:text-white mb-4 drop-shadow-lg">关于我</h3>
               <div class="relative z-10 text-gray-700 dark:text-gray-200 space-y-4 leading-relaxed">
                 <p class="drop-shadow-sm">
-                  {{ personalStore.info.bio }}
+                  {{ siteInfoStore.info.bio }}
                 </p>
                 <p class="drop-shadow-sm">
                   <!-- --占位符-- -->
@@ -178,15 +178,15 @@
                 <div class="flex items-center text-gray-700 dark:text-gray-200">
                   <Mail class="w-4 h-4 mr-3 drop-shadow-sm" />
                   <a 
-                    :href="`mailto:${personalStore.contactEmail}`"
+                    :href="`mailto:${siteInfoStore.info.email}`"
                     class="hover:text-blue-500 dark:hover:text-blue-400 hover:underline drop-shadow-sm"
                   >
-                    {{ personalStore.contactEmail }}
+                    {{ siteInfoStore.info.email }}
                   </a>
                 </div>
                 <div class="flex items-center text-gray-700 dark:text-gray-200">
                   <MapPin class="w-4 h-4 mr-3 drop-shadow-sm" />
-                  <span class="drop-shadow-sm">{{ personalStore.info.location }}</span>
+                  <span class="drop-shadow-sm">{{ siteInfoStore.info.location }}</span>
                 </div>
               </div>
             </div>
@@ -199,9 +199,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { MapPin, Mail, Briefcase, GraduationCap, Github, Linkedin, Twitter, MessageCircle, Code, Camera, Music, Gamepad2 ,Bike} from 'lucide-vue-next'
-import { usePersonalStore } from '@/stores/personal'
+import { useSiteInfoStore } from '@/stores/siteInfo'
 import Card from '@/components/ui/Card.vue'
 
 const aboutCardRefs = ref<HTMLElement[]>([])
@@ -225,7 +225,11 @@ const handleAboutCardMouseLeave = (index: number) => {
   }
 }
 
-const personalStore = usePersonalStore()
+const siteInfoStore = useSiteInfoStore()
+
+onMounted(() => {
+  siteInfoStore.fetchSiteInfo()
+})
 
 const experiences = [
   {

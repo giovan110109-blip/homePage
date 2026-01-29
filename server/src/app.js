@@ -23,6 +23,8 @@ const dotenv = require('dotenv');
 const Koa = require('koa');
 const koaBody = require('koa-body');
 const cors = require('@koa/cors');
+const koaStatic = require('koa-static');
+const mount = require('koa-mount');
 const mongoose = require('mongoose');
 const registerRoutes = require('./routes');
 const connectDB = require('./config/db');
@@ -55,6 +57,11 @@ app.use(cors({
   origin: '*',
   allowHeaders: ['Content-Type', 'Authorization', 'x-request-timestamp'],
 }));
+
+// 静态文件：对外暴露 uploads 目录（放在限流前，避免静态资源被时间戳校验拦截）
+const uploadDir = process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads');
+const uploadBaseUrl = process.env.UPLOAD_BASE_URL || '/uploads';
+app.use(mount(uploadBaseUrl, koaStatic(uploadDir)));
 
 // 全局中间件：日志、请求信息、错误处理
 app.use(logger);

@@ -16,10 +16,10 @@
               <div class="w-8 h-8 rounded-lg overflow-hidden">
                 <img src="/public/img//logo.jpg" alt="fishcpy logo" class="w-full h-full object-cover" />
               </div>
-              <span class="font-semibold text-xl">{{ personalStore.fullName }}</span>
+              <span class="font-semibold text-xl">{{ siteInfoStore.info.name }}</span>
             </div>
             <p class="text-gray-600 dark:text-gray-300 mb-4 max-w-md">
-              {{ personalStore.info.bio }}
+              {{ siteInfoStore.info.bio }}
             </p>
             <!-- <div class="flex space-x-4">
               <a
@@ -56,10 +56,10 @@
               <li class="flex items-center space-x-2">
                 <Mail class="w-4 h-4 text-gray-500 dark:text-gray-400" />
                 <a
-                  :href="`mailto:${personalStore.contactEmail}`"
+                  :href="`mailto:${siteInfoStore.info.email}`"
                   class="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
                 >
-                  {{ personalStore.contactEmail }}
+                  {{ siteInfoStore.info.email }}
                 </a>
               </li>
               <li class="flex items-center space-x-2">
@@ -67,20 +67,20 @@
                 <a
                   class="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
                 >
-                  {{ personalStore.wechat }}
+                  {{ siteInfoStore.info.wechat }}
                 </a>
               </li>
               <li class="flex items-center space-x-2">
                 <MapPin class="w-4 h-4 text-gray-500 dark:text-gray-400" />
-                <span class="text-gray-600 dark:text-gray-300">{{ personalStore.info.location }}</span>
+                <span class="text-gray-600 dark:text-gray-300">{{ siteInfoStore.info.location }}</span>
               </li>
             </ul>
           </div>
         </div>
         
         <div class="border-t border-gray-300/50 dark:border-gray-800 mt-8 pt-8 flex flex-col md:flex-row justify-between items-center">
-          <p class="text-gray-500 dark:text-gray-400 text-sm">
-            &copy; {{ currentYear }} {{ personalStore.fullName }}. 保留所有权利。<br/>
+            <p class="text-gray-500 dark:text-gray-400 text-sm">
+            &copy; {{ currentYear }} {{ siteInfoStore.info.name }}. 保留所有权利。<br/>
             <a class="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors" href="https://beian.miit.gov.cn" target="_blank">蜀ICP备2023017937号-3</a><br/>
           </p>
         </div>
@@ -90,14 +90,18 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { Mail, MapPin, Github, Linkedin, Twitter, MessageCircle,MessageSquareQuote } from 'lucide-vue-next'
-import { usePersonalStore } from '@/stores/personal'
+import { useSiteInfoStore } from '@/stores/siteInfo'
 import MagicCard from '@/components/ui/MagicCard.vue'
 
 const footerRef = ref<HTMLElement>()
 
-const personalStore = usePersonalStore()
+const siteInfoStore = useSiteInfoStore()
+
+onMounted(() => {
+  siteInfoStore.fetchSiteInfo()
+})
 
 const currentYear = computed(() => new Date().getFullYear())
 

@@ -4,10 +4,10 @@
       <div>
         <div class="flex items-center mb-4">
           <h3 class="text-xl font-bold mr-4 text-white">十年之约</h3>
-          <div class="w-12 h-12 rounded-full overflow-hidden bg-white/30 border border-white/50 shadow-lg backdrop-blur-md">
+            <div class="w-12 h-12 rounded-full overflow-hidden bg-white/30 border border-white/50 shadow-lg backdrop-blur-md">
             <img
-              :src="personalStore.avatar"
-              :alt="personalStore.fullName"
+              :src="siteInfoStore.info.avatar"
+              :alt="siteInfoStore.info.name"
               class="w-full h-full object-cover"
             />
           </div>
@@ -59,9 +59,12 @@
 
 <script setup lang="ts">
 import { computed, ref, onMounted, onUnmounted } from 'vue'
-import { usePersonalStore } from '@/stores/personal'
+import { useSiteInfoStore } from '@/stores/siteInfo'
 
-const personalStore = usePersonalStore()
+const siteInfoStore = useSiteInfoStore()
+onMounted(() => {
+  siteInfoStore.fetchSiteInfo()
+})
 
 // 十年之约开始日期
 const startDate = new Date('2024-09-06')

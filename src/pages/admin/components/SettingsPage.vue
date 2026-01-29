@@ -22,15 +22,22 @@
                   <el-input v-model="form.bio" type="textarea" :rows="3" />
                 </el-form-item>
                 <el-form-item label="头像">
-                  <el-upload
-                    class="inline-flex w-24 h-24 rounded-lg border border-dashed border-blue-200 items-center justify-center cursor-pointer overflow-hidden bg-slate-50"
-                    action="/api/upload"
-                    :show-file-list="false"
-                    :on-success="handleAvatarSuccess"
-                  >
-                    <el-image v-if="form.avatar" :src="form.avatar" class="w-full h-full object-cover" fit="cover" />
-                    <div v-else class="text-xs text-slate-500">上传头像</div>
-                  </el-upload>
+                  <div class="flex items-center gap-3">
+                    <el-upload
+                      class="inline-flex w-24 h-24 rounded-lg border border-dashed border-blue-200 items-center justify-center cursor-pointer overflow-hidden bg-slate-50"
+                      :action="`${VITE_API_BASE_URL_LOCAL}/api/upload`"
+                      :show-file-list="false"
+                      :on-success="handleAvatarSuccess"
+                    >
+                      <el-image v-if="form.avatar" :src="form.avatar" class="w-full h-full object-cover" fit="cover" />
+                      <div v-else class="text-xs text-slate-500">上传头像</div>
+                    </el-upload>
+
+                    <div class="flex flex-col">
+                      <el-button v-if="form.avatar" type="danger" size="small" @click="confirmDeleteAvatar">删除头像</el-button>
+                      <div v-else class="text-sm text-gray-500">未设置头像</div>
+                    </div>
+                  </div>
                 </el-form-item>
               </div>
               <div>
@@ -118,8 +125,9 @@
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import request from '@/api/request'
+const { VITE_API_BASE_URL_LOCAL } = import.meta.env
 
 interface SiteInfoForm {
   name: string
@@ -222,6 +230,40 @@ const handleAvatarSuccess = (response: any) => {
   const data = response?.data || response
   if (data?.url) {
     form.value.avatar = data.url
+  }
+}
+
+const confirmDeleteAvatar = async () => {
+  try {
+    await ElMessageBox.confirm('确定删除头像吗？此操作不可恢复。', '提示', { type: 'warning' })
+    await deleteAvatar()
+  } catch (e) {
+    // 用户取消或出错，忽略
+  }
+}
+
+const deleteAvatar = async () => {
+  if (!form.value.avatar) {
+    ElMessage.error('当前没有头像可删除')
+    return
+  }
+
+  try {
+    // 解析文件名，支持相对路径或完整 URL
+    const url = form.value.avatar
+    const pathname = new URL(url, window.location.origin).pathname
+    const parts = pathname.split('/').filter(Boolean)
+    const filename = parts.pop()
+    if (!filename) {
+      ElMessage.error('无法解析文件名')
+      return
+    }
+
+    await request.delete(`/upload/${encodeURIComponent(filename)}`)
+    form.value.avatar = ''
+    ElMessage.success('删除成功')
+  } catch (error: any) {
+    ElMessage.error(error?.message || '删除失败')
   }
 }
 

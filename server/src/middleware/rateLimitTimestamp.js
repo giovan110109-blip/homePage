@@ -10,6 +10,9 @@ module.exports = function rateLimitTimestamp(options = {}) {
   const hits = new Map();
 
   return async (ctx, next) => {
+    if (ctx.request.url === '/api/upload') {
+      return await next();
+    }
     const now = Date.now();
     const tsRaw = ctx.get(header);
     const ts = Number(tsRaw);
