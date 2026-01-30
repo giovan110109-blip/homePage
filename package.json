@@ -4,7 +4,14 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "commit": "git add -A && git-cz && git push"
+    "commit": "git add -A && git-cz && git push",
+    "dev": "pnpm -C client dev & pnpm -C server dev",
+    "dev:client": "pnpm -C client dev",
+    "dev:server": "pnpm -C server dev",
+    "build": "pnpm -C client build",
+    "preview": "pnpm -C client preview",
+    "start": "pnpm -C server start",
+    "start:prod": "pnpm -C server start:prod"
   },
   "dependencies": {
   },
