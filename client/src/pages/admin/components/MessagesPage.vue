@@ -15,12 +15,14 @@
               placeholder="搜索留言内容..."
               clearable
               style="width: 220px"
+              @change="handleFetch"
             />
             <el-select
               v-model="filter.form.status"
               placeholder="状态"
               clearable
               style="width: 120px"
+              @change="handleFetch"
             >
               <el-option label="已审核" value="approved" />
               <el-option label="待审核" value="pending" />
@@ -210,7 +212,7 @@ interface MessageItem {
   };
 }
 
-const filter = useMessageFilterForm();
+const filter = useMessageFilterForm({ keyword: '', status: '', pageSize: 10 });
 const {
   data: messages,
   total,
@@ -223,7 +225,7 @@ const drawerVisible = ref(false);
 const currentRow = ref<MessageItem | null>(null);
 
 const filteredMessages = computed(() => {
-  const keyword = filter.form.keyword.trim();
+  const keyword = (filter.form.keyword || '').trim();
   if (!keyword) return messages.value;
   return messages.value.filter((item) => item.content?.includes(keyword));
 });

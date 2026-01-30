@@ -11,7 +11,7 @@
           <span class="font-semibold text-gray-900 dark:text-white">友情链接列表</span>
           <div class="flex gap-3 flex-wrap">
             <el-select
-              v-model="statusFilter"
+              v-model="filter.form.status"
               placeholder="审核状态"
               clearable
               style="width: 140px"
@@ -22,7 +22,7 @@
               <el-option label="已拒绝" value="rejected" />
             </el-select>
             <el-select
-              v-model="categoryFilter"
+              v-model="filter.form.category"
               placeholder="分类"
               clearable
               style="width: 140px"
@@ -161,8 +161,8 @@
 
       <div class="mt-6 flex justify-end">
         <el-pagination
-          v-model:current-page="currentPage"
-          v-model:page-size="pageSize"
+          v-model:current-page="filter.form.page"
+          v-model:page-size="filter.form.pageSize"
           :page-sizes="[10, 20, 50, 100]"
           :total="total"
           layout="total, sizes, prev, pager, next, jumper"
@@ -245,15 +245,13 @@ import {
   adminUpdateFriendLink,
   adminDeleteFriendLink
 } from '@/api/friendLink'
+import { useMessageFilterForm } from '@/composables/useMessageFilterForm'
 import type { FriendLink } from '@/types/api'
 
+const filter = useMessageFilterForm({ pageSize: 20, status: '', category: '' })
 const loading = ref(false)
 const tableData = ref<FriendLink[]>([])
-const currentPage = ref(1)
-const pageSize = ref(20)
 const total = ref(0)
-const statusFilter = ref('')
-const categoryFilter = ref('')
 
 // 拒绝对话框
 const rejectDialogVisible = ref(false)
@@ -267,12 +265,7 @@ const editForm = ref<Partial<FriendLink>>({})
 const loadData = async () => {
   loading.value = true
   try {
-    const res = await adminGetFriendLinks({
-      page: currentPage.value,
-      pageSize: pageSize.value,
-      status: statusFilter.value,
-      category: categoryFilter.value
-    })
+    const res = await adminGetFriendLinks(filter.toParams())
     tableData.value = res.data.list || []
     total.value = res.data.total || 0
   } catch (error: any) {

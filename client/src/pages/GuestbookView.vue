@@ -32,7 +32,7 @@
             <h2 class="section-title">发表留言</h2>
             <form @submit.prevent="submitMessage" class="message-form">
               <div class="form-group">
-                <label for="name" class="form-label">昵称 *</label>
+                <label for="name" class="form-label">昵称 <span class="text-red-500">*</span></label>
                 <input
                   id="name"
                   v-model="formData.name"
@@ -44,7 +44,7 @@
               </div>
 
               <div class="form-group">
-                <label for="email" class="form-label">邮箱 *</label>
+                <label for="email" class="form-label">邮箱 <span class="text-red-500">*</span></label>
                 <input
                   id="email"
                   v-model="formData.email"
@@ -69,7 +69,7 @@
               </div>
 
               <div class="form-group">
-                <label for="message" class="form-label">留言内容 *</label>
+                <label for="message" class="form-label">留言内容 <span class="text-red-500">*</span></label>
                 <textarea
                   id="message"
                   v-model="formData.message"

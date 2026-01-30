@@ -1,188 +1,292 @@
 <template>
-  <div class="sponsor-page min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-blue-50 dark:from-gray-900 dark:via-blue-900 dark:to-blue-900 relative">
+  <div
+    class="sponsor-page min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-blue-50 dark:from-gray-900 dark:via-blue-900 dark:to-blue-900 relative"
+  >
     <!-- Background blur effects -->
     <div class="absolute inset-0 overflow-hidden">
-      <div class="absolute -top-40 -right-40 w-80 h-80 bg-blue-300/20 dark:bg-blue-500/10 rounded-full blur-3xl"></div>
-      <div class="hidden absolute -bottom-40 -left-40 w-80 h-80 bg-purple-300/20 dark:bg-purple-500/10 rounded-full blur-3xl"></div>
-      <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-pink-300/10 dark:bg-pink-500/5 rounded-full blur-3xl"></div>
+      <div
+        class="absolute -top-40 -right-40 w-80 h-80 bg-blue-300/20 dark:bg-blue-500/10 rounded-full blur-3xl"
+      ></div>
+      <div
+        class="hidden absolute -bottom-40 -left-40 w-80 h-80 bg-purple-300/20 dark:bg-purple-500/10 rounded-full blur-3xl"
+      ></div>
+      <div
+        class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-pink-300/10 dark:bg-pink-500/5 rounded-full blur-3xl"
+      ></div>
     </div>
-    
+
     <!-- Content overlay -->
     <div class="relative z-10">
-    <div class="sponsor-container">
-      <div class="sponsor-card">
-        <div class="header">
-          <!-- <div class="icon">
+      <div class="sponsor-container">
+        <div class="sponsor-card">
+          <div class="header">
+            <!-- <div class="icon">
             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" fill="#64ffda"/>
             </svg>
           </div> -->
-          <h1 class="title">赞助支持</h1>
-          <p class="subtitle">您的每一份支持都是我们前进的动力，让我们共同创造更多可能 ✨。</p>
-        </div>
+            <h1 class="title">赞助支持</h1>
+            <p class="subtitle">
+              您的每一份支持都是我们前进的动力，让我们共同创造更多可能 ✨。
+            </p>
+          </div>
 
-        <div class="qr-codes">
-          <div
-            v-for="(method, index) in displayMethods"
-            :key="method._id || method.name || index"
-            class="qr-card"
-            :ref="el => qrCardRefs[index] = el as HTMLElement"
-            @mousemove="(event) => handleQrCardMouseMove(event, index)"
-            @mouseleave="() => handleQrCardMouseLeave(index)"
-          >
-            <!-- 鼠标跟随效果 -->
+          <div class="qr-codes">
             <div
-              v-if="qrCardEffects[index]?.show"
-              class="absolute w-40 h-40 rounded-full blur-2xl transition-all duration-75 ease-out pointer-events-none z-0"
-              :style="{
-                left: qrCardEffects[index]?.x - 80 + 'px',
-                top: qrCardEffects[index]?.y - 80 + 'px'
-              }"
-            ></div>
-            <div class="qr-icon" v-if="method.icon">
-              <img class="w-32px h-32px" :src="method.icon" :alt="method.name" />
+              v-for="(method, index) in displayMethods"
+              :key="method._id || method.name || index"
+              class="qr-card"
+              :ref="(el) => (qrCardRefs[index] = el as HTMLElement)"
+              @mousemove="(event) => handleQrCardMouseMove(event, index)"
+              @mouseleave="() => handleQrCardMouseLeave(index)"
+            >
+              <!-- 鼠标跟随效果 -->
+              <div
+                v-if="qrCardEffects[index]?.show"
+                class="absolute w-40 h-40 rounded-full blur-2xl transition-all duration-75 ease-out pointer-events-none z-0"
+                :style="{
+                  left: qrCardEffects[index]?.x - 80 + 'px',
+                  top: qrCardEffects[index]?.y - 80 + 'px',
+                }"
+              ></div>
+              <div class="qr-icon" v-if="method.icon">
+                <img
+                  class="w-32px h-32px"
+                  :src="method.icon"
+                  :alt="method.name"
+                />
+              </div>
+              <h3>{{ method.name }}</h3>
+              <div class="qr-placeholder">
+                <img
+                  v-if="method.qrCode"
+                  :src="method.qrCode"
+                  :alt="method.name"
+                />
+                <span v-else>暂无二维码</span>
+              </div>
+              <p class="qr-description">
+                {{ method.description || "扫一扫，请我喝杯咖啡" }}
+              </p>
             </div>
-            <h3>{{ method.name }}</h3>
-            <div class="qr-placeholder">
-              <img v-if="method.qrCode" :src="method.qrCode" :alt="method.name" />
-              <span v-else>暂无二维码</span>
+          </div>
+
+          <!-- 特别赞助提示 -->
+          <div
+            class="my-8 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/50 dark:to-indigo-950/50 border-2 border-blue-200 dark:border-blue-700 rounded-xl p-6 flex items-center gap-4 shadow-lg hover:shadow-xl transition-shadow"
+          >
+            <div
+              class="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 dark:from-blue-400 dark:to-indigo-500 rounded-full flex items-center justify-center animate-pulse"
+            >
+              <Heart class="w-6 h-6 text-white" />
             </div>
-            <p class="qr-description">{{ method.description || '扫一扫，请我喝杯咖啡' }}</p>
+            <div class="flex-1 text-left">
+              <span
+                class="inline-block bg-blue-500 dark:bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded-full mb-2"
+                >特别赞助</span
+              >
+              <p
+                class="text-gray-900 dark:text-gray-100 text-base font-semibold"
+              >
+                婧女士特别赞助 Mac Mini 一台
+              </p>
+            </div>
           </div>
-        </div>
-        
-        <!-- <div class="notice">
-          <div class="notice-icon">
-            <Mail class="w-5 h-5" />
-          </div>
-          <p class="notice-text">
-            <strong>重要提示：</strong>赞助了一定要给 <a href="mailto:14945447@qq.com" class="email">14945447@qq.com</a>发邮件，表明渠道和单号，和你自己名称和内容，否则我认不清可能加不上。
-          </p>
-        </div> -->
-        
-        <div class="sponsors-table">
-          <h2>赞助名单</h2>
-          <el-empty v-if="!sponsors.length" description="暂无赞助记录" class="empty-state" />
-          <table v-else>
-            <thead>
-              <tr>
+
+          <div class="sponsors-table">
+            <h2>赞助名单</h2>
+            <el-empty
+              v-if="!sponsors.length"
+              description="暂无赞助记录"
+              class="empty-state"
+            />
+            <table v-else>
+              <thead>
+                <tr>
                   <th>赞助者</th>
                   <th>日期</th>
                   <th>寄语</th>
                   <th>金额</th>
                 </tr>
-            </thead>
-            <tbody>
-              <tr v-for="(sponsor, index) in sponsors" :key="sponsor._id || index">
-                <td>{{ sponsor.name }}</td>
-                <td>{{ formatDate(sponsor.date || sponsor.createdAt) }}</td>
-                <td>{{ sponsor.message || '-' }}</td>
-                <td>{{ formatAmount(sponsor.amount) }}</td>
-              </tr>
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="(sponsor, index) in sponsors"
+                  :key="sponsor._id || index"
+                >
+                  <td>{{ sponsor.name }}</td>
+                  <td>{{ formatDate(sponsor.date || sponsor.createdAt) }}</td>
+                  <td>{{ sponsor.message || "-" }}</td>
+                  <td>{{ formatAmount(sponsor.amount) }}</td>
+                </tr>
+              </tbody>
+            </table>
+            <div v-if="sponsors.length" class="mt-8">
+              <div v-if="loadingSponsors" class="loading-state">
+                <div class="spinner"></div>
+                <p>加载中...</p>
+              </div>
+              <div v-else-if="!hasMoreSponsors" class="no-more-state">
+                没有更多了
+              </div>
+              <div v-else class="load-more-hint">下滑加载更多</div>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, computed } from 'vue'
-import { Heart, Mail, ExternalLink } from 'lucide-vue-next'
-import request from '@/api/request'
-import wechatIcon from '@/assets/微信.png'
-import wechatQr from '@/assets/wx.jpg'
-import alipayIcon from '@/assets/支付宝.png'
-import alipayQr from '@/assets/zfb.jpg'
+import { ref, reactive, onMounted, onBeforeUnmount, computed } from "vue";
+import { Heart, Mail, ExternalLink } from "lucide-vue-next";
+import request from "@/api/request";
+import wechatIcon from "@/assets/微信.png";
+import wechatQr from "@/assets/wx.jpg";
+import alipayIcon from "@/assets/支付宝.png";
+import alipayQr from "@/assets/zfb.jpg";
 
 type SponsorMethod = {
-  _id?: string
-  name: string
-  icon?: string
-  qrCode?: string
-  description?: string
-}
+  _id?: string;
+  name: string;
+  icon?: string;
+  qrCode?: string;
+  description?: string;
+};
 
 type Sponsor = {
-  _id?: string
-  name: string
-  amount: number
-  message?: string
-  date?: string
-  createdAt?: string
-}
+  _id?: string;
+  name: string;
+  amount: number;
+  message?: string;
+  date?: string;
+  createdAt?: string;
+};
 
-const sponsors = ref<Sponsor[]>([])
-const methods = ref<SponsorMethod[]>([])
+const sponsors = ref<Sponsor[]>([]);
+const loadingSponsors = ref(false);
+const sponsorPage = ref(1);
+const sponsorPageSize = 10;
+const hasMoreSponsors = ref(true);
+const methods = ref<SponsorMethod[]>([]);
 const fallbackMethods: SponsorMethod[] = [
   {
-    name: '微信支付',
+    name: "微信支付",
     icon: wechatIcon,
     qrCode: wechatQr,
-    description: '扫一扫，请我喝杯咖啡',
+    description: "扫一扫，请我喝杯咖啡",
   },
   {
-    name: '支付宝',
+    name: "支付宝",
     icon: alipayIcon,
     qrCode: alipayQr,
-    description: '扫一扫，请我喝杯咖啡',
+    description: "扫一扫，请我喝杯咖啡",
   },
-]
+];
 
-const displayMethods = computed(() => (methods.value.length ? methods.value : fallbackMethods))
+const displayMethods = computed(() =>
+  methods.value.length ? methods.value : fallbackMethods,
+);
 
-const qrCardRefs = ref<HTMLElement[]>([])
-const qrCardEffects = reactive<Record<number, { x: number; y: number; show: boolean }>>({})
+const qrCardRefs = ref<HTMLElement[]>([]);
+const qrCardEffects = reactive<
+  Record<number, { x: number; y: number; show: boolean }>
+>({});
 
 const handleQrCardMouseMove = (event: MouseEvent, index: number) => {
-  const card = qrCardRefs.value[index]
-  if (!card) return
-  
-  const rect = card.getBoundingClientRect()
+  const card = qrCardRefs.value[index];
+  if (!card) return;
+
+  const rect = card.getBoundingClientRect();
   qrCardEffects[index] = {
     x: event.clientX - rect.left,
     y: event.clientY - rect.top,
-    show: true
-  }
-}
+    show: true,
+  };
+};
 
 const handleQrCardMouseLeave = (index: number) => {
   if (qrCardEffects[index]) {
-    qrCardEffects[index].show = false
+    qrCardEffects[index].show = false;
   }
-}
+};
 
 const fetchSponsorMethods = async () => {
-  const res = await request.get('/sponsor-methods')
-  const payload = (res as any)?.data || res || {}
-  methods.value = Array.isArray(payload.data) ? payload.data : (Array.isArray(payload) ? payload : [])
-}
+  const res = await request.get("/sponsor-methods");
+  // 响应拦截器已提取response.data，所以res就是{ code, data, message, success }
+  methods.value = Array.isArray(res?.data) ? res.data : [];
+};
 
-const fetchSponsors = async () => {
-  const res = await request.get('/sponsors')
-  const payload = (res as any)?.data || res || {}
-  const data = payload.data || payload
-  sponsors.value = Array.isArray(data) ? data : []
-}
+const fetchSponsors = async (reset = false) => {
+  if (loadingSponsors.value) return;
+  if (!hasMoreSponsors.value && !reset) return;
+
+  loadingSponsors.value = true;
+  try {
+    const page = reset ? 1 : sponsorPage.value;
+    const res = await request.get("/sponsors", {
+      params: { page, pageSize: sponsorPageSize },
+    });
+    // 响应拦截器已提取response.data，所以res就是{ code, data, meta, message, success }
+    const data = Array.isArray(res?.data) ? res.data : [];
+    const meta = (res as any)?.meta ?? (res as any)?.pagination ?? {};
+
+    if (reset) {
+      sponsors.value = data;
+    } else {
+      sponsors.value = sponsors.value.concat(data);
+    }
+
+    const pageCount = Number(meta.pageCount || 0);
+    const total = Number(meta.total || 0);
+    if (pageCount) {
+      hasMoreSponsors.value = page < pageCount;
+    } else if (total) {
+      hasMoreSponsors.value = sponsors.value.length < total;
+    } else {
+      hasMoreSponsors.value = data.length >= sponsorPageSize;
+    }
+
+    sponsorPage.value = page + 1;
+  } finally {
+    loadingSponsors.value = false;
+  }
+};
 
 const formatDate = (value?: string) => {
-  if (!value) return '-'
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return value
-  return date.toLocaleDateString('zh-CN')
-}
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString("zh-CN");
+};
 
 const formatAmount = (value?: number) => {
-  if (value === undefined || value === null) return '-'
-  return `${Number(value).toFixed(2)} 元`
-}
+  if (value === undefined || value === null) return "-";
+  return `${Number(value).toFixed(2)} 元`;
+};
+
+const loadMoreSponsors = () => {
+  if (loadingSponsors.value || !hasMoreSponsors.value) return;
+  fetchSponsors();
+};
+
+const handleScroll = () => {
+  const { scrollTop, scrollHeight, clientHeight } = document.documentElement;
+  if (scrollHeight - scrollTop - clientHeight < 300) {
+    loadMoreSponsors();
+  }
+};
 
 onMounted(() => {
-  fetchSponsorMethods()
-  fetchSponsors()
-})
+  fetchSponsorMethods();
+  fetchSponsors(true);
+  window.addEventListener("scroll", handleScroll);
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener("scroll", handleScroll);
+});
 </script>
 
 <style scoped>
@@ -215,7 +319,6 @@ onMounted(() => {
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
 }
 
-
 .header {
   margin-bottom: 48px;
 }
@@ -234,13 +337,11 @@ onMounted(() => {
   letter-spacing: -0.5px;
 }
 
-
 .subtitle {
   font-size: 18px;
   color: #6b7280;
   font-weight: 400;
 }
-
 
 .qr-codes {
   display: flex;
@@ -267,7 +368,6 @@ onMounted(() => {
   overflow: hidden;
 }
 
-
 .qr-icon {
   display: flex;
   justify-content: center;
@@ -286,7 +386,6 @@ onMounted(() => {
   margin: 16px 0 24px 0;
 }
 
-
 .qr-placeholder {
   width: 160px;
   height: 160px;
@@ -299,7 +398,6 @@ onMounted(() => {
   border: 1px solid #e5e7eb;
 }
 
-
 .qr-placeholder img {
   width: 140px;
   height: 140px;
@@ -311,7 +409,6 @@ onMounted(() => {
   font-size: 14px;
   margin-bottom: 16px;
 }
-
 
 .afdian-link {
   display: inline-flex;
@@ -328,11 +425,9 @@ onMounted(() => {
   border: 1px solid #e5e7eb;
 }
 
-
 .afdian-link:hover {
   background: #f3f4f6;
 }
-
 
 .notice {
   background: #f8fafc;
@@ -349,7 +444,6 @@ onMounted(() => {
   gap: 12px;
 }
 
-
 .notice-text {
   color: #1e40af;
   font-size: 15px;
@@ -359,12 +453,10 @@ onMounted(() => {
   text-align: left;
 }
 
-
 .notice-text strong {
   color: #dc2626;
   font-weight: 600;
 }
-
 
 .email {
   color: #2563eb;
@@ -376,15 +468,10 @@ onMounted(() => {
   font-family: monospace;
 }
 
-
 .email:hover {
   background: #e2e8f0;
 }
 
-
-.sponsors-table {
-  margin-bottom: 48px;
-}
 
 .sponsors-table h2 {
   color: #1f2937;
@@ -393,7 +480,6 @@ onMounted(() => {
   margin-bottom: 24px;
   text-align: center;
 }
-
 
 .sponsors-table table {
   width: 100%;
@@ -404,14 +490,12 @@ onMounted(() => {
   border: 1px solid #e5e7eb;
 }
 
-
 .sponsors-table th,
 .sponsors-table td {
   padding: 16px;
   text-align: left;
   border-bottom: 1px solid #f3f4f6;
 }
-
 
 .sponsors-table th {
   background: #f9fafb;
@@ -421,17 +505,14 @@ onMounted(() => {
   letter-spacing: 0.025em;
 }
 
-
 .sponsors-table td {
   color: #6b7280;
   font-size: 14px;
 }
 
-
 .sponsors-table tbody tr:hover {
   background: #f9fafb;
 }
-
 
 .sponsors-table tbody tr:last-child td {
   border-bottom: none;
@@ -441,56 +522,105 @@ onMounted(() => {
   padding: 24px 0 12px;
 }
 
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 16px;
+  color: #6b7280;
+}
+
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #e5e7eb;
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-bottom: 16px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.load-more-hint {
+  text-align: center;
+  padding: 32px 16px;
+  color: #9ca3af;
+  font-size: 14px;
+  animation: fadeInOut 2s ease-in-out infinite;
+}
+
+@keyframes fadeInOut {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.no-more-state {
+  text-align: center;
+  padding: 32px 16px;
+  color: #d1d5db;
+  font-size: 14px;
+}
+
 @media (max-width: 768px) {
   .sponsor-card {
     padding: 32px 24px;
   }
-  
+
   .title {
     font-size: 28px;
   }
-  
+
   .qr-codes {
     flex-direction: column;
     align-items: center;
   }
-  
+
   .sponsors-table {
     overflow-x: auto;
   }
-  
+
   .sponsors-table table {
     min-width: 500px;
   }
-  
+
   .qr-card {
     padding: 24px 20px;
   }
-  
+
   .qr-card img {
     width: 160px;
     height: 160px;
   }
   .qr-icon img {
-  width: 32px;
-  height: 32px;
-}
-
+    width: 32px;
+    height: 32px;
+  }
 }
 
 @media (max-width: 480px) {
   .sponsor-container {
     padding: 16px;
   }
-  
+
   .sponsor-card {
     padding: 24px 20px;
   }
-  
+
   .header {
     margin-bottom: 32px;
   }
-  
+
   .notice {
     padding: 20px;
     flex-direction: column;

@@ -11,7 +11,7 @@
     <div class="relative z-10">
     <!-- Hero Section -->
     <section class="py-20 relative">
-      <div class="absolute inset-0 bg-white/30 dark:bg-black/10 backdrop-blur-sm"></div>
+      <div class="absolute inset-0 backdrop-blur-sm"></div>
       <div class="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <!-- <h1 class="text-3xl font-medium text-gray-900 dark:text-white mb-4 animate-fade-in drop-shadow-lg">
           关于我
@@ -24,7 +24,7 @@
 
     <!-- Main Content -->
     <section class="pb-20 relative">
-      <div class="absolute inset-0 bg-white/20 dark:bg-black/10 backdrop-blur-sm"></div>
+      <div class="absolute inset-0backdrop-blur-sm"></div>
       <div class="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="grid grid-cols-1 lg:grid-cols-4 gap-12">
           <!-- Profile Image -->

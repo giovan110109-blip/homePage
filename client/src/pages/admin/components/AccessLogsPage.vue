@@ -56,8 +56,8 @@
 
       <div class="mt-6 flex justify-center">
         <el-pagination
-          v-model:current-page="query.page"
-          v-model:page-size="query.pageSize"
+          v-model:current-page="filter.form.page"
+          v-model:page-size="filter.form.pageSize"
           :page-sizes="[10, 20, 50]"
           layout="total, sizes, prev, pager, next"
           :total="total"
@@ -75,6 +75,7 @@ import { ElMessage } from 'element-plus'
 import request from '@/api/request'
 import { Globe, Monitor, Smartphone, Apple, Laptop } from 'lucide-vue-next'
 import { useTableFetch } from '@/composables/useTableFetch'
+import { useMessageFilterForm } from '@/composables/useMessageFilterForm'
 
 interface AccessLog {
   _id: string
@@ -98,7 +99,7 @@ interface AccessLog {
   }
 }
 
-const query = ref({ page: 1, pageSize: 20 })
+const filter = useMessageFilterForm({ pageSize: 20 })
 
 const { data: logs, total, loading, fetch } = useTableFetch<AccessLog, Record<string, any>>(
   (params) => request.get('/admin/access-logs', { params })
@@ -106,7 +107,7 @@ const { data: logs, total, loading, fetch } = useTableFetch<AccessLog, Record<st
 
 const handleFetch = async () => {
   try {
-    await fetch(query.value)
+    await fetch(filter.toParams())
   } catch (error: any) {
     ElMessage.error(error?.message || '加载访问记录失败')
   }

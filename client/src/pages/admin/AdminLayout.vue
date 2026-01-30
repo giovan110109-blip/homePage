@@ -72,7 +72,7 @@
             class="border-r-0 bg-transparent"
             :default-active="activeMenu"
             :collapse="sidebarCollapsed"
-            @select="activeMenu = $event"
+            @select="syncActiveMenu($event)"
           >
             <el-menu-item
               v-for="item in menuItems"
@@ -147,7 +147,7 @@ import {
   ChevronRight,
   Link,
 } from "lucide-vue-next";
-import { ref, computed } from "vue";
+import { ref, computed, onMounted, watch } from "vue";
 import DashboardPage from "./components/DashboardPage.vue";
 import UsersPage from "./components/UsersPage.vue";
 import MessagesPage from "./components/MessagesPage.vue";
@@ -159,7 +159,7 @@ import { useAuthStore } from "@/stores/auth";
 import { useRouter } from "vue-router";
 
 const sidebarCollapsed = ref(false);
-const activeMenu = ref("dashboard");
+const ACTIVE_MENU_KEY = "admin:active-menu";
 const mobileMenuOpen = ref(false);
 const authStore = useAuthStore();
 const router = useRouter();
@@ -185,13 +185,30 @@ const componentMap: Record<string, any> = {
   settings: SettingsPage,
 };
 
+const getInitialMenu = () => {
+  try {
+    const saved = localStorage.getItem(ACTIVE_MENU_KEY);
+    if (saved && componentMap[saved]) return saved;
+  } catch (_) {
+    // ignore
+  }
+  return "dashboard";
+};
+
+const activeMenu = ref(getInitialMenu());
+
 // 根据activeMenu返回对应的组件
 const currentComponent = computed(() => {
   return componentMap[activeMenu.value] || DashboardPage;
 });
 
-const handleMobileSelect = (value: string) => {
+const syncActiveMenu = (value: string) => {
   activeMenu.value = value;
+  localStorage.setItem(ACTIVE_MENU_KEY, value);
+};
+
+const handleMobileSelect = (value: string) => {
+  syncActiveMenu(value);
   mobileMenuOpen.value = false;
 };
 
@@ -207,6 +224,10 @@ const handleLogout = () => {
   authStore.logout();
   router.replace("/admin/login");
 };
+
+watch(activeMenu, (value) => {
+  localStorage.setItem(ACTIVE_MENU_KEY, value);
+});
 </script>
 <style scoped>
 /* ============================================

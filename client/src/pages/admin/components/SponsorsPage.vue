@@ -10,7 +10,7 @@
         <el-tab-pane label="赞助记录" name="records">
           <div class="flex justify-end gap-3 mb-4">
             <el-button type="primary" @click="openSponsorDialog()">新增记录</el-button>
-            <el-button plain @click="fetchSponsors">刷新</el-button>
+            <el-button plain @click="() => fetchSponsors(filter.toParams())">刷新</el-button>
           </div>
 
           <el-table :data="sponsors" stripe v-loading="loadingSponsors">
@@ -40,13 +40,13 @@
 
           <div class="mt-6 flex justify-center">
             <el-pagination
-              v-model:current-page="sponsorQuery.page"
-              v-model:page-size="sponsorQuery.pageSize"
+              v-model:current-page="filter.form.page"
+              v-model:page-size="filter.form.pageSize"
               :page-sizes="[10, 20, 50]"
               layout="total, sizes, prev, pager, next"
               :total="sponsorTotal"
-              @size-change="fetchSponsors"
-              @current-change="fetchSponsors"
+              @size-change="() => fetchSponsors(filter.toParams())"
+              @current-change="() => fetchSponsors(filter.toParams())"
             />
           </div>
         </el-tab-pane>
@@ -126,10 +126,20 @@
           <el-input v-model="methodForm.name" />
         </el-form-item>
         <el-form-item label="图标">
-          <el-input v-model="methodForm.icon" placeholder="图标 URL" />
+          <ImageUpload 
+            v-model="methodForm.icon" 
+            placeholder="上传图标"
+            :max-size="2"
+            tip="建议尺寸：128x128px，支持 PNG/JPG，不超过 2MB"
+          />
         </el-form-item>
         <el-form-item label="二维码">
-          <el-input v-model="methodForm.qrCode" placeholder="二维码 URL" />
+          <ImageUpload 
+            v-model="methodForm.qrCode" 
+            placeholder="上传二维码"
+            :max-size="2"
+            tip="建议尺寸：400x400px，支持 PNG/JPG，不超过 2MB"
+          />
         </el-form-item>
         <el-form-item label="描述">
           <el-input v-model="methodForm.description" />
@@ -153,6 +163,9 @@
 import { onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import request from '@/api/request'
+import { useMessageFilterForm } from '@/composables/useMessageFilterForm'
+import { useTableFetch } from '@/composables/useTableFetch'
+import ImageUpload from '@/components/ui/ImageUpload.vue'
 
 interface SponsorMethod {
   _id?: string
@@ -176,13 +189,15 @@ interface SponsorRecord {
 
 const activeTab = ref('records')
 const methods = ref<SponsorMethod[]>([])
-const sponsors = ref<SponsorRecord[]>([])
-const loadingMethods = ref(false)
-const loadingSponsors = ref(false)
-const savingMethod = ref(false)
-const savingSponsor = ref(false)
-const sponsorTotal = ref(0)
-const sponsorQuery = ref({ page: 1, pageSize: 10 })
+const filter = useMessageFilterForm({ pageSize: 10 })
+const { 
+  data: sponsors, 
+  total: sponsorTotal, 
+  loading: loadingSponsors,
+  fetch: fetchSponsors 
+} = useTableFetch<SponsorRecord>(
+  (params) => request.get('/admin/sponsors', { params })
+)
 
 const sponsorDialogVisible = ref(false)
 const methodDialogVisible = ref(false)
@@ -204,6 +219,10 @@ const methodForm = ref<SponsorMethod>({
   enabled: true,
 })
 
+const loadingMethods = ref(false)
+const savingMethod = ref(false)
+const savingSponsor = ref(false)
+
 const fetchMethods = async () => {
   loadingMethods.value = true
   try {
@@ -214,20 +233,6 @@ const fetchMethods = async () => {
     ElMessage.error(error?.message || '获取赞助方式失败')
   } finally {
     loadingMethods.value = false
-  }
-}
-
-const fetchSponsors = async () => {
-  loadingSponsors.value = true
-  try {
-    const res = await request.get('/admin/sponsors', { params: sponsorQuery.value })
-    const payload = res as any
-    sponsors.value = Array.isArray(payload?.data) ? payload.data : []
-    sponsorTotal.value = payload?.meta?.total || 0
-  } catch (error: any) {
-    ElMessage.error(error?.message || '获取赞助记录失败')
-  } finally {
-    loadingSponsors.value = false
   }
 }
 
@@ -262,7 +267,7 @@ const saveSponsor = async () => {
     }
     ElMessage.success('保存成功')
     sponsorDialogVisible.value = false
-    fetchSponsors()
+    await fetchSponsors(filter.toParams())
   } catch (error: any) {
     ElMessage.error(error?.message || '保存失败')
   } finally {
@@ -275,7 +280,7 @@ const deleteSponsor = async (row: SponsorRecord) => {
     await ElMessageBox.confirm(`确定删除赞助记录「${row.name}」吗？`, '提示', { type: 'warning' })
     await request.delete(`/admin/sponsors/${row._id}`)
     ElMessage.success('删除成功')
-    fetchSponsors()
+    await fetchSponsors(filter.toParams())
   } catch (error) {
     if (error !== 'cancel') {
       ElMessage.error('删除失败')
@@ -307,7 +312,7 @@ const saveMethod = async () => {
     }
     ElMessage.success('保存成功')
     methodDialogVisible.value = false
-    fetchMethods()
+    await fetchMethods()
   } catch (error: any) {
     ElMessage.error(error?.message || '保存失败')
   } finally {
@@ -320,7 +325,7 @@ const deleteMethod = async (row: SponsorMethod) => {
     await ElMessageBox.confirm(`确定删除方式「${row.name}」吗？`, '提示', { type: 'warning' })
     await request.delete(`/admin/sponsor-methods/${row._id}`)
     ElMessage.success('删除成功')
-    fetchMethods()
+    await fetchMethods()
   } catch (error) {
     if (error !== 'cancel') {
       ElMessage.error('删除失败')
@@ -342,6 +347,6 @@ const formatAmount = (value?: number) => {
 
 onMounted(() => {
   fetchMethods()
-  fetchSponsors()
+  fetchSponsors(filter.toParams())
 })
 </script>
