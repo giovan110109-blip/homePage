@@ -145,6 +145,7 @@ import {
   User,
   ChevronLeft,
   ChevronRight,
+  Link,
 } from "lucide-vue-next";
 import { ref, computed } from "vue";
 import DashboardPage from "./components/DashboardPage.vue";
@@ -153,6 +154,7 @@ import MessagesPage from "./components/MessagesPage.vue";
 import AccessLogsPage from "./components/AccessLogsPage.vue";
 import SettingsPage from "./components/SettingsPage.vue";
 import SponsorsPage from "./components/SponsorsPage.vue";
+import FriendLinksPage from "./components/FriendLinksPage.vue";
 import { useAuthStore } from "@/stores/auth";
 import { useRouter } from "vue-router";
 
@@ -166,6 +168,7 @@ const menuItems = [
   { id: "dashboard", label: "仪表板", icon: LayoutDashboard },
   { id: "users", label: "用户管理", icon: Users },
   { id: "messages", label: "留言管理", icon: MessageSquare },
+  { id: "friendLinks", label: "友链管理", icon: Link },
   { id: "accessLogs", label: "访问记录", icon: Activity },
   { id: "sponsors", label: "赞助管理", icon: Heart },
   { id: "settings", label: "系统设置", icon: Settings },
@@ -176,6 +179,7 @@ const componentMap: Record<string, any> = {
   dashboard: DashboardPage,
   users: UsersPage,
   messages: MessagesPage,
+  friendLinks: FriendLinksPage,
   accessLogs: AccessLogsPage,
   sponsors: SponsorsPage,
   settings: SettingsPage,

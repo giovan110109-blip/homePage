@@ -14,8 +14,19 @@ COPY packages ./packages
 # 安装所有依赖（包括 workspace 依赖）
 RUN pnpm install --frozen-lockfile
 
-# 复制源代码
+# 复制源代码和环境变量文件
 COPY . .
+
+# 接收构建参数并设置为环境变量供 Vite 使用
+ARG VITE_API_BASE_URL
+ARG VITE_SITE_TITLE
+ARG VITE_SITE_DESCRIPTION
+ARG VITE_API_BASE_URL_LOCAL
+
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+ENV VITE_SITE_TITLE=$VITE_SITE_TITLE
+ENV VITE_SITE_DESCRIPTION=$VITE_SITE_DESCRIPTION
+ENV VITE_API_BASE_URL_LOCAL=$VITE_API_BASE_URL_LOCAL
 
 # 构建生产版本
 RUN pnpm build

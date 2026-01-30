@@ -35,6 +35,14 @@ const routes: RouteRecordRaw[] = [
       title: '留言板'
     }
   },
+  {
+    path: '/friends',
+    name: 'friends',
+    component: () => import('@/pages/FriendLinksView.vue'),
+    meta: {
+      title: '友情链接'
+    }
+  },
     {
     path: '/admin',
     name: 'admin',

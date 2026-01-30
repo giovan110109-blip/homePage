@@ -15,7 +15,8 @@ const motionDeps = ["gsap"];
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
-  const apiTarget = env.VITE_API_BASE_URL || "http://localhost:3000";
+  // 开发环境优先使用本地 API，生产环境使用线上 API
+  const apiTarget = env.VITE_API_BASE_URL_LOCAL || env.VITE_API_BASE_URL || "http://localhost:8998";
 
   return {
     build: {

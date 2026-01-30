@@ -6,6 +6,11 @@ services:
     build:
       context: ./client
       dockerfile: Dockerfile
+      args:
+        - VITE_API_BASE_URL=${VITE_API_BASE_URL}
+        - VITE_SITE_TITLE=${VITE_SITE_TITLE}
+        - VITE_SITE_DESCRIPTION=${VITE_SITE_DESCRIPTION}
+        - VITE_API_BASE_URL_LOCAL=${VITE_API_BASE_URL_LOCAL}
     container_name: homepage-client
     ports:
       - "40000:80"
@@ -28,9 +33,9 @@ services:
       - homepage-network
     environment:
       - NODE_ENV=production
-      - PORT=8998
+      - PORT=${PORT:-8998}
     env_file:
-      - ./server/.env
+      - .env
     volumes:
       # 持久化上传文件
       - ./server/uploads:/app/uploads

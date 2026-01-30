@@ -94,6 +94,7 @@ const navigation = [
    { name: '关于我', href: '/about' },
    { name: '我的网站', href: '/sites' },
    { name: '留言板', href: '/note' },
+   { name: '友情链接', href: '/friends' },
   { name: '赞助支持', href: '/sponsor' }
 ]
 
