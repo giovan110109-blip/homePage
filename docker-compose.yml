@@ -34,11 +34,14 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=${PORT:-8998}
+      # 在 Docker 容器中，使用容器内部的挂载路径
+      - UPLOAD_DIR=/app/uploads
+      - UPLOAD_BASE_URL=/uploads
     env_file:
       - .env
     volumes:
-      # 持久化上传文件
-      - ./server/uploads:/app/uploads
+      # 将外接硬盘挂载到容器中，使容器可以访问外接硬盘的 uploads 目录
+      - /Volumes/大金刚/uploads:/app/uploads
     # depends_on:
     #   - mongodb
 

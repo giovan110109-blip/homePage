@@ -32,15 +32,8 @@ class UploadController extends BaseController {
             }
 
             let saved = await this.uploader.saveStream(stream, file.name || file.filename || 'unknown');
-            // 确保返回的 url 为绝对地址，方便前端直接显示
-            try {
-                const origin = ctx.origin || `${ctx.protocol}://${ctx.host}`;
-                if (saved && saved.url && saved.url.startsWith('/')) {
-                    saved = { ...saved, url: origin + saved.url };
-                }
-            } catch (e) {
-                // ignore
-            }
+            // 只返回相对路径，让前端根据自己的 API 基础地址来构建完整 URL
+            // 这样无论部署在哪里（localhost、生产服务器、Docker 等）都能正确工作
             this.created(ctx, saved, '上传成功');
         } catch (err) {
             this.fail(ctx, err);
