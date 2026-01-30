@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  # 前端服务
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: homepage-client
+    ports:
+      - "40000:80"
+    restart: unless-stopped
+    networks:
+      - homepage-network
+    # depends_on:
+    #   - server
+
+  # 后端服务
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: homepage-server
+    ports:
+      - "8998:8998"
+    restart: unless-stopped
+    networks:
+      - homepage-network
+    environment:
+      - NODE_ENV=production
+      - PORT=8998
+    env_file:
+      - ./server/.env
+    volumes:
+      # 持久化上传文件
+      - ./server/uploads:/app/uploads
+    # depends_on:
+    #   - mongodb
+
+  # MongoDB 数据库
+  # mongodb:
+  #   image: mongo:7-jammy
+  #   container_name: homepage-mongodb
+  #   ports:
+  #     - "27017:27017"
+  #   restart: unless-stopped
+  #   networks:
+  #     - homepage-network
+  #   environment:
+  #     - MONGO_INITDB_ROOT_USERNAME=${MONGO_USERNAME:-admin}
+  #     - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD:-password}
+  #   volumes:
+  #     # 持久化数据库数据
+  #     - mongodb-data:/data/db
+  #     - mongodb-config:/data/configdb
+
+networks:
+  homepage-network:
+    driver: bridge
+
+volumes:
+  mongodb-data:
+    driver: local
+  mongodb-config:
+    driver: local
