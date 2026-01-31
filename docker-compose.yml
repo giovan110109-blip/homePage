@@ -23,8 +23,8 @@ services:
   # 后端服务
   server:
     build:
-      context: ./server
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: server/Dockerfile
     container_name: homepage-server
     ports:
       - "8998:8998"

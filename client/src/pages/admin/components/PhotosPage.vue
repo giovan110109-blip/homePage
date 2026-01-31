@@ -293,7 +293,7 @@ const startTaskPolling = () => {
       const taskMap = new Map(tasks.map((t: any) => [t.taskId, t]))
 
       for (const uploadFile of pending) {
-        const task = taskMap.get(uploadFile.taskId)
+        const task = taskMap.get(uploadFile.taskId) as any
         if (!task) continue
 
         const { status, stage, progress, error } = task

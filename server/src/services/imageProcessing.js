@@ -1,10 +1,25 @@
 const sharp = require('sharp')
-const thumbhash = require('thumbhash')
 const exiftool = require('exiftool-vendored').exiftool
-const { fileTypeFromBuffer } = require('file-type')
 const heicConvert = require('heic-convert')
 const path = require('path')
 const fs = require('fs').promises
+
+// ESM 依赖使用动态导入
+let fileTypeModule = null
+const getFileType = async () => {
+  if (!fileTypeModule) {
+    fileTypeModule = await import('file-type')
+  }
+  return fileTypeModule
+}
+
+let thumbhashModule = null
+const getThumbhash = async () => {
+  if (!thumbhashModule) {
+    thumbhashModule = await import('thumbhash')
+  }
+  return thumbhashModule
+}
 
 /**
  * 图片处理服务
@@ -15,6 +30,7 @@ class ImageProcessingService {
    * 检测文件类型
    */
   async detectFileType(buffer) {
+    const { fileTypeFromBuffer } = await getFileType()
     const type = await fileTypeFromBuffer(buffer)
     return type
   }
@@ -187,8 +203,9 @@ class ImageProcessingService {
    */
   async generateThumbHash(buffer) {
     try {
-      const encode = typeof thumbhash.rgbaToThumbHash === 'function'
-        ? thumbhash.rgbaToThumbHash
+      const th = await getThumbhash()
+      const encode = typeof th.rgbaToThumbHash === 'function'
+        ? th.rgbaToThumbHash
         : null
       if (!encode) {
         throw new Error('thumbhash.rgbaToThumbHash 不可用')

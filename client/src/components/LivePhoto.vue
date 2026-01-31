@@ -81,8 +81,7 @@
         stroke-width="2"
         stroke-linecap="round"
         stroke-linejoin="round"
-        class="icon icon-tabler icons-tabler-outline icon-tabler-live-photo animate-spin transition-transform duration-300"
-        :style="{ transform: `scale(${isPlaying ? 1.06 : 1})` }"
+        class="icon icon-tabler icons-tabler-outline icon-tabler-live-photo livephoto-spin transition-transform duration-300"
       >
         <path stroke="none" d="M0 0h24v24H0z" fill="none" />
         <path d="M11 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
@@ -114,7 +113,6 @@
         stroke-linecap="round"
         stroke-linejoin="round"
         class="icon icon-tabler icons-tabler-outline icon-tabler-live-photo transition-transform duration-300"
-        :style="{ transform: `scale(${isPlaying ? 1.06 : 1})` }"
       >
         <path stroke="none" d="M0 0h24v24H0z" fill="none" />
         <path d="M11 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
@@ -183,6 +181,8 @@ const isMobile = computed(() => {
 
 // 视频元数据加载完成
 const onVideoCanPlay = () => {
+  console.log("视频加载完了？");
+
   videoCanPlay.value = true;
 };
 
@@ -229,7 +229,6 @@ const handleMouseEnter = async () => {
 
 const handleMouseLeave = (event: MouseEvent) => {
   if (isMobile.value) return;
-  
 
   const container = event.currentTarget as HTMLElement;
   const rect = container.getBoundingClientRect();
@@ -407,6 +406,22 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+@keyframes livephoto-spin {
+  to {
+    transform: rotate(360deg) scale(var(--livephoto-scale, 1));
+  }
+}
+
+.livephoto-spin {
+  animation: livephoto-spin 1s linear infinite;
+  transform-origin: center;
+}
+
+.livephoto-scale {
+  transform: scale(var(--livephoto-scale, 1));
+  transform-origin: center;
+}
+
 video::-webkit-media-controls,
 video::-webkit-media-controls-enclosure,
 video::-webkit-media-controls-panel,
