@@ -34,9 +34,15 @@ const requestInfo = require('./middleware/requestInfo');
 const rateLimitTimestamp = require('./middleware/rateLimitTimestamp');
 const adminAuth = require('./middleware/adminAuth');
 const accessLogger = require('./middleware/accessLogger');
+const uploadQueue = require('./services/uploadQueueManager');
 
 // 连接数据库
 connectDB();
+
+// 启动上传队列管理器
+uploadQueue.start().catch(err => {
+  console.error('Failed to start upload queue:', err);
+});
 
 const app = new Koa();
 const port = process.env.PORT || 3000;
@@ -62,6 +68,10 @@ app.use(cors({
 const uploadDir = process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads');
 const uploadBaseUrl = process.env.UPLOAD_BASE_URL || '/uploads';
 app.use(mount(uploadBaseUrl, koaStatic(uploadDir)));
+
+// 对外暴露 WebP 目录
+const webpDir = process.env.UPLOAD_WEBP_DIR || path.join(uploadDir, 'photos-webp');
+app.use(mount('/uploads/photos-webp', koaStatic(webpDir)));
 
 // 全局中间件：日志、请求信息、错误处理
 app.use(logger);

@@ -58,13 +58,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted } from 'vue'
+import { computed, ref, onUnmounted } from 'vue'
 import { useSiteInfoStore } from '@/stores/siteInfo'
 
 const siteInfoStore = useSiteInfoStore()
-onMounted(() => {
-  siteInfoStore.fetchSiteInfo()
-})
 
 // 十年之约开始日期
 const startDate = new Date('2024-09-06')

@@ -50,6 +50,7 @@ class AdminAuthController extends BaseController {
         _id: admin._id,
         username: admin.username, 
         nickname: admin.nickname,
+        avatar: admin.avatar,
         role: admin.role 
       };
       const token = issueToken(userInfo);

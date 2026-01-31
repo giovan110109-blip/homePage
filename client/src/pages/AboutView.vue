@@ -227,10 +227,6 @@ const handleAboutCardMouseLeave = (index: number) => {
 
 const siteInfoStore = useSiteInfoStore()
 
-onMounted(() => {
-  siteInfoStore.fetchSiteInfo()
-})
-
 const experiences = [
   {
     position: '重构个人主页开发中',

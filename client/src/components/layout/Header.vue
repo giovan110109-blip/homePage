@@ -78,15 +78,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
 import { useSiteInfoStore } from '@/stores/siteInfo'
 import ThemeToggle from '@/components/ui/ThemeToggle.vue'
 
 const siteInfoStore = useSiteInfoStore()
 
-onMounted(() => {
-  siteInfoStore.fetchSiteInfo()
-})
 const mobileMenuOpen = ref(false)
 
 const navigation = [
@@ -96,7 +93,9 @@ const navigation = [
    { name: '留言板', href: '/note' },
    { name: '友情链接', href: '/friends' },
   { name: '赞助支持', href: '/sponsor' },
+  { name: '画廊', href: '/gallery' },
   { name: '文章列表', href: '/articles' }
+  
 ]
 
 // 移动端菜单控制

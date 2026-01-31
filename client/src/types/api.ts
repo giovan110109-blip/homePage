@@ -3,6 +3,67 @@
  * Contains request and response types for API operations
  */
 
+// ==================== 照片相关类型 ====================
+
+export interface Photo {
+  _id: string
+  title: string
+  description?: string
+  originalUrl: string
+  thumbnailUrl?: string
+  thumbnailHash?: string
+  thumbHash?: string
+  width: number
+  height: number
+  aspectRatio?: number
+  dateTaken: string
+  tags?: string[]
+  camera?: {
+    make?: string
+    model?: string
+    lens?: string
+    focalLength?: string
+    aperture?: string
+    shutterSpeed?: string
+    iso?: number
+    flash?: string
+    exposureProgram?: string
+  }
+  exif?: any
+  location?: {
+    latitude: number
+    longitude: number
+    altitude?: number
+    coordinates?: [number, number]
+  }
+  geoinfo?: {
+    country?: string
+    countryCode?: string
+    region?: string
+    city?: string
+    locationName?: string
+    formatted?: string
+  }
+  isLive?: boolean
+  videoUrl?: string
+  videoKey?: string
+  status?: 'processing' | 'completed' | 'failed'
+  visibility?: 'public' | 'unlisted' | 'private'
+  views?: number
+  createdAt?: string
+  updatedAt?: string
+}
+
+export interface PhotoListResponse {
+  photos: Photo[]
+  pagination: {
+    page: number
+    limit: number
+    total: number
+    totalPages: number
+  }
+}
+
 // ==================== 友情链接相关类型 ====================
 
 export interface FriendLink {

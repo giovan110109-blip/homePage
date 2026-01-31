@@ -99,10 +99,6 @@ const footerRef = ref<HTMLElement>()
 
 const siteInfoStore = useSiteInfoStore()
 
-onMounted(() => {
-  siteInfoStore.fetchSiteInfo()
-})
-
 const currentYear = computed(() => new Date().getFullYear())
 
 const navigation = [

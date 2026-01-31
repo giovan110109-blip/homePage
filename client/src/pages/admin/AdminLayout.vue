@@ -1,7 +1,11 @@
 <template>
-  <el-container class="h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 transition-colors duration-300">
+  <el-container
+    class="h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 transition-colors duration-300"
+  >
     <!-- 顶部导航栏：Glassmorphism 风格 -->
-    <el-header class="sticky top-0 z-40 flex items-center justify-between h-16 px-4 lg:px-6 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-700/50 shadow-sm">
+    <el-header
+      class="sticky top-0 z-40 flex items-center justify-between h-16 px-4 lg:px-6 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-700/50 shadow-sm"
+    >
       <!-- 左侧：Logo + Title -->
       <div class="flex items-center gap-3 min-w-0 flex-1">
         <!-- 侧边栏折叠按钮（PC 端） -->
@@ -10,12 +14,17 @@
           class="hidden lg:flex items-center justify-center w-9 h-9 rounded-lg hover:bg-indigo-100 dark:hover:bg-slate-800 transition-colors duration-200 cursor-pointer text-slate-700 dark:text-slate-300"
           aria-label="切换侧边栏"
         >
-          <component :is="sidebarCollapsed ? ChevronRight : ChevronLeft" class="w-5 h-5" />
+          <component
+            :is="sidebarCollapsed ? ChevronRight : ChevronLeft"
+            class="w-5 h-5"
+          />
         </button>
 
         <!-- Logo 和标题 -->
         <div class="hidden sm:block">
-          <div class="text-base lg:text-lg font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+          <div
+            class="text-base lg:text-lg font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent"
+          >
             Dashboard
           </div>
           <div class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
@@ -36,14 +45,22 @@
       <!-- 右侧：用户菜单和操作 -->
       <div class="flex items-center gap-3">
         <!-- 用户名显示（大屏） -->
-        <span class="hidden sm:inline text-sm text-slate-600 dark:text-slate-400">
+        <span
+          class="hidden sm:inline text-sm text-slate-600 dark:text-slate-400"
+        >
           {{ authStore.user?.nickname || "admin" }}
         </span>
 
         <!-- 头像下拉菜单 -->
-        <el-dropdown trigger="click" placement="bottom-end" @command="handleCommand">
-          <div class="flex items-center justify-center w-9 h-9 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-500 cursor-pointer hover:shadow-lg transition-shadow duration-200">
-            <User class="w-5 h-5 text-white" />
+        <el-dropdown
+          trigger="click"
+          placement="bottom-end"
+          @command="handleCommand"
+        >
+          <div
+            class="flex items-center justify-center w-9 h-9 rounded-lg cursor-pointer hover:shadow-lg transition-shadow duration-200 "
+          >
+            <img class="w-9 h-9  rounded-lg " :src="authStore.user?.avatar" />
           </div>
           <template #dropdown>
             <el-dropdown-menu>
@@ -102,7 +119,9 @@
       </el-aside>
 
       <!-- 主内容区 -->
-      <el-main class="flex flex-col p-4 sm:p-6 lg:p-8 overflow-y-auto bg-transparent min-h-0">
+      <el-main
+        class="flex flex-col p-4 sm:p-6 lg:p-8 overflow-y-auto bg-transparent min-h-0"
+      >
         <div class="w-full flex-1 flex flex-col h-full">
           <KeepAlive>
             <component :is="currentComponent" />
@@ -112,7 +131,9 @@
     </el-container>
 
     <!-- 底部栏：简洁设计 -->
-    <el-footer class="h-12 flex items-center justify-center text-xs text-slate-500 dark:text-slate-400 bg-white/50 dark:bg-slate-900/50 border-t border-slate-200/50 dark:border-slate-700/50 backdrop-blur-xl">
+    <el-footer
+      class="h-12 flex items-center justify-center text-xs text-slate-500 dark:text-slate-400 bg-white/50 dark:bg-slate-900/50 border-t border-slate-200/50 dark:border-slate-700/50 backdrop-blur-xl"
+    >
       <span>© 2026 Admin Dashboard. All rights reserved.</span>
     </el-footer>
 
@@ -144,7 +165,10 @@
     </el-drawer>
 
     <!-- 个人信息弹窗 -->
-    <ProfileDialog v-model="profileDialogVisible" @updated="handleProfileUpdated" />
+    <ProfileDialog
+      v-model="profileDialogVisible"
+      @updated="handleProfileUpdated"
+    />
   </el-container>
 </template>
 
@@ -164,6 +188,7 @@ import {
   FileText,
   Home,
   LogOut,
+  Image,
 } from "lucide-vue-next";
 import { ref, computed, onMounted, watch } from "vue";
 import DashboardPage from "./components/DashboardPage.vue";
@@ -174,9 +199,11 @@ import SettingsPage from "./components/SettingsPage.vue";
 import SponsorsPage from "./components/SponsorsPage.vue";
 import FriendLinksPage from "./components/FriendLinksPage.vue";
 import ArticlesPage from "./components/ArticlesPage.vue";
+import PhotosPage from "./components/PhotosPage.vue";
 import ProfileDialog from "./components/ProfileDialog.vue";
 import { useAuthStore } from "@/stores/auth";
 import { useRouter } from "vue-router";
+import { getAssetURL } from "@/utils";
 
 const sidebarCollapsed = ref(false);
 const ACTIVE_MENU_KEY = "admin:active-menu";
@@ -190,6 +217,7 @@ const menuItems = [
   { id: "users", label: "用户管理", icon: Users },
   { id: "messages", label: "留言管理", icon: MessageSquare },
   { id: "articles", label: "文章管理", icon: FileText },
+  { id: "photos", label: "相册管理", icon: Image },
   { id: "friendLinks", label: "友链管理", icon: Link },
   { id: "accessLogs", label: "访问记录", icon: Activity },
   { id: "sponsors", label: "赞助管理", icon: Heart },
@@ -202,6 +230,7 @@ const componentMap: Record<string, any> = {
   users: UsersPage,
   messages: MessagesPage,
   articles: ArticlesPage,
+  photos: PhotosPage,
   friendLinks: FriendLinksPage,
   accessLogs: AccessLogsPage,
   sponsors: SponsorsPage,
@@ -319,7 +348,7 @@ watch(activeMenu, (value) => {
   background-color: #f8fafc;
   border: 1px solid rgba(15, 23, 42, 0.1);
   border-radius: 12px;
-  box-shadow: 
+  box-shadow:
     0 20px 25px -5px rgba(0, 0, 0, 0.1),
     0 10px 10px -5px rgba(0, 0, 0, 0.04);
 }

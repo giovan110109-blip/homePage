@@ -59,6 +59,22 @@ const routes: RouteRecordRaw[] = [
       title: '文章详情'
     }
   },
+  {
+    path: '/gallery',
+    name: 'gallery',
+    component: () => import('@/pages/GalleryView.vue'),
+    meta: {
+      title: '相册'
+    }
+  },
+  {
+    path: '/map',
+    name: 'map',
+    component: () => import('@/pages/MapView.vue'),
+    meta: {
+      title: '地图'
+    }
+  },
     {
     path: '/admin',
     name: 'admin',

@@ -12,4 +12,4 @@ export { showConfetti } from './dom'
 export { highlightJSON } from './format'
 
 // Re-export environment utilities
-export { isLocalEnvironment, getBaseURL, getAssetURL } from './env'
+export { isLocalEnvironment, getBaseURL, getAssetURL, getUploadURL } from './env'

@@ -150,10 +150,6 @@ const handleGlobalMouseLeave = () => {
 
 const siteInfoStore = useSiteInfoStore();
 
-onMounted(() => {
-  siteInfoStore.fetchSiteInfo();
-});
-
 const scrollToSection = (sectionId: string) => {
   const element = document.getElementById(sectionId);
   if (element) {

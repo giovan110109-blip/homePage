@@ -34,7 +34,8 @@ function registerRoutes(app) {
         'adminFriendLinks.js',
         'articles.js',
         'adminArticles.js',
-        'profile.js'
+        'profile.js',
+        'photos.js'
     ]);
 
     // 过滤出路由文件
