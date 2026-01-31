@@ -31,7 +31,10 @@ function registerRoutes(app) {
         'adminAccessLogs.js',
         'accessLogs.js',
         'friendLink.js',
-        'adminFriendLinks.js'
+        'adminFriendLinks.js',
+        'articles.js',
+        'adminArticles.js',
+        'profile.js'
     ]);
 
     // 过滤出路由文件

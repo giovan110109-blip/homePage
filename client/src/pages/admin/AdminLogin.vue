@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-100 via-blue-50 to-slate-50 px-6 py-12 dark:bg-gradient-to-br dark:from-blue-950/35 dark:via-slate-950 dark:to-slate-950">
+  <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 px-6 py-12">
     <div class="w-full max-w-4xl grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 items-stretch">
       <!-- 左侧英雄区 -->
       <div class="relative p-8 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-700 text-white overflow-hidden shadow-lg dark:from-blue-900 dark:to-blue-950">

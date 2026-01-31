@@ -11,15 +11,19 @@ export default {
             [
                 'feat', // 新增功能
                 'fix', // 修复缺陷
+                'hotfix', // 紧急修复
                 'docs', // 文档变更
                 'style', // 代码格式（不影响功能，例如空格、分号等格式修正）
                 'refactor', // 代码重构（不包括 bug 修复、功能新增）
                 'perf', // 性能优化
                 'test', // 添加疏漏测试或已有测试改动
                 'build', // 构建流程、外部依赖变更（如升级 npm 包、修改 webpack 配置等）
+                'deps', // 依赖更新
                 'ci', // 修改 CI 配置、脚本
+                'release', // 发布版本
                 'revert', // 回滚 commit
-                'chore' // 对构建过程或辅助工具和库的更改（不影响源文件、测试用例）
+                'chore', // 对构建过程或辅助工具和库的更改（不影响源文件、测试用例）
+                'wip' // 工作进行中
             ]
         ],
         'subject-case': [0] // subject大小写不做校验
@@ -43,15 +47,19 @@ export default {
         types: [
             { value: "feat", name: "特性:     ✨  新增功能", emoji: ":sparkles:" },
             { value: "fix", name: "修复:     🐛  修复缺陷", emoji: ":bug:" },
+            { value: "hotfix", name: "紧急修复:  🔥  紧急修复生产环境缺陷", emoji: ":fire:" },
             { value: "docs", name: "文档:     📝  文档变更", emoji: ":memo:" },
-            { value: "style", name: "格式:     🌈  代码格式（不影响功能，例如空格、分号等格式修正）", emoji: ":lipstick:" },
+            { value: "style", name: "样式:     🎨  样式表修改（CSS/SCSS/Less 等）或代码格式修正", emoji: ":art:" },
             { value: "refactor", name: "重构:     🔄  代码重构（不包括 bug 修复、功能新增）", emoji: ":recycle:" },
             { value: "perf", name: "性能:     🚀  性能优化", emoji: ":zap:" },
             { value: "test", name: "测试:     🧪  添加疏漏测试或已有测试改动", emoji: ":white_check_mark:" },
             { value: "build", name: "构建:     📦️  构建流程、外部依赖变更（如升级 npm 包、修改 vite 配置等）", emoji: ":package:" },
+            { value: "deps", name: "依赖:     ⬆️  更新依赖版本", emoji: ":arrow_up:" },
             { value: "ci", name: "集成:     ⚙️  修改 CI 配置、脚本", emoji: ":ferris_wheel:" },
+            { value: "release", name: "发布:     🎉  发布版本", emoji: ":tada:" },
             { value: "revert", name: "回退:     ↩️  回滚 commit", emoji: ":rewind:" },
             { value: "chore", name: "其他:     🛠️  对构建过程或辅助工具和库的更改（不影响源文件、测试用例）", emoji: ":hammer:" },
+            { value: "wip", name: "进行中:   🚧  工作进行中（不建议提交）", emoji: ":construction:" },
         ],
         useEmoji: true, // 是否开启 commit message 带有 Emoji 字符。
         emojiAlign: 'center', // 设置 Emoji 字符 的 位于头部位置

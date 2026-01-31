@@ -43,6 +43,22 @@ const routes: RouteRecordRaw[] = [
       title: '友情链接'
     }
   },
+  {
+    path: '/articles',
+    name: 'articles',
+    component: () => import('@/pages/ArticlesView.vue'),
+    meta: {
+      title: '文章列表'
+    }
+  },
+  {
+    path: '/articles/:id',
+    name: 'article-detail',
+    component: () => import('@/pages/ArticleDetailView.vue'),
+    meta: {
+      title: '文章详情'
+    }
+  },
     {
     path: '/admin',
     name: 'admin',

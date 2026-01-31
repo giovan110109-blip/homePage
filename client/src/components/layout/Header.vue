@@ -95,7 +95,8 @@ const navigation = [
    { name: '我的网站', href: '/sites' },
    { name: '留言板', href: '/note' },
    { name: '友情链接', href: '/friends' },
-  { name: '赞助支持', href: '/sponsor' }
+  { name: '赞助支持', href: '/sponsor' },
+  { name: '文章列表', href: '/articles' }
 ]
 
 // 移动端菜单控制

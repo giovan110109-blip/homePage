@@ -94,7 +94,19 @@ const moreEmojis: Emoji[] = [
 const props = defineProps({
   messageId: {
     type: [String, Number],
-    required: true
+    required: false
+  },
+  targetId: {
+    type: [String, Number],
+    required: false
+  },
+  targetType: {
+    type: String,
+    default: 'message'
+  },
+  singleUse: {
+    type: Boolean,
+    default: false
   },
   reactions: {
     type: Object as () => Record<string, number>,
@@ -122,6 +134,7 @@ const toggleExpand = () => {
   expandedPicker.value = !expandedPicker.value
 }
 
+const resolvedTargetId = computed(() => props.targetId ?? props.messageId)
 const hasReactions = computed(() => Object.keys(reactionCounts.value).length > 0)
 const totalReactions = computed(() => {
   return Object.values(reactionCounts.value).reduce((sum, count) => sum + count, 0)
@@ -135,25 +148,63 @@ const triggerTooltip = computed(() => {
   return reactions
 })
 
+const getStorageKey = (emojiId: string) => {
+  if (!resolvedTargetId.value) return ''
+  return `reaction_${props.targetType}_${resolvedTargetId.value}_${emojiId}`
+}
+
+const loadMyReactions = () => {
+  const set = new Set<string>()
+  const targetId = resolvedTargetId.value
+  if (!targetId) {
+    myReactions.value = set
+    return
+  }
+  const ids = [...emojis, ...moreEmojis].map(e => e.id)
+  ids.forEach((id) => {
+    const key = getStorageKey(id)
+    if (key && localStorage.getItem(key) === 'true') {
+      set.add(id)
+    }
+  })
+  myReactions.value = set
+}
+
+const getEndpoint = () => {
+  const targetId = resolvedTargetId.value
+  const base = props.targetType === 'article' ? 'articles' : 'messages'
+  return `/${base}/${targetId}/react`
+}
+
 const toggleReaction = async (emojiId: string) => {
   if (reacting.value) return
+  if (!resolvedTargetId.value) return
   reacting.value = true
   const isMine = myReactions.value.has(emojiId)
-  const action = isMine ? 'remove' : 'add'
+  if (props.singleUse && isMine) {
+    ElMessage.warning('已表态过该表情')
+    reacting.value = false
+    return
+  }
+  const action = props.singleUse ? 'add' : (isMine ? 'remove' : 'add')
   try {
-    const res = await request.post(`/messages/${props.messageId}/react`, { type: emojiId, action })
+    const res = await request.post(getEndpoint(), { type: emojiId, action })
     const counts = (res as any)?.data ?? res
     if (counts && typeof counts === 'object') {
       reactionCounts.value = sanitizeCounts(counts)
     }
     if (action === 'add') {
       myReactions.value.add(emojiId)
+      const key = getStorageKey(emojiId)
+      if (key) localStorage.setItem(key, 'true')
     } else {
       myReactions.value.delete(emojiId)
+      const key = getStorageKey(emojiId)
+      if (key) localStorage.removeItem(key)
     }
   } catch (error) {
     console.error('表态失败', error)
-    ElMessage.error('表态失败，请稍后重试')
+    ElMessage.error((error as any)?.response?.data?.message || '表态失败，请稍后重试')
   } finally {
     reacting.value = false
     showPicker.value = false
@@ -168,6 +219,10 @@ const getEmojiIcon = (emojiId: string): string => {
 watch(() => props.reactions, (val) => {
   reactionCounts.value = sanitizeCounts(val)
 }, { immediate: true, deep: true })
+
+watch(() => resolvedTargetId.value, () => {
+  loadMyReactions()
+}, { immediate: true })
 </script>
 
 <style scoped>

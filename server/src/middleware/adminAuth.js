@@ -19,11 +19,13 @@ module.exports = async (ctx, next) => {
   }
 
   const token = getToken(ctx);
-  if (!verifyToken(token)) {
+  const user = verifyToken(token);
+  if (!user) {
     ctx.status = HttpStatus.UNAUTHORIZED;
     ctx.body = Response.error('未登录或登录已过期', HttpStatus.UNAUTHORIZED);
     return;
   }
 
+  ctx.state.user = user;
   await next();
 };

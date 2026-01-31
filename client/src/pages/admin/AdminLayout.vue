@@ -37,7 +37,7 @@
       <div class="flex items-center gap-3">
         <!-- 用户名显示（大屏） -->
         <span class="hidden sm:inline text-sm text-slate-600 dark:text-slate-400">
-          {{ authStore.user?.username || "admin" }}
+          {{ authStore.user?.nickname || "admin" }}
         </span>
 
         <!-- 头像下拉菜单 -->
@@ -47,11 +47,23 @@
           </div>
           <template #dropdown>
             <el-dropdown-menu>
-              <el-dropdown-item command="home" icon="HomeFilled">
-                前往首页
+              <el-dropdown-item command="profile">
+                <div class="flex items-center gap-2">
+                  <User class="w-4 h-4" />
+                  <span>个人信息</span>
+                </div>
               </el-dropdown-item>
-              <el-dropdown-item divided command="logout" icon="LogOut">
-                退出登录
+              <el-dropdown-item command="home">
+                <div class="flex items-center gap-2">
+                  <Home class="w-4 h-4" />
+                  <span>前往首页</span>
+                </div>
+              </el-dropdown-item>
+              <el-dropdown-item divided command="logout">
+                <div class="flex items-center gap-2">
+                  <LogOut class="w-4 h-4" />
+                  <span>退出登录</span>
+                </div>
               </el-dropdown-item>
             </el-dropdown-menu>
           </template>
@@ -130,6 +142,9 @@
         </el-menu-item>
       </el-menu>
     </el-drawer>
+
+    <!-- 个人信息弹窗 -->
+    <ProfileDialog v-model="profileDialogVisible" @updated="handleProfileUpdated" />
   </el-container>
 </template>
 
@@ -146,6 +161,9 @@ import {
   ChevronLeft,
   ChevronRight,
   Link,
+  FileText,
+  Home,
+  LogOut,
 } from "lucide-vue-next";
 import { ref, computed, onMounted, watch } from "vue";
 import DashboardPage from "./components/DashboardPage.vue";
@@ -155,12 +173,15 @@ import AccessLogsPage from "./components/AccessLogsPage.vue";
 import SettingsPage from "./components/SettingsPage.vue";
 import SponsorsPage from "./components/SponsorsPage.vue";
 import FriendLinksPage from "./components/FriendLinksPage.vue";
+import ArticlesPage from "./components/ArticlesPage.vue";
+import ProfileDialog from "./components/ProfileDialog.vue";
 import { useAuthStore } from "@/stores/auth";
 import { useRouter } from "vue-router";
 
 const sidebarCollapsed = ref(false);
 const ACTIVE_MENU_KEY = "admin:active-menu";
 const mobileMenuOpen = ref(false);
+const profileDialogVisible = ref(false);
 const authStore = useAuthStore();
 const router = useRouter();
 
@@ -168,6 +189,7 @@ const menuItems = [
   { id: "dashboard", label: "仪表板", icon: LayoutDashboard },
   { id: "users", label: "用户管理", icon: Users },
   { id: "messages", label: "留言管理", icon: MessageSquare },
+  { id: "articles", label: "文章管理", icon: FileText },
   { id: "friendLinks", label: "友链管理", icon: Link },
   { id: "accessLogs", label: "访问记录", icon: Activity },
   { id: "sponsors", label: "赞助管理", icon: Heart },
@@ -179,6 +201,7 @@ const componentMap: Record<string, any> = {
   dashboard: DashboardPage,
   users: UsersPage,
   messages: MessagesPage,
+  articles: ArticlesPage,
   friendLinks: FriendLinksPage,
   accessLogs: AccessLogsPage,
   sponsors: SponsorsPage,
@@ -213,11 +236,18 @@ const handleMobileSelect = (value: string) => {
 };
 
 const handleCommand = (command: string) => {
-  if (command === "home") {
+  if (command === "profile") {
+    profileDialogVisible.value = true;
+  } else if (command === "home") {
     window.open("/", "_blank");
   } else if (command === "logout") {
     handleLogout();
   }
+};
+
+const handleProfileUpdated = () => {
+  // 个人信息更新后，可以刷新用户信息
+  // 如果需要更新显示的用户名等信息
 };
 
 const handleLogout = () => {

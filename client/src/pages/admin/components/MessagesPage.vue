@@ -151,28 +151,110 @@
       </div>
     </el-card>
 
-    <el-drawer v-model="drawerVisible" title="留言详情" size="40%">
-      <div class="flex flex-col gap-3 text-sm">
-        <div><strong>留言者：</strong>{{ currentRow?.name }}</div>
-        <div><strong>邮箱：</strong>{{ currentRow?.email }}</div>
-        <div><strong>网站：</strong>{{ currentRow?.website || "-" }}</div>
-        <div><strong>浏览器：</strong>{{ currentRow?.browser || "-" }}</div>
-        <div><strong>操作系统：</strong>{{ currentRow?.os || "-" }}</div>
-        <div>
-          <strong>设备类型：</strong>{{ currentRow?.deviceType || "-" }}
+    <el-dialog v-model="drawerVisible" title="留言详情" width="600px" :close-on-click-modal="false">
+      <div v-if="currentRow" class="message-detail-container space-y-6">
+        <!-- 用户信息卡片 -->
+        <div class="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-slate-800/50 dark:to-slate-700/50 rounded-lg p-5 border border-indigo-200/50 dark:border-slate-600/50">
+          <div class="flex items-center gap-4">
+            <div
+              v-if="currentRow.avatar"
+              class="avatar-html flex-shrink-0 w-14 h-14 rounded-full overflow-hidden border-2 border-indigo-200 dark:border-slate-500"
+              v-html="currentRow.avatar"
+            ></div>
+            <el-avatar v-else :size="56" class="flex-shrink-0 border-2 border-indigo-200 dark:border-slate-500">
+              {{ currentRow.name?.slice(0, 1) || "访" }}
+            </el-avatar>
+            <div class="flex-1 min-w-0">
+              <h3 class="text-lg font-bold text-slate-900 dark:text-white truncate">{{ currentRow.name }}</h3>
+              <p class="text-sm text-slate-600 dark:text-slate-300 truncate">{{ currentRow.email }}</p>
+              <div class="flex items-center gap-2 mt-2">
+                <el-tag
+                  :type="currentRow.status === 'approved' ? 'success' : 'warning'"
+                  size="small"
+                >
+                  {{ currentRow.status === "approved" ? "已审核" : "待审核" }}
+                </el-tag>
+                <span class="text-xs text-slate-500 dark:text-slate-400">
+                  {{ formatDate(currentRow.createdAt) }}
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
-        <div><strong>IP：</strong>{{ currentRow?.ip || "-" }}</div>
-        <div>
-          <strong>定位：</strong>{{ formatLocation(currentRow?.location) }}
+
+        <!-- 联系方式 -->
+        <div class="grid grid-cols-2 gap-4">
+          <div class="bg-white dark:bg-slate-800 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
+            <div class="text-xs text-slate-500 dark:text-slate-400 font-semibold mb-1">网站</div>
+            <div class="text-sm text-slate-900 dark:text-slate-100 break-all">
+              <a v-if="currentRow.website" :href="currentRow.website" target="_blank" rel="noopener noreferrer" class="text-indigo-600 dark:text-indigo-400 hover:underline">
+                {{ currentRow.website }}
+              </a>
+              <span v-else class="text-slate-400">-</span>
+            </div>
+          </div>
+          <div class="bg-white dark:bg-slate-800 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
+            <div class="text-xs text-slate-500 dark:text-slate-400 font-semibold mb-1">IP地址</div>
+            <div class="text-sm text-slate-900 dark:text-slate-100 font-mono">{{ currentRow.ip || "-" }}</div>
+          </div>
         </div>
-        <div>
-          <strong>时间：</strong>{{ formatDate(currentRow?.createdAt) }}
+
+        <!-- 设备信息 -->
+        <div class="bg-white dark:bg-slate-800 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
+          <div class="text-xs text-slate-500 dark:text-slate-400 font-semibold mb-3">设备信息</div>
+          <div class="grid grid-cols-2 gap-3">
+            <div class="flex items-center gap-2">
+              <Globe class="w-4 h-4 text-indigo-500 flex-shrink-0" />
+              <div>
+                <div class="text-xs text-slate-500 dark:text-slate-400">浏览器</div>
+                <div class="text-sm text-slate-900 dark:text-slate-100">{{ currentRow.browser || "-" }}</div>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <component :is="getOsIcon(currentRow.os)" class="w-4 h-4 text-indigo-500 flex-shrink-0" />
+              <div>
+                <div class="text-xs text-slate-500 dark:text-slate-400">操作系统</div>
+                <div class="text-sm text-slate-900 dark:text-slate-100">{{ currentRow.os || "-" }}</div>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <component :is="getDeviceIcon(currentRow.deviceType)" class="w-4 h-4 text-indigo-500 flex-shrink-0" />
+              <div>
+                <div class="text-xs text-slate-500 dark:text-slate-400">设备类型</div>
+                <div class="text-sm text-slate-900 dark:text-slate-100">{{ currentRow.deviceType || "-" }}</div>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <MapPin class="w-4 h-4 text-indigo-500 flex-shrink-0" />
+              <div>
+                <div class="text-xs text-slate-500 dark:text-slate-400">地址</div>
+                <div class="text-sm text-slate-900 dark:text-slate-100">{{ formatLocation(currentRow.location) }}</div>
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="detail-content">
-          <strong>内容：</strong>{{ currentRow?.content }}
+
+        <!-- 留言内容 -->
+        <div class="bg-white dark:bg-slate-800 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
+          <div class="text-xs text-slate-500 dark:text-slate-400 font-semibold mb-3">留言内容</div>
+          <p class="text-sm text-slate-900 dark:text-slate-100 leading-relaxed whitespace-pre-wrap break-words">{{ currentRow.content }}</p>
         </div>
       </div>
-    </el-drawer>
+
+      <template #footer>
+        <div class="flex justify-end gap-2">
+          <el-button @click="drawerVisible = false">关闭</el-button>
+          <el-button 
+            type="success"
+            :disabled="currentRow?.status === 'approved'"
+            @click="handleApproveFromDialog"
+          >
+            审核通过
+          </el-button>
+          <el-button type="danger" @click="handleDeleteFromDialog">删除</el-button>
+        </div>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -268,6 +350,36 @@ const handleDelete = async (row: MessageItem) => {
     });
     await request.delete(`/admin/messages/${row._id}`);
     ElMessage.success("已删除");
+    handleFetch();
+  } catch (error: any) {
+    if (error?.message) ElMessage.error(error.message);
+  }
+};
+
+const handleApproveFromDialog = async () => {
+  if (!currentRow.value) return;
+  try {
+    await ElMessageBox.confirm("确认审核通过该留言吗？", "提示", {
+      type: "warning",
+    });
+    await request.patch(`/admin/messages/${currentRow.value._id}/approve`);
+    ElMessage.success("已审核");
+    drawerVisible.value = false;
+    handleFetch();
+  } catch (error: any) {
+    if (error?.message) ElMessage.error(error.message);
+  }
+};
+
+const handleDeleteFromDialog = async () => {
+  if (!currentRow.value) return;
+  try {
+    await ElMessageBox.confirm("确认删除该留言吗？此操作不可恢复。", "提示", {
+      type: "warning",
+    });
+    await request.delete(`/admin/messages/${currentRow.value._id}`);
+    ElMessage.success("已删除");
+    drawerVisible.value = false;
     handleFetch();
   } catch (error: any) {
     if (error?.message) ElMessage.error(error.message);

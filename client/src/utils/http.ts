@@ -67,14 +67,35 @@ export function createHttpClient(): AxiosInstance {
     },
     (error) => {
       // 统一处理错误
-      // 可根据 error.response.status 做全局错误提示
       const status = error?.response?.status
       const url = error?.config?.url || ''
-      if (status === 401 && url.startsWith('/admin') && url !== '/admin/login') {
-        const authStore = useAuthStore()
-        authStore.logout()
-        router.replace({ name: 'admin-login', query: { redirect: '/admin' } })
+      
+      // 处理 401 未授权错误
+      if (status === 401) {
+        if (url.startsWith('/admin') && url !== '/admin/login') {
+          // 为管理后台的 401 错误设置友好的错误消息
+          error.message = '登录已过期，请重新登录'
+          const authStore = useAuthStore()
+          authStore.logout()
+          router.replace({ name: 'admin-login', query: { redirect: '/admin' } })
+        } else {
+          error.message = '未授权，请先登录'
+        }
       }
+      // 处理其他常见错误状态码
+      else if (status === 403) {
+        error.message = '无权访问'
+      }
+      else if (status === 404) {
+        error.message = '请求的资源不存在'
+      }
+      else if (status === 500) {
+        error.message = '服务器错误，请稍后重试'
+      }
+      else if (!status) {
+        error.message = '网络连接失败，请检查网络'
+      }
+      
       return Promise.reject(error)
     }
   )

@@ -46,8 +46,14 @@ class AdminAuthController extends BaseController {
       admin.lastLoginAt = new Date();
       await admin.save();
 
-      const token = issueToken();
-      this.ok(ctx, { token, user: { username: admin.username, role: admin.role } }, '登录成功');
+      const userInfo = { 
+        _id: admin._id,
+        username: admin.username, 
+        nickname: admin.nickname,
+        role: admin.role 
+      };
+      const token = issueToken(userInfo);
+      this.ok(ctx, { token, user: userInfo }, '登录成功');
     } catch (err) {
       this.fail(ctx, err, HttpStatus.UNAUTHORIZED);
     }
