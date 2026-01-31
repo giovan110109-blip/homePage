@@ -26,7 +26,7 @@ const marker = ref<maplibregl.Marker>()
 const initMap = () => {
   if (!mapContainer.value) return
 
-  // 使用 OpenStreetMap 瓦片
+  // 使用高德/天地图瓦片
   map.value = new maplibregl.Map({
     container: mapContainer.value,
     style: {
@@ -35,12 +35,13 @@ const initMap = () => {
         'osm': {
           type: 'raster',
           tiles: [
-            'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
-            'https://b.tile.openstreetmap.org/{z}/{x}/{y}.png',
-            'https://c.tile.openstreetmap.org/{z}/{x}/{y}.png'
+            'https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
+            'https://b.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
+            'https://c.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
+            'https://d.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png'
           ],
           tileSize: 256,
-          attribution: '© OpenStreetMap'
+          attribution: '© CartoDB © OpenStreetMap'
         }
       },
       layers: [
