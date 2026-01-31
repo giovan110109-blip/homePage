@@ -95,6 +95,9 @@ const photoSchema = new mongoose.Schema(
     // 统计信息
     views: { type: Number, default: 0 },
     
+    // 排序字段 - 用于前端稳定渲染
+    sort: { type: Number, default: 0, index: true },
+    
     // 处理信息
     processingError: String,
     processingStage: String,
@@ -115,5 +118,6 @@ photoSchema.index({ status: 1 })
 photoSchema.index({ visibility: 1 })
 photoSchema.index({ createdAt: -1 })
 photoSchema.index({ albums: 1 })
+photoSchema.index({ sort: -1 }) // 排序字段索引
 
 module.exports = mongoose.model('Photo', photoSchema)

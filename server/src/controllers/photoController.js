@@ -312,7 +312,7 @@ class PhotoController {
 
       const [photos, total] = await Promise.all([
         Photo.find(query)
-          .sort({ dateTaken: -1 })
+          .sort({ sort: -1 }) // 按 sort 字段降序排序，保持稳定布局
           .skip(skip)
           .limit(parseInt(limit))
           .select('-exif'), // 不返回完整EXIF

@@ -42,15 +42,17 @@
     <div class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
       <el-card shadow="hover">
         <div class="text-center">
-          <p class="text-gray-500 text-xs sm:text-sm mb-1 sm:mb-2">总任务数</p>
-          <p class="text-2xl sm:text-3xl font-bold text-blue-600">{{ taskStats.total }}</p>
+          <p class="text-gray-500 text-xs sm:text-sm mb-1 sm:mb-2">队列中</p>
+          <p class="text-2xl sm:text-3xl font-bold text-gray-600">{{ queuedCount }}</p>
+          <p class="text-xs text-gray-400 mt-1">等待上传</p>
         </div>
       </el-card>
-      
+
       <el-card shadow="hover">
         <div class="text-center">
-          <p class="text-gray-500 text-xs sm:text-sm mb-1 sm:mb-2">成功</p>
-          <p class="text-2xl sm:text-3xl font-bold text-green-600">{{ taskStats.completed }}</p>
+          <p class="text-gray-500 text-xs sm:text-sm mb-1 sm:mb-2">上传中</p>
+          <p class="text-2xl sm:text-3xl font-bold text-blue-600">{{ uploadingCount }}</p>
+          <p class="text-xs text-gray-400 mt-1">1个/次</p>
         </div>
       </el-card>
       
@@ -63,8 +65,12 @@
       
       <el-card shadow="hover">
         <div class="text-center">
-          <p class="text-gray-500 text-xs sm:text-sm mb-1 sm:mb-2">失败</p>
-          <p class="text-2xl sm:text-3xl font-bold text-red-600">{{ taskStats.failed }}</p>
+          <p class="text-gray-500 text-xs sm:text-sm mb-1 sm:mb-2">完成/失败</p>
+          <p class="text-2xl sm:text-3xl font-bold">
+            <span class="text-green-600">{{ taskStats.completed }}</span>
+            <span class="text-gray-400 mx-1">/</span>
+            <span class="text-red-600">{{ taskStats.failed }}</span>
+          </p>
         </div>
       </el-card>
     </div>
@@ -108,12 +114,27 @@
 
     <!-- 上传通知浮窗 -->
     <div class="fixed bottom-6 right-6 z-50 space-y-3 pointer-events-none max-w-sm">
-      <transition-group name="upload-notify" tag="div" class="space-y-3">
+      <!-- 队列提示 -->
+      <Transition
+        enterActiveClass="animate-fade-in"
+        leaveActiveClass="animate-fade-out"
+      >
+        <div
+          v-if="queuedCount > 0"
+          class="pointer-events-auto bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-800 p-3 text-center"
+        >
+          <p class="text-xs sm:text-sm font-medium text-blue-600 dark:text-blue-400">
+            📋 队列中还有 <strong>{{ queuedCount }}</strong> 个文件等待上传
+          </p>
+        </div>
+      </Transition>
+
+      <transition-group name="upload-list" tag="div" class="space-y-3">
         <div
           v-for="file in activeUploads"
           :key="file.id"
           :class="`upload-card ${file.status}`"
-          class="pointer-events-auto bg-white dark:bg-gray-800 rounded-lg shadow-xl border-l-4 p-4 transform transition-all duration-300"
+          class="pointer-events-auto bg-white dark:bg-gray-800 rounded-lg shadow-xl border-l-4 p-4 transform transition-all duration-500 ease-in-out"
         >
           <!-- 头部 -->
           <div class="flex items-start justify-between mb-3">
@@ -168,7 +189,7 @@ interface UploadingFile {
   name: string
   file: File
   taskId?: string
-  status: 'uploading' | 'processing' | 'completed' | 'error'
+  status: 'queued' | 'uploading' | 'processing' | 'completed' | 'error'
   progress: number
   stage?: string
   error?: string
@@ -179,6 +200,10 @@ const isDragging = ref(false)
 const uploadingFiles = ref<UploadingFile[]>([])
 const fileInput = ref<HTMLInputElement | null>(null)
 let taskPoller: number | null = null
+
+// 上传队列控制
+let isUploading = false
+let uploadQueue: UploadingFile[] = []
 
 const taskStats = ref({
   total: 0,
@@ -203,9 +228,24 @@ interface FailedTask {
 const failedTasks = ref<FailedTask[]>([])
 const failedLoading = ref(false)
 
-// 只显示活跃的上传任务
+// 最多显示的浮窗数量
+const MAX_VISIBLE_UPLOADS = 5
+
+// 按添加顺序显示上传任务(最多5个),保持稳定不跳动
 const activeUploads = computed(() => {
-  return uploadingFiles.value
+  // 按照原始顺序(添加时间)显示,不做复杂的优先级排序
+  // 这样任务完成后位置不会跳动,体验更稳定
+  return uploadingFiles.value.slice(0, MAX_VISIBLE_UPLOADS)
+})
+
+// 计算队列中的文件数
+const queuedCount = computed(() => {
+  return uploadingFiles.value.filter(f => f.status === 'queued').length
+})
+
+// 计算上传中的文件数
+const uploadingCount = computed(() => {
+  return uploadingFiles.value.filter(f => f.status === 'uploading').length
 })
 
 const handleFileSelect = (e: Event) => {
@@ -224,19 +264,55 @@ const handleDrop = (e: DragEvent) => {
   }
 }
 
+/**
+ * 将文件加入上传队列
+ */
 const uploadFiles = async (files: File[]) => {
+  // 将所有文件添加到队列中
   for (const file of files) {
     const uploadFile: UploadingFile = {
       id: `${Date.now()}_${Math.random()}`,
       name: file.name,
       file,
-      status: 'uploading',
+      status: 'queued',
       progress: 0,
       createdTime: Date.now()
     }
 
     uploadingFiles.value.push(uploadFile)
-    uploadSingleFile(uploadFile)
+    uploadQueue.push(uploadFile)
+  }
+
+  // 如果还没有开始上传，立即开始处理队列
+  if (!isUploading) {
+    processUploadQueue()
+  }
+}
+
+/**
+ * 处理上传队列，一次只上传一个文件
+ */
+const processUploadQueue = async () => {
+  if (isUploading) return
+  if (uploadQueue.length === 0) return
+
+  isUploading = true
+  const uploadFile = uploadQueue.shift()!
+
+  try {
+    uploadFile.status = 'uploading'
+    await uploadSingleFile(uploadFile)
+  } catch (error) {
+    // 错误已在 uploadSingleFile 中处理
+  } finally {
+    isUploading = false
+    // 继续处理队列中的下一个文件
+    if (uploadQueue.length > 0) {
+      // 使用 setTimeout 避免栈溢出
+      setTimeout(() => {
+        processUploadQueue()
+      }, 500)
+    }
   }
 }
 
@@ -245,8 +321,9 @@ const uploadSingleFile = async (uploadFile: UploadingFile) => {
     const formData = new FormData()
     formData.append('file', uploadFile.file)
 
-    // 上传文件
+    // 上传文件，针对上传设置更长的超时时间
     const res: any = await request.post('/photos/upload', formData, {
+      timeout: 15 * 60 * 1000, // 15分钟超时用于大文件上传
       onUploadProgress: (e: any) => {
         const total = e.total || uploadFile.file.size || 0
         if (total > 0) {
@@ -265,7 +342,16 @@ const uploadSingleFile = async (uploadFile: UploadingFile) => {
     }
   } catch (error: any) {
     uploadFile.status = 'error'
-    uploadFile.error = error.message || '上传失败'
+    // 区分网络错误和其他错误
+    if (error.code === 'ECONNABORTED') {
+      uploadFile.error = '请求超时，请重试'
+    } else if (error.message?.includes('Request aborted')) {
+      uploadFile.error = '连接中断，请检查网络并重试'
+    } else if (!error.message) {
+      uploadFile.error = '网络连接失败'
+    } else {
+      uploadFile.error = error.message || '上传失败'
+    }
     uploadFile.createdTime = Date.now()
     ElMessage.error(`${uploadFile.name}: ${uploadFile.error}`)
   }
@@ -305,7 +391,9 @@ const startTaskPolling = () => {
           uploadFile.progress = 100
           uploadFile.createdTime = Date.now()
           loadTaskStats()
-          // 完成后3秒自动移除
+          // 显示成功提示
+          ElMessage.success(`${uploadFile.name} 已完成（图片方向已自动纠正）`)
+          // 完成后3秒自动移除,给用户足够时间看到完成状态
           setTimeout(() => {
             const index = uploadingFiles.value.findIndex(f => f.id === uploadFile.id)
             if (index > -1) uploadingFiles.value.splice(index, 1)
@@ -313,11 +401,11 @@ const startTaskPolling = () => {
         } else if (status === 'failed') {
           uploadFile.error = error?.message || '处理失败'
           uploadFile.createdTime = Date.now()
-          // 失败后5秒自动移除
+          // 失败后6秒自动移除,给用户时间查看错误信息
           setTimeout(() => {
             const index = uploadingFiles.value.findIndex(f => f.id === uploadFile.id)
             if (index > -1) uploadingFiles.value.splice(index, 1)
-          }, 5000)
+          }, 6000)
         }
       }
     } catch (error) {
@@ -375,6 +463,7 @@ const retryFailedTask = async (taskId: string) => {
 
 const getStatusType = (status: string) => {
   const map: Record<string, any> = {
+    queued: 'info',
     uploading: 'primary',
     processing: 'warning',
     completed: 'success',
@@ -385,6 +474,7 @@ const getStatusType = (status: string) => {
 
 const getStatusText = (status: string) => {
   const map: Record<string, string> = {
+    queued: '队列中',
     uploading: '上传中',
     processing: '处理中',
     completed: '完成',
@@ -407,6 +497,7 @@ const getStageText = (stage: string) => {
 
 const getProgressColor = (status: string) => {
   const map: Record<string, string> = {
+    queued: '#909399',
     uploading: '#409eff',
     processing: '#e6a23c',
     completed: '#67c23a',
@@ -428,6 +519,10 @@ onMounted(() => {
   animation: slideInRight 0.3s ease-out;
 }
 
+.upload-card.queued {
+  border-left-color: #909399;
+}
+
 .upload-card.uploading {
   border-left-color: #409eff;
 }
@@ -444,20 +539,59 @@ onMounted(() => {
   border-left-color: #f56c6c;
 }
 
-/* 过渡动画 */
-.upload-notify-enter-active,
-.upload-notify-leave-active {
-  transition: all 0.3s ease;
+/* 平滑过渡动画 - 上传列表 */
+.upload-list-move {
+  transition: all 0.6s ease;
 }
 
-.upload-notify-enter-from {
-  transform: translateX(500px);
+.upload-list-enter-active {
+  transition: all 0.5s ease-out;
+}
+
+.upload-list-leave-active {
+  transition: all 0.5s ease-in;
+  position: absolute;
+}
+
+.upload-list-enter-from {
+  transform: translateX(400px);
   opacity: 0;
 }
 
-.upload-notify-leave-to {
-  transform: translateX(500px);
+.upload-list-leave-to {
+  transform: translateX(400px);
   opacity: 0;
+}
+
+/* 队列提示淡入淡出 */
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.animate-fade-out {
+  animation: fadeOut 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(10px);
+  }
 }
 
 @keyframes slideInRight {

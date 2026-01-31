@@ -38,7 +38,8 @@
       :src="cachedVideoUrl || videoUrl"
       muted
       playsinline
-      preload="none"
+      webkit-playsinline
+      :preload="isMobile ? 'metadata' : 'none'"
       title=""
       aria-label=""
       tabindex="-1"
@@ -46,6 +47,7 @@
       disablePictureInPicture
       disableRemotePlayback
       @canplay="onVideoCanPlay"
+      @loadedmetadata="onVideoLoadedMetadata"
       @timeupdate="onVideoTimeUpdate"
       @ended="handleVideoEnded"
       @error="onVideoError"
@@ -193,6 +195,11 @@ const onVideoCanPlay = () => {
   videoCanPlay.value = true;
 };
 
+const onVideoLoadedMetadata = () => {
+  // 元数据可用时也视为可播放，避免移动端一直等待 canplay
+  videoCanPlay.value = true;
+};
+
 // 监听视频播放进度 - 在结束前1秒回到图片
 const onVideoTimeUpdate = () => {
   if (!videoRef.value || !isPlaying.value) return;
@@ -312,10 +319,20 @@ const playVideo = async () => {
   }
 
   if (!videoCanPlay.value) {
+    // 触发加载，避免 preload=none 导致一直等待
+    try {
+      videoRef.value.load();
+    } catch {
+      // ignore
+    }
+
     // 等待视频准备好
     let retries = 0;
     const checkReady = setInterval(() => {
       retries++;
+      if (videoRef.value && videoRef.value.readyState >= 2) {
+        videoCanPlay.value = true;
+      }
       if (videoCanPlay.value) {
         clearInterval(checkReady);
         playVideo();
@@ -435,6 +452,16 @@ watch(() => props.videoUrl, async (newUrl) => {
       // 创建新的 object URL
       cachedVideoUrl.value = URL.createObjectURL(blob)
       console.log(`🎬 Object URL 已创建: ${cachedVideoUrl.value.substring(0, 50)}...`)
+
+      // 移动端预加载元数据，避免首次播放卡住
+      if (isMobile.value && videoRef.value) {
+        await nextTick()
+        try {
+          videoRef.value.load()
+        } catch {
+          // ignore
+        }
+      }
     } else {
       console.warn(`⚠️ 缓存失败: ${props.photoId} (blob 为 null)`)
     }

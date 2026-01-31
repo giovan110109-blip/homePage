@@ -229,7 +229,8 @@ class UploadQueueManager extends EventEmitter {
 
       // 基于文件内容再次检测类型，确保视频不会进入图片处理流程
       try {
-        const { fileTypeFromBuffer } = require('file-type')
+        const fileType = await import('file-type')
+        const { fileTypeFromBuffer } = fileType
         const detected = await fileTypeFromBuffer(fileBuffer)
         const detectedExt = detected?.ext ? `.${detected.ext}`.toLowerCase() : ''
         const detectedMime = detected?.mime || ''
@@ -347,7 +348,8 @@ class UploadQueueManager extends EventEmitter {
       
       const webpBuffer = await sharp(processed.processedBuffer, {
         failOnError: false,
-        limitInputPixels: false
+        limitInputPixels: false,
+        autoRotate: false  // 禁用 Sharp 的自动旋转，避免与 EXIF 处理冲突
       })
         .resize(targetWidth, null, {
           fit: 'inside', // 保持宽高比
@@ -461,6 +463,10 @@ class UploadQueueManager extends EventEmitter {
         }
       }
 
+      // 获取当前最大的 sort 值
+      const maxSortPhoto = await Photo.findOne().sort({ sort: -1 }).select('sort')
+      const nextSort = (maxSortPhoto?.sort || 0) + 1
+
       // 创建或更新Photo记录（避免重复 key）
       const photoData = {
         title: task.originalFileName.replace(/\.[^/.]+$/, ''),
@@ -495,6 +501,9 @@ class UploadQueueManager extends EventEmitter {
         } : undefined,
         
         geoinfo,
+        
+        // 排序字段 - 按上传顺序递增
+        sort: nextSort,
         
         camera: {
           make: processed.exif.Make,

@@ -54,7 +54,11 @@ app.use(koaBody({
   json: true,
   text: true,
   formidable: {
-    maxFileSize: 200 * 1024 * 1024 // 200MB
+    maxFileSize: 200 * 1024 * 1024, // 200MB
+    maxFields: 1000,
+    maxFieldsSize: 2 * 1024 * 1024, // 2MB per field
+    keepExtensions: true,
+    allowEmptyFiles: false
   }
 }));
 
@@ -108,6 +112,18 @@ registerRoutes(app);
 const server = app.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);
 });
+
+// 设置服务器超时（用于处理大文件上传）
+// keepAliveTimeout: 保持连接打开的时间，防止 keep-alive 连接被过早关闭
+// headersTimeout: 等待完整 HTTP 头的时间
+// requestTimeout: 接收完整请求的时间（Node.js 18+）
+server.keepAliveTimeout = 10 * 60 * 1000; // 10分钟
+server.headersTimeout = 11 * 60 * 1000; // 11分钟（必须大于 keepAliveTimeout）
+
+// 如果是 Node.js 18+，设置 requestTimeout
+if (server.requestTimeout !== undefined) {
+  server.requestTimeout = 15 * 60 * 1000; // 15分钟用于处理多个大文件
+}
 
 const shutdown = async (signal) => {
   console.log(`Received ${signal}, closing gracefully...`);

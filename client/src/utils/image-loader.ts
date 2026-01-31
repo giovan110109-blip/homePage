@@ -30,11 +30,11 @@ export interface ImageLoaderCacheResult {
   blob: Blob
 }
 
-// 图片缓存 (LRU，6 个图片)
+// 图片缓存 (LRU，20 个图片 - 增加缓存容量避免频繁加载)
 const normalImageCache: LRUCache<string, ImageLoaderCacheResult> = new LRUCache<
   string,
   ImageLoaderCacheResult
->(6, (cacheItem, cacheKey, reason) => {
+>(20, (cacheItem, cacheKey, reason) => {
   try {
     URL.revokeObjectURL(cacheItem.blobSrc)
     console.log(
@@ -79,7 +79,7 @@ export class ImageLoaderManager {
     // 检查内存缓存
     const cached = normalImageCache.get(src)
     if (cached) {
-      console.log(`✅ 图片缓存命中: ${src}`)
+      console.log(`✅ 图片缓存命中: ${src} | 当前缓存数: ${normalImageCache.size}/20`)
       onUpdateLoadingState?.({
         isVisible: false,
       })
@@ -89,7 +89,7 @@ export class ImageLoaderManager {
       }
     }
 
-    console.log(`📥 开始加载图片: ${src}`)
+    console.log(`📥 开始加载图片: ${src} | 当前缓存数: ${normalImageCache.size}/20`)
     onUpdateLoadingState?.({
       isVisible: true,
     })
@@ -203,7 +203,7 @@ export class ImageLoaderManager {
     // 缓存结果
     normalImageCache.set(cacheKey, result)
     console.log(
-      `💾 已缓存图片: ${cacheKey} | 大小: ${(blob.size / 1024 / 1024).toFixed(2)}MB`
+      `💾 已缓存图片: ${cacheKey} | 大小: ${(blob.size / 1024 / 1024).toFixed(2)}MB | 缓存数: ${normalImageCache.size}/20`
     )
 
     onUpdateLoadingState?.({
@@ -220,14 +220,9 @@ export class ImageLoaderManager {
    * 获取缓存统计
    */
   getCacheStats() {
-    let totalSize = 0
-    let count = 0
-
-    // 由于 LRUCache 的私有性，我们需要通过其他方式统计
-    // 这里返回缓存大小（项数）
     return {
       count: normalImageCache.size,
-      maxSize: 6,
+      maxSize: 20,
     }
   }
 

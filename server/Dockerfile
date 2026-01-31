@@ -2,6 +2,9 @@ FROM node:18-alpine AS base
 
 WORKDIR /app
 
+# 安装 Perl（exiftool 依赖），以及其他必要工具
+RUN apk add --no-cache perl ffmpeg
+
 # 预装 pnpm（使用 corepack）
 RUN corepack enable && corepack prepare pnpm@latest --activate
 

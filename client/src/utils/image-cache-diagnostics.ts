@@ -11,7 +11,7 @@ export const initImageCacheDiagnostics = () => {
     showStats: () => {
       console.group('📊 图片缓存统计')
       console.log('💾 缓存系统: LRU (最近最少使用)')
-      console.log('🎯 缓存大小: 6 张图片')
+      console.log('🎯 缓存大小: 20 张图片')
       console.log('⚙️ 缓存类型: 内存缓存')
       console.log('🔄 淘汰策略: 超过容量时删除最旧的缓存')
       console.groupEnd()
@@ -29,7 +29,7 @@ export const initImageCacheDiagnostics = () => {
       console.log('  1. 首次加载图片 → 从网络下载 Blob')
       console.log('  2. 创建 Object URL → 显示在页面上')
       console.log('  3. 放入 LRU 缓存 → 下次加载直接使用')
-      console.log('  4. 超过 6 张时 → 删除最旧的缓存')
+      console.log('  4. 超过 20 张时 → 删除最旧的缓存')
       console.log('\n缓存输出示例:')
       console.log('  📥 开始加载图片: https://example.com/image.webp')
       console.log('  ✅ 图片缓存命中: https://example.com/image.webp')
