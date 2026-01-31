@@ -1,5 +1,6 @@
 <template>
   <div
+    ref="wrapper"
     class="lazy-image-wrapper"
     :style="{
       aspectRatio: `${width} / ${height}`,
@@ -39,11 +40,11 @@
       }"
     />
 
-    <!-- 实际图片 - 淡入覆盖占位符 -->
+    <!-- 实际图片 - 仅在进入可视区域时加载 - 淡入覆盖占位符 -->
     <img
-      v-if="showImage"
+      v-if="isVisible && showImage"
       :src="webpSrc"
-      class="w-full h-full  group-hover:scale-105"
+      class="w-full h-full group-hover:scale-105"
       :style="{
         objectFit: 'cover',
         position: 'absolute',
@@ -53,7 +54,6 @@
         transition: 'opacity 0.4s ease-in-out, transform 0.5s ease',
         zIndex: 2,
       }"
-      loading="lazy"
       decoding="async"
       @load="onImageLoad"
       @error="onImageError"
@@ -62,7 +62,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed } from "vue";
+import { ref, watch, computed, onMounted, onUnmounted } from "vue";
 import { thumbHashToDataURL } from "thumbhash";
 import { useImageLoader } from "@/composables/useImageLoader";
 
@@ -89,9 +89,12 @@ const { loadImage } = useImageLoader();
 const imageLoaded = ref(false);
 const thumbHashDataUrl = ref("");
 const showImage = ref(false); // 控制何时开始加载实际图片
+const isVisible = ref(false); // 是否在可视区域内
 const cachedImageUrl = ref<string>("");
 const isLoadingImage = ref(false);
 const requestId = ref(0);
+const wrapper = ref<HTMLDivElement>();
+const intersectionObserver = ref<IntersectionObserver | null>(null);
 
 // 计算 WebP 版本的 URL
 const rawWebpUrl = computed(() => {
@@ -198,12 +201,57 @@ watch(
   () => {
     cachedImageUrl.value = ""; // 清除缓存 URL
     generateThumbHashDataUrl();
-    showImage.value = false;
-    imageLoaded.value = false;
-    preloadWebpImage();
+    // 如果已进入可视区域，才继续加载真实图片
+    if (isVisible.value) {
+      showImage.value = false;
+      imageLoaded.value = false;
+      preloadWebpImage();
+    } else {
+      showImage.value = false;
+      imageLoaded.value = false;
+    }
   },
   { immediate: true },
 );
+
+// Intersection Observer - 监听是否进入可视区域
+onMounted(() => {
+  if (!wrapper.value) return;
+
+  intersectionObserver.value = new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) {
+        if (entry.isIntersecting) {
+          // 进入可视区域
+          isVisible.value = true;
+          if (!isLoadingImage.value && !imageLoaded.value) {
+            console.log(`👁️ 图片进入可视区域，开始加载: ${props.src}`);
+            preloadWebpImage();
+          }
+          // 监听到了就可以停止监听了（因为图片已经加载）
+          if (intersectionObserver.value) {
+            intersectionObserver.value.unobserve(entry.target);
+          }
+        }
+      }
+    },
+    {
+      // 提前 200px 开始加载（还未完全进入视口时）
+      rootMargin: '200px',
+      threshold: 0
+    }
+  );
+
+  intersectionObserver.value.observe(wrapper.value);
+});
+
+// 清理
+onUnmounted(() => {
+  if (intersectionObserver.value) {
+    intersectionObserver.value.disconnect();
+    intersectionObserver.value = null;
+  }
+});
 </script>
 
 <style scoped>

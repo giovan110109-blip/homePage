@@ -16,7 +16,9 @@ class UploadQueueManager extends EventEmitter {
   constructor() {
     super()
     this.isRunning = false
-    this.concurrency = 2 // 同时处理2个任务
+    // 并发数：可根据服务器性能调整，默认2（安全）
+    // CPU密集型任务（Sharp、EXIF提取）占用较多，建议2-4
+    this.concurrency = parseInt(process.env.UPLOAD_CONCURRENCY || '2')
     this.activeWorkers = 0
     this.pollInterval = null
     const baseUploadDir = process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads')
@@ -24,6 +26,8 @@ class UploadQueueManager extends EventEmitter {
     this.webpDir = process.env.UPLOAD_WEBP_DIR || path.join(baseUploadDir, 'photos-webp')
     const rawBaseUrl = 'https://serve.giovan.cn/uploads'
     this.uploadBaseUrl = rawBaseUrl.replace(/\/$/, '')
+    
+    console.log(`⚙️  上传队列配置 - 并发数: ${this.concurrency}, 轮询间隔: 5秒`)
   }
 
   /**

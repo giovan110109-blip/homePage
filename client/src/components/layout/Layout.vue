@@ -59,16 +59,18 @@ import Footer from './Footer.vue'
 const route = useRoute()
 const transitionName = ref('page')
 const prevRoute = ref('')
-const showLayoutChrome = computed(() => !route.path.startsWith('/admin'))
+const showLayoutChrome = computed(() => !route.path.startsWith('/admin')&&!route.path.startsWith('/map'))
 
 // 路由顺序映射，用于判断前进还是后退
 const routeOrder = {
   '/': 0,
   '/about': 1,
-  '/articles': 2,
-  '/portfolio': 3,
+  '/note': 2,
+  '/articles': 3,
   '/sites': 4,
-  '/sponsor': 5
+  '/friends': 5,
+  '/sponsor': 6,
+  '/gallery': 7,
 }
 
 // 监听路由变化，动态设置过渡动画

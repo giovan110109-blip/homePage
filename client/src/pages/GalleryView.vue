@@ -166,13 +166,7 @@
               <div v-if="currentPhoto.geoinfo?.formatted">
                 <p class="text-gray-700 dark:text-gray-300">{{ currentPhoto.geoinfo.formatted }}</p>
               </div>
-              <div class="flex justify-between">
-                <span class="text-gray-500">坐标</span>
-                <span class="font-mono text-xs">
-                  {{ currentPhoto.location.latitude.toFixed(6) }},
-                  {{ currentPhoto.location.longitude.toFixed(6) }}
-                </span>
-              </div>
+ 
             </div>
             
             <!-- 地图 -->

@@ -27,6 +27,23 @@ const getThumbhash = async () => {
  */
 class ImageProcessingService {
   /**
+   * 获取 Orientation 方向描述
+   */
+  getOrientationDescription(orientation) {
+    const descriptions = {
+      1: '正常',
+      2: '水平翻转',
+      3: '旋转180°',
+      4: '垂直翻转',
+      5: '旋转90°+水平翻转',
+      6: '旋转90°',
+      7: '旋转90°+垂直翻转',
+      8: '旋转270°'
+    }
+    return descriptions[orientation] || '未知'
+  }
+
+  /**
    * 检测文件类型
    */
   async detectFileType(buffer) {
@@ -38,16 +55,36 @@ class ImageProcessingService {
   /**
    * 转换 HEIC 到 JPEG
    */
-  async convertHeicToJpeg(buffer) {
+  async convertHeicToJpeg(buffer, originalBuffer = null) {
     try {
       const outputBuffer = await heicConvert({
         buffer,
         format: 'JPEG',
         quality: 0.95
       })
-      return Buffer.from(outputBuffer)
+      const jpegBuffer = Buffer.from(outputBuffer)
+      
+      // 如果转换后丢失了方向信息，尝试从原始buffer恢复
+      // 这个在后续的旋转处理中会通过EXIF提取来解决
+      console.log('✅ HEIC 已转换为 JPEG 格式')
+      return jpegBuffer
     } catch (error) {
-      throw new Error(`HEIC 转换失败: ${error.message}`)
+      console.error(`❌ HEIC 转换失败: ${error.message}`)
+      // HEIC转换失败，尝试用Sharp直接处理
+      try {
+        console.log('🔄 尝试使用 Sharp 处理 HEIC 图片...')
+        const jpegBuffer = await sharp(buffer, {
+          failOnError: false,
+          limitInputPixels: false,
+          autoRotate: false
+        })
+          .jpeg({ quality: 95 })
+          .toBuffer()
+        console.log('✅ Sharp 处理 HEIC 成功')
+        return jpegBuffer
+      } catch (sharpError) {
+        throw new Error(`HEIC 转换失败（Sharp也失败）: ${sharpError.message}`)
+      }
     }
   }
 
@@ -87,52 +124,79 @@ class ImageProcessingService {
    */
   async rotateByOrientation(buffer, orientation) {
     if (!orientation || orientation === 1) {
-      // 已是正常方向
+      console.log('✅ Orientation 为 1，无需旋转')
       return buffer
     }
 
     try {
+      // 验证orientation是有效的数字
+      const orientNum = parseInt(orientation)
+      if (isNaN(orientNum) || orientNum < 1 || orientNum > 8) {
+        console.warn(`⚠️ 无效的 EXIF Orientation 值: ${orientation}，使用原始图像`)
+        return buffer
+      }
+
+      console.log(`🔧 准备旋转操作: Orientation ${orientNum}`)
+
       let image = sharp(buffer, {
         failOnError: false,
         limitInputPixels: false,
         autoRotate: false  // 禁用自动旋转，手动处理
       })
 
-      switch (orientation) {
+      switch (orientNum) {
+        case 1:
+          console.log('✅ Orientation = 1，图片已正常')
+          return buffer
         case 2:
-          image = image.flop()  // 水平翻转
+          console.log('🔄 执行: 水平翻转 (flop)')
+          image = image.flop()
           break
         case 3:
-          image = image.rotate(180)  // 旋转 180°
+          console.log('🔄 执行: 旋转 180°')
+          image = image.rotate(180)
           break
         case 4:
-          image = image.flip()  // 垂直翻转
+          console.log('🔄 执行: 垂直翻转 (flip)')
+          image = image.flip()
           break
         case 5:
-          image = image.rotate(90).flop()  // 旋转 90° + 水平翻转
+          // Orientation 5: 水平翻转 + 旋转90° CW
+          console.log('🔄 执行: 水平翻转 + 旋转 90°')
+          image = image.flop().rotate(90)
           break
         case 6:
-          image = image.rotate(90)  // 旋转 90° 顺时针
+          // Orientation 6: 旋转 90° CW
+          console.log('🔄 执行: 旋转 90°')
+          image = image.rotate(90)
           break
         case 7:
-          image = image.rotate(90).flip()  // 旋转 90° + 垂直翻转
+          // Orientation 7: 水平翻转 + 旋转 270° CW (等同于垂直翻转 + 旋转 90° CCW)
+          console.log('🔄 执行: 水平翻转 + 旋转 270°')
+          image = image.flop().rotate(270)
           break
         case 8:
-          image = image.rotate(270)  // 旋转 270° 顺时针
+          // Orientation 8: 旋转 270° CW (即 90° CCW)
+          console.log('🔄 执行: 旋转 270°')
+          image = image.rotate(270)
+          break
+          image = image.rotate(90)
           break
         default:
+          console.warn(`⚠️ 未知的 EXIF Orientation: ${orientNum}，使用原始图像`)
           return buffer
       }
 
       const rotatedBuffer = await image.toBuffer()
-      console.log(`✅ 图片已根据 EXIF Orientation (${orientation}) 纠正`)
+      console.log(`✅ 旋转完成 (Orientation ${orientNum}): ${buffer.length} → ${rotatedBuffer.length} bytes`)
       return rotatedBuffer
     } catch (error) {
-      console.warn('⚠️ 旋转图片失败，使用原始图像:', error.message)
+      console.error(`❌ 旋转图片失败 (Orientation: ${orientation}):`, error.message)
+      console.log('⚠️ 使用原始图像')
       return buffer
     }
   }
-  async extractExif({ filePath, buffer, originalFileName, tempDir }) {
+  async extractExif({ filePath, buffer, inputBuffer, originalFileName, tempDir }) {
     const readExifFromFile = async (targetPath) => {
       try {
         // -ee: 读取嵌入数据（如缩略图/子文件）
@@ -219,13 +283,37 @@ class ImageProcessingService {
         console.warn('⚠️ 未读取到 EXIF（可能被客户端剥离或 Perl 不可用）')
       } else {
         const orientation = exifData.Orientation || 1
-        console.log(`📸 EXIF 提取成功，Orientation: ${orientation} ${orientation !== 1 ? '(需要纠正)' : '(正常)'}`)
+        console.log(`✅ EXIF 提取成功 | Orientation: ${orientation} | 字段数: ${Object.keys(exifData).length}`)
       }
 
-      // 回退：如果没有EXIF，尝试从原始buffer写临时文件再读
-      if ((!exifData || Object.keys(exifData).length === 0) && buffer && tempDir) {
+      // 回退1：如果没有EXIF，且有原始buffer，尝试从原始buffer读
+      if ((!exifData || Object.keys(exifData).length === 0) && buffer && buffer !== inputBuffer && tempDir) {
+        console.log('🔄 尝试从原始 buffer 恢复 EXIF...')
         const ext = (originalFileName && path.extname(originalFileName)) || '.jpg'
-        const tempFilePath = path.join(tempDir, `exif_${Date.now()}${ext}`)
+        const tempFilePath = path.join(tempDir, `exif_raw_${Date.now()}${ext}`)
+        try {
+          // 尝试从原始 inputBuffer 读取EXIF（可能更多EXIF数据）
+          if (inputBuffer) {
+            await fs.writeFile(tempFilePath, inputBuffer)
+            const fallbackTags = await readExifFromFile(tempFilePath)
+            const fallbackData = buildExifData(fallbackTags)
+            if (fallbackData && Object.keys(fallbackData).length > 0) {
+              console.log(`✅ 从原始 buffer 恢复了 EXIF 数据 | Orientation: ${fallbackData.Orientation || 1}`)
+              exifData = fallbackData
+            }
+          }
+        } catch (err) {
+          console.warn('❌ 从原始 buffer 恢复 EXIF 失败:', err.message)
+        } finally {
+          await fs.unlink(tempFilePath).catch(() => {})
+        }
+      }
+
+      // 回退2：如果仍然没有EXIF，尝试从处理后的buffer写临时文件再读
+      if ((!exifData || Object.keys(exifData).length === 0) && buffer && tempDir) {
+        console.log('🔄 尝试从处理后 buffer 提取 EXIF...')
+        const ext = (originalFileName && path.extname(originalFileName)) || '.jpg'
+        const tempFilePath = path.join(tempDir, `exif_processed_${Date.now()}${ext}`)
         try {
           await fs.writeFile(tempFilePath, buffer)
           const fallbackTags = await readExifFromFile(tempFilePath)
@@ -243,7 +331,35 @@ class ImageProcessingService {
   }
 
   /**
-   * 解析GPS坐标
+   * 自动检测图片是否需要旋转（基于宽高比）
+   * 如果图片的宽高比异常，可能表示需要旋转
+   */
+  async autoDetectOrientation(buffer) {
+    try {
+      const metadata = await sharp(buffer).metadata()
+      if (!metadata) return null
+      
+      const { width, height } = metadata
+      if (!width || !height) return null
+      
+      const aspectRatio = width / height
+      
+      // 如果宽度明显小于高度（高度大于宽度），可能是竖拍照片被横存
+      // 这通常意味着需要旋转90°或270°
+      if (height > width && aspectRatio < 0.6) {
+        console.log(`📐 自动检测: 宽高比 ${aspectRatio.toFixed(2)}，检测到需要旋转`)
+        return 6 // 旋转90°
+      }
+      
+      return null
+    } catch (error) {
+      console.warn('❌ 自动方向检测失败:', error.message)
+      return null
+    }
+  }
+
+  /**
+   * 解析 GPS 坐标
    */
   parseGPSCoordinates(exifData) {
     if (!exifData.GPSLatitude || !exifData.GPSLongitude) {
@@ -414,44 +530,87 @@ class ImageProcessingService {
       const fileTypeResult = await this.detectFileType(inputBuffer)
       const mimeType = fileTypeResult?.mime || 'application/octet-stream'
 
-      // 2. 格式转换（HEIC -> JPEG）
+      // 2. 先从原始文件提取EXIF（在格式转换前，保留原始方向信息）
+      // 这对于HEIC很重要，因为转换后会丢失EXIF
+      console.log(`📸 MIME 类型: ${mimeType}`)
+      const safeOriginalName = path.basename(originalFileName || 'image')
+      let tempInputPath = null
+      
+      // 如果是HEIC，先从原始HEIC提取EXIF
+      let originalExif = {}
+      if (mimeType === 'image/heic' || mimeType === 'image/heif') {
+        console.log('📄 检测到HEIC格式，优先从原始文件提取EXIF...')
+        tempInputPath = path.join(tempDir, `raw_${Date.now()}_${safeOriginalName}`)
+        await fs.writeFile(tempInputPath, inputBuffer)
+        
+        originalExif = await this.extractExif({
+          filePath: tempInputPath,
+          buffer: inputBuffer,
+          inputBuffer: inputBuffer,
+          originalFileName,
+          tempDir
+        })
+        
+        console.log(`✅ 从原始HEIC提取EXIF完成，Orientation: ${originalExif.Orientation || 1}`)
+      }
+
+      // 3. 格式转换（HEIC -> JPEG）
       result.processedBuffer = await this.preprocessImage(inputBuffer, mimeType)
 
-      // 3. 先提取 EXIF（在旋转前，避免 Sharp 旋转导致 EXIF 丢失）
-      const safeOriginalName = path.basename(originalFileName || 'image')
-      let tempFilePath = null
-      let exifSourcePath = options.sourceFilePath
-
-      if (!exifSourcePath) {
-        tempFilePath = path.join(tempDir, safeOriginalName)
-        await fs.writeFile(tempFilePath, result.processedBuffer)
-        exifSourcePath = tempFilePath
+      // 4. 如果是HEIC且已提取EXIF，直接使用；否则从转换后的文件提取
+      if ((mimeType === 'image/heic' || mimeType === 'image/heif') && Object.keys(originalExif).length > 0) {
+        console.log(`♻️ 复用从原始HEIC提取的EXIF数据`)
+        result.exif = originalExif
+      } else {
+        // 从处理后的buffer提取EXIF
+        let exifSourcePath = options.sourceFilePath
+        if (!exifSourcePath) {
+          exifSourcePath = path.join(tempDir, `processed_${Date.now()}_${safeOriginalName}`)
+          await fs.writeFile(exifSourcePath, result.processedBuffer)
+        }
+        
+        result.exif = await this.extractExif({
+          filePath: exifSourcePath,
+          buffer: result.processedBuffer,
+          inputBuffer: inputBuffer,
+          originalFileName,
+          tempDir
+        })
       }
-      
-      result.exif = await this.extractExif({
-        filePath: exifSourcePath,
-        buffer: inputBuffer,
-        originalFileName,
-        tempDir
-      })
+
+      // 清理临时文件
+      if (tempInputPath) {
+        await fs.unlink(tempInputPath).catch(() => {})
+      }
       result.location = this.parseGPSCoordinates(result.exif)
 
       // 3.1 根据 EXIF Orientation 旋转图片到正常方向
-      const orientation = result.exif?.Orientation || 1
+      let orientation = result.exif?.Orientation || 1
+      
+      // 如果没有EXIF Orientation，尝试自动检测
+      if (!result.exif?.Orientation) {
+        const autoOrientation = await this.autoDetectOrientation(result.processedBuffer)
+        if (autoOrientation) {
+          console.log(`⚠️ 没有找到EXIF Orientation，使用自动检测结果: ${autoOrientation}`)
+          orientation = autoOrientation
+        }
+      }
+      
+      const orientDesc = this.getOrientationDescription(orientation)
+      console.log(`📐 EXIF Orientation: ${orientation} (${orientDesc})`)
+      
       if (orientation && orientation !== 1) {
-        console.log(`📐 检测到图片方向异常 (Orientation: ${orientation})，正在纠正...`)
+        console.log(`🔄 开始纠正图片方向: ${orientation} → 1`)
+        const beforeRotateSize = result.processedBuffer.length
         result.processedBuffer = await this.rotateByOrientation(result.processedBuffer, orientation)
+        const afterRotateSize = result.processedBuffer.length
+        console.log(`✅ 图片方向已纠正 | 大小: ${beforeRotateSize} → ${afterRotateSize} bytes`)
       } else {
-        console.log(`✅ 图片方向正常 (Orientation: ${orientation || 1})`)
+        console.log(`✅ 图片方向已正常，无需纠正`)
       }
 
       // 4. 提取元数据
       result.metadata = await this.getImageMetadata(result.processedBuffer)
-
-      // 清理临时文件
-      if (tempFilePath) {
-        await fs.unlink(tempFilePath).catch(() => {})
-      }
 
       // 5. 生成缩略图
       result.thumbnail = await this.generateThumbnail(result.processedBuffer, {

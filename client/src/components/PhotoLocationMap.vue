@@ -1,9 +1,10 @@
 <template>
-  <div ref="mapContainer" class="w-full h-full rounded-lg overflow-hidden"></div>
+  <div ref="mapContainer" class="w-full h-full rounded-lg overflow-hidden cursor-pointer"></div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 
@@ -17,6 +18,7 @@ const props = withDefaults(defineProps<Props>(), {
   zoom: 13
 })
 
+const router = useRouter()
 const mapContainer = ref<HTMLDivElement>()
 const map = ref<maplibregl.Map>()
 const marker = ref<maplibregl.Marker>()
@@ -63,10 +65,10 @@ const initMap = () => {
     .setLngLat([props.longitude, props.latitude])
     .addTo(map.value)
 
-  // 添加缩放和旋转控制
-  map.value.addControl(new maplibregl.NavigationControl({
-    showCompass: false
-  }), 'top-right')
+  // 点击地图跳转到 MapView
+  map.value.on('click', () => {
+    router.push('/map')
+  })
 }
 
 // 监听坐标变化

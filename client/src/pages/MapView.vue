@@ -14,27 +14,6 @@
       </el-button>
     </div>
 
-    <!-- 信息面板 -->
-    <div class="absolute top-4 right-4 z-10 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-lg shadow-lg p-4 max-w-xs">
-      <h3 class="font-semibold text-lg mb-2 flex items-center gap-2">
-        <MapPin class="w-5 h-5" />
-        照片分布
-      </h3>
-      <div v-if="mapData.length > 0" class="space-y-2 text-sm">
-        <div class="flex justify-between">
-          <span class="text-gray-600 dark:text-gray-400">总位置</span>
-          <span class="font-semibold">{{ mapData.length }}</span>
-        </div>
-        <div class="flex justify-between">
-          <span class="text-gray-600 dark:text-gray-400">总照片</span>
-          <span class="font-semibold">{{ totalPhotos }}</span>
-        </div>
-      </div>
-      <div v-else class="text-gray-500 text-sm">
-        暂无位置数据
-      </div>
-    </div>
-
     <!-- 照片预览面板 -->
     <div
       v-if="selectedLocation"
