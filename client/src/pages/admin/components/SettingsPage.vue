@@ -127,10 +127,9 @@
 import { onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import request from '@/api/request'
-const { VITE_API_BASE_URL_LOCAL, VITE_API_BASE_URL } = import.meta.env
+import {  getBaseURL, getAssetURL } from '@/utils'
 
-// 在生产环境中使用 VITE_API_BASE_URL，在本地开发中使用 VITE_API_BASE_URL_LOCAL
-const apiBaseUrl = import.meta.env.PROD ? VITE_API_BASE_URL : VITE_API_BASE_URL_LOCAL
+const apiBaseUrl = getBaseURL()
 
 interface SiteInfoForm {
   name: string
@@ -232,11 +231,7 @@ const handleSave = async () => {
 const handleAvatarSuccess = (response: any) => {
   const data = response?.data || response
   if (data?.url) {
-    // 服务端返回相对路径，需要拼接 API 基础地址
-    // 根据环境动态选择 API 地址
-    const url = data.url.startsWith('http') 
-      ? data.url 
-      : `${apiBaseUrl}${data.url}`
+    const url = getAssetURL(data.url)
     form.value.avatar = url
   }
 }

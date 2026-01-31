@@ -11,3 +11,5 @@ export { showConfetti } from './dom'
 // Re-export format utilities
 export { highlightJSON } from './format'
 
+// Re-export environment utilities
+export { isLocalEnvironment, getBaseURL, getAssetURL } from './env'

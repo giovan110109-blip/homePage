@@ -3,6 +3,9 @@ import request from '@/api/request'
 
 interface AdminUser {
   username: string
+  nickname?: string
+  avatar?: string
+  email?: string
 }
 
 export const useAuthStore = defineStore('auth', {

@@ -37,11 +37,8 @@ import { computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Plus } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth'
-
-const { VITE_API_BASE_URL_LOCAL, VITE_API_BASE_URL } = import.meta.env
-
-// 在生产环境中使用 VITE_API_BASE_URL，在本地开发中使用 VITE_API_BASE_URL_LOCAL
-const apiBaseUrl = import.meta.env.DEV ? VITE_API_BASE_URL_LOCAL:VITE_API_BASE_URL 
+import {  getBaseURL, getAssetURL } from '@/utils'
+const apiBaseUrl = getBaseURL()
 
 interface Props {
   modelValue?: string
@@ -95,9 +92,7 @@ const beforeUpload = (file: File) => {
 const handleSuccess = (response: any) => {
   const data = response?.data || response
   if (data?.url) {
-    let url= data.url.startsWith('http') 
-      ? data.url 
-      : `${apiBaseUrl}${data.url}`
+    let url=getAssetURL(data.url)
     
     emit('update:modelValue', url)
     emit('success', url)

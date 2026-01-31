@@ -239,7 +239,7 @@ const handleCommand = (command: string) => {
   if (command === "profile") {
     profileDialogVisible.value = true;
   } else if (command === "home") {
-    window.open("/", "_blank");
+    router.push("/");
   } else if (command === "logout") {
     handleLogout();
   }

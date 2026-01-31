@@ -151,7 +151,7 @@
       </div>
     </el-card>
 
-    <el-dialog v-model="drawerVisible" title="留言详情" width="600px" :close-on-click-modal="false">
+    <el-dialog v-model="drawerVisible" title="留言详情" width="95%" :style="{ maxWidth: '600px' }" :close-on-click-modal="false">
       <div v-if="currentRow" class="message-detail-container space-y-6">
         <!-- 用户信息卡片 -->
         <div class="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-slate-800/50 dark:to-slate-700/50 rounded-lg p-5 border border-indigo-200/50 dark:border-slate-600/50">
@@ -183,7 +183,7 @@
         </div>
 
         <!-- 联系方式 -->
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div class="bg-white dark:bg-slate-800 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
             <div class="text-xs text-slate-500 dark:text-slate-400 font-semibold mb-1">网站</div>
             <div class="text-sm text-slate-900 dark:text-slate-100 break-all">
@@ -202,7 +202,7 @@
         <!-- 设备信息 -->
         <div class="bg-white dark:bg-slate-800 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
           <div class="text-xs text-slate-500 dark:text-slate-400 font-semibold mb-3">设备信息</div>
-          <div class="grid grid-cols-2 gap-3">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div class="flex items-center gap-2">
               <Globe class="w-4 h-4 text-indigo-500 flex-shrink-0" />
               <div>

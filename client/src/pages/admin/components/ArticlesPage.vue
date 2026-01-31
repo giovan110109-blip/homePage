@@ -53,7 +53,7 @@
           </p>
 
           <!-- 元信息 -->
-          <div class="flex items-center gap-4 text-sm text-slate-600 dark:text-slate-300 mb-4 pb-4 border-b border-slate-200 dark:border-slate-700">
+          <div class="flex items-center gap-4 text-sm text-slate-600 dark:text-slate-300 mb-4">
             <span class="flex items-center gap-1">
               <Eye class="w-4 h-4" />
               {{ article.views }} 次浏览
@@ -67,55 +67,45 @@
             </span>
           </div>
 
-          <!-- 表态 -->
-          <div class="mb-4">
-            <EmojiReaction
-              :target-id="article._id"
-              target-type="article"
-              :reactions="article.reactions || {}"
-              :single-use="true"
-            />
-          </div>
-
           <!-- 操作按钮 -->
-          <div class="flex items-center gap-3">
+          <div class="flex flex-wrap items-center gap-2 sm:gap-3">
             <button
               @click="editArticle(article)"
-              class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-200 font-semibold rounded-lg hover:bg-indigo-200 dark:hover:bg-indigo-900/60 transition-colors"
+              class="inline-flex items-center gap-2 px-3 sm:px-4 py-2 bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-200 font-semibold rounded-lg hover:bg-indigo-200 dark:hover:bg-indigo-900/60 transition-colors"
             >
               <Edit class="w-4 h-4" />
-              编辑
+              <span class="hidden sm:inline">编辑</span>
             </button>
             <button
               @click="toggleTop(article)"
               :class="[
-                'inline-flex items-center gap-2 px-4 py-2 font-semibold rounded-lg transition-colors',
+                'inline-flex items-center gap-2 px-3 sm:px-4 py-2 font-semibold rounded-lg transition-colors',
                 article.isTop
                   ? 'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-200 hover:bg-yellow-200 dark:hover:bg-yellow-900/60'
                   : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600'
               ]"
             >
               <Pin class="w-4 h-4" />
-              {{ article.isTop ? '取消置顶' : '置顶' }}
+              <span class="hidden sm:inline">{{ article.isTop ? '取消置顶' : '置顶' }}</span>
             </button>
             <button
               @click="togglePublish(article)"
               :class="[
-                'inline-flex items-center gap-2 px-4 py-2 font-semibold rounded-lg transition-colors',
+                'inline-flex items-center gap-2 px-3 sm:px-4 py-2 font-semibold rounded-lg transition-colors',
                 article.status === 'published'
                   ? 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600'
                   : 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-200 hover:bg-green-200 dark:hover:bg-green-900/60'
               ]"
             >
               <Send class="w-4 h-4" />
-              {{ article.status === 'published' ? '取消发布' : '发布' }}
+              <span class="hidden sm:inline">{{ article.status === 'published' ? '取消发布' : '发布' }}</span>
             </button>
             <button
               @click="deleteArticle(article._id)"
-              class="inline-flex items-center gap-2 px-4 py-2 bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-200 font-semibold rounded-lg hover:bg-red-200 dark:hover:bg-red-900/60 transition-colors"
+              class="inline-flex items-center gap-2 px-3 sm:px-4 py-2 bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-200 font-semibold rounded-lg hover:bg-red-200 dark:hover:bg-red-900/60 transition-colors"
             >
               <Trash2 class="w-4 h-4" />
-              删除
+              <span class="hidden sm:inline">删除</span>
             </button>
           </div>
         </div>
@@ -142,8 +132,8 @@
     </div>
 
     <!-- 编辑对话框 -->
-    <div v-if="showDialog" class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-      <div class="bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden">
+    <div v-if="showDialog" class="fixed inset-0 bg-black/50 flex items-center justify-center p-2 sm:p-4 z-50">
+      <div class="bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[95vh] sm:max-h-[90vh] flex flex-col overflow-hidden">
         <!-- 对话框头部 - 固定 -->
         <div class="flex-shrink-0 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 p-6 flex items-center justify-between">
           <h2 class="text-2xl font-bold text-slate-950 dark:text-slate-50">
@@ -186,7 +176,7 @@
           </div>
 
           <!-- 分类 -->
-          <div class="grid grid-cols-2 gap-6">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div>
               <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
                 分类
@@ -238,16 +228,16 @@
         </div>
 
         <!-- 对话框底部 - 固定 -->
-        <div class="flex-shrink-0 bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 p-6 flex items-center justify-end gap-3">
+        <div class="flex-shrink-0 bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 p-4 sm:p-6 flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3">
           <button
             @click="showDialog = false"
-            class="px-6 py-2.5 text-slate-700 dark:text-slate-300 font-semibold border border-slate-200 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+            class="px-6 py-2.5 text-slate-700 dark:text-slate-300 font-semibold border border-slate-200 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors order-2 sm:order-1"
           >
             取消
           </button>
           <button
             @click="saveArticle"
-            class="px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-lg hover:shadow-lg hover:from-indigo-700 hover:to-purple-700 transition-all duration-200"
+            class="px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-lg hover:shadow-lg hover:from-indigo-700 hover:to-purple-700 transition-all duration-200 order-1 sm:order-2"
           >
             保存文章
           </button>
@@ -263,7 +253,6 @@ import { Plus, Edit, Send, Trash2, Heart, Eye, FileText, X, Pin } from 'lucide-v
 import { ElMessage } from 'element-plus'
 import QuillEditor from '@/components/ui/QuillEditor.vue'
 import ImageUpload from '@/components/ui/ImageUpload.vue'
-import EmojiReaction from '@/components/EmojiReaction.vue'
 import request from '@/api/request'
 
 interface Article {
@@ -278,7 +267,6 @@ interface Article {
   isTop: boolean
   views: number
   likes: number
-  reactions?: Record<string, number>
   createdAt: string
   publishedAt?: string
 }

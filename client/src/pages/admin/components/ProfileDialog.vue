@@ -2,7 +2,8 @@
   <el-dialog
     v-model="visible"
     title="个人信息"
-    width="700px"
+    width="90%"
+    :style="{ maxWidth: '700px' }"
     :close-on-click-modal="false"
     @close="handleClose"
   >
@@ -10,12 +11,13 @@
       ref="formRef"
       :model="form"
       :rules="rules"
-      label-width="100px"
+      label-width="auto"
+      :label-position="isMobile ? 'top' : 'right'"
       class="profile-form"
     >
       <!-- 头像 -->
       <el-form-item label="头像">
-        <div class="flex items-center gap-4">
+        <div class="flex flex-col sm:flex-row items-center sm:items-start gap-4">
           <div class="relative w-24 h-24 rounded-full overflow-hidden bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity group border-2 border-indigo-300/50 dark:border-slate-600">
             <img v-if="form.avatar" :src="form.avatar" class="w-full h-full object-cover" />
             <User v-else class="w-10 h-10 text-white" />
@@ -134,26 +136,28 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, watch } from 'vue'
+import { ref, reactive, watch, computed } from 'vue'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { User } from 'lucide-vue-next'
 import request from '@/api/request'
-
+import {  getAssetURL } from '@/utils'
 const props = defineProps<{
   modelValue: boolean
 }>()
 
 const emit = defineEmits<{
-  (e: 'update:modelValue', value: boolean): void
-  (e: 'updated'): void
+  'update:modelValue': [value: boolean]
+  'updated': []
 }>()
+
+// 检测移动端
+const isMobile = computed(() => {
+  return window.innerWidth < 640
+})
 
 const visible = ref(false)
 const saving = ref(false)
 const formRef = ref<FormInstance>()
-
-// API Base URL
-const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || ''
 
 interface ProfileForm {
   username: string
@@ -247,9 +251,7 @@ const loadProfile = async () => {
 const handleAvatarSuccess = (response: any) => {
   const data = response?.data || response
   if (data?.url) {
-    let url = data.url.startsWith('http')
-      ? data.url
-      : `${apiBaseUrl}${data.url}`
+    let url = getAssetURL(data.url)
     form.avatar = url
     ElMessage.success('头像上传成功')
   } else {
