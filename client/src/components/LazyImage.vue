@@ -62,8 +62,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch, computed } from "vue";
+import { ref, watch, computed } from "vue";
 import { thumbHashToDataURL } from "thumbhash";
+import { useImageLoader } from "@/composables/useImageLoader";
 
 interface Props {
   /** 图片 URL */
@@ -84,12 +85,16 @@ const props = withDefaults(defineProps<Props>(), {
   mimeType: "image/jpeg",
 });
 
+const { loadImage } = useImageLoader();
 const imageLoaded = ref(false);
 const thumbHashDataUrl = ref("");
 const showImage = ref(false); // 控制何时开始加载实际图片
+const cachedImageUrl = ref<string>("");
+const isLoadingImage = ref(false);
+const requestId = ref(0);
 
 // 计算 WebP 版本的 URL
-const webpSrc = computed(() => {
+const rawWebpUrl = computed(() => {
   const url = props.src;
 
   // 如果已经是 webp 格式，直接返回
@@ -105,6 +110,10 @@ const webpSrc = computed(() => {
   return url + ".webp";
 });
 
+const webpSrc = computed(() => {
+  return cachedImageUrl.value || rawWebpUrl.value;
+});
+
 /**
  * 生成 ThumbHash 占位符图片 URL
  */
@@ -115,7 +124,6 @@ const generateThumbHashDataUrl = async () => {
 
   if (!props.thumbHash) {
     thumbHashDataUrl.value = "";
-    showImage.value = true;
     return;
   }
 
@@ -132,9 +140,44 @@ const generateThumbHashDataUrl = async () => {
 
     // 等待一小段时间确保占位符渲染，然后再允许加载实际图片
     await new Promise((resolve) => setTimeout(resolve, 100));
-    showImage.value = true;
   } catch (error) {
     thumbHashDataUrl.value = "";
+  }
+};
+
+/**
+ * 预加载 WebP 版本的图片到缓存
+ */
+const preloadWebpImage = async () => {
+  if (!props.src) return;
+
+  const currentId = ++requestId.value;
+  const webpUrl = rawWebpUrl.value;
+
+  isLoadingImage.value = true;
+  try {
+    const result = await loadImage(webpUrl, {
+      onProgress: (progress) => {
+        console.log(`📥 图片加载进度: ${progress.toFixed(0)}%`);
+      },
+      onError: () => {
+        console.warn(`⚠️ WebP 图片加载失败: ${webpUrl}`);
+      },
+    });
+
+    if (currentId !== requestId.value) return;
+
+    if (result.blobSrc) {
+      cachedImageUrl.value = result.blobSrc;
+      console.log(`✅ 图片已缓存: ${webpUrl}`);
+    }
+  } catch (error) {
+    if (currentId !== requestId.value) return;
+    console.error(`❌ 图片加载异常: ${webpUrl}`, error);
+    cachedImageUrl.value = webpUrl;
+  } finally {
+    if (currentId !== requestId.value) return;
+    isLoadingImage.value = false;
     showImage.value = true;
   }
 };
@@ -153,7 +196,11 @@ const onImageError = () => {
 watch(
   [() => props.src, () => props.thumbHash],
   () => {
+    cachedImageUrl.value = ""; // 清除缓存 URL
     generateThumbHashDataUrl();
+    showImage.value = false;
+    imageLoaded.value = false;
+    preloadWebpImage();
   },
   { immediate: true },
 );

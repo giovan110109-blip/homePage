@@ -53,13 +53,23 @@ class ImageProcessingService {
 
   /**
    * 预处理图片 - 格式转换
-   * 如果是HEIC，转换为JPEG；否则返回原buffer
+   * HEIC/BMP 转换为 JPEG
    */
   async preprocessImage(buffer, mimeType) {
     // 检测是否为 HEIC
     if (mimeType === 'image/heic' || mimeType === 'image/heif') {
       return await this.convertHeicToJpeg(buffer)
     }
+    
+    // 检测是否为 BMP，转换为 JPEG
+    if (mimeType === 'image/bmp' || mimeType === 'image/x-ms-bmp') {
+      console.log('检测到 BMP 格式，转换为 JPEG')
+      const jpegBuffer = await sharp(buffer)
+        .jpeg({ quality: 95 })
+        .toBuffer()
+      return jpegBuffer
+    }
+    
     return buffer
   }
 
@@ -179,22 +189,58 @@ class ImageProcessingService {
   }
 
   /**
-   * 生成缩略图
+   * 生成缩略图 - 优化版
+   * 使用 Sharp 高质量缩放 + WebP 格式
    */
   async generateThumbnail(buffer, options = {}) {
     const {
-      width = 400,
-      height = 400,
-      fit = 'cover',
-      quality = 80
+      width = 600,  // 600px宽度，适合网页显示
+      height = null, // 自动计算高度保持宽高比
+      fit = 'inside', // inside模式保持完整内容
+      quality = 85,  // WebP质量，平衡大小和画质
+      format = 'webp' // 默认使用WebP格式
     } = options
 
-    const thumbnail = await sharp(buffer)
-      .resize(width, height, { fit })
-      .jpeg({ quality })
-      .toBuffer()
+    const sharpInstance = sharp(buffer, {
+      failOnError: false,
+      limitInputPixels: false // 允许大图片
+    })
 
-    return thumbnail
+    // 配置缩放参数
+    const resizeOptions = {
+      width,
+      height,
+      fit,
+      withoutEnlargement: true, // 防止放大小图片
+      kernel: 'lanczos3' // 高质量缩放算法
+    }
+
+    // 根据格式输出
+    if (format === 'webp') {
+      const thumbnail = await sharpInstance
+        .resize(resizeOptions)
+        .webp({
+          quality,
+          effort: 6, // 最大压缩努力程度(0-6)
+          smartSubsample: true, // 智能色度二次采样
+          nearLossless: false, // 有损压缩获得更小体积
+          alphaQuality: 90 // 透明度质量
+        })
+        .toBuffer() // 移除元数据减小体积
+      return thumbnail
+    } else {
+      // JPEG 格式（兼容模式）
+      const thumbnail = await sharpInstance
+        .resize(resizeOptions)
+        .jpeg({
+          quality,
+          mozjpeg: true, // 使用 MozJPEG 优化器
+          progressive: true, // 渐进式JPEG
+          optimiseCoding: true // 优化霍夫曼编码
+        })
+        .toBuffer() // 移除元数据减小体积
+      return thumbnail
+    }
   }
 
   /**

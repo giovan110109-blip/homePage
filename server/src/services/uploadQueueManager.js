@@ -5,6 +5,7 @@ const os = require('os')
 const UploadTask = require('../models/uploadTask')
 const Photo = require('../models/photo')
 const imageProcessing = require('./imageProcessing')
+const videoOptimizer = require('./videoOptimizer')
 const geocoding = require('./geocoding')
 
 /**
@@ -131,9 +132,34 @@ class UploadQueueManager extends EventEmitter {
       const isImage = task.mimeType?.startsWith('image/') || isImageByExt
       const isVideo = task.mimeType?.startsWith('video/') || (isVideoByExt && !isImage)
       
-      // 如果是视频文件，直接标记为完成，不进行图片处理
+      // 如果是视频文件，进行优化处理
       if (isVideo) {
-        console.log(`检测到视频文件: ${task.storageKey}，跳过图片处理流程`)
+        console.log(`检测到视频文件: ${task.storageKey}，开始优化处理`)
+        
+        // 尝试优化视频
+        const videoExt = path.extname(task.storageKey).toLowerCase()
+        let optimizedVideoKey = task.storageKey
+        
+        // 对 MOV 文件进行优化
+        if (videoExt === '.mov') {
+          const baseName = path.parse(task.storageKey).name
+          const optimizedPath = path.join(this.uploadDir, `${baseName}_optimized.mp4`)
+          
+          const result = await videoOptimizer.quickOptimizeMOV(filePath, optimizedPath).catch(err => {
+            console.warn('视频优化失败，使用原始文件:', err.message)
+            return { success: false }
+          })
+          
+          if (result.success) {
+            // 删除原始 MOV 文件
+            await fs.unlink(filePath).catch(() => {})
+            
+            // 更新存储路径
+            optimizedVideoKey = `${baseName}_optimized.mp4`
+            task.storageKey = optimizedVideoKey
+            console.log(`✅ 视频已优化: ${optimizedVideoKey}`)
+          }
+        }
         
         // 查找或更新已存在的 Photo 记录（可能是之前上传的图片）
         let existingPhoto = null
@@ -150,8 +176,8 @@ class UploadQueueManager extends EventEmitter {
         if (existingPhoto) {
           // 更新现有记录，添加视频信息
           existingPhoto.isLive = true
-          existingPhoto.videoUrl = `${this.uploadBaseUrl}/photos/${task.storageKey}`
-          existingPhoto.videoKey = task.storageKey
+          existingPhoto.videoUrl = `${this.uploadBaseUrl}/photos/${optimizedVideoKey}`
+          existingPhoto.videoKey = optimizedVideoKey
           if (!existingPhoto.baseName && derivedBaseName) {
             existingPhoto.baseName = derivedBaseName
           }
@@ -168,17 +194,17 @@ class UploadQueueManager extends EventEmitter {
         } else {
           // 没有找到匹配的图片，创建或更新占位记录等待后续图片合并
           const placeholder = await Photo.findOneAndUpdate(
-            { storageKey: task.storageKey },
+            { storageKey: optimizedVideoKey },
             {
               $set: {
                 title: derivedBaseName || task.originalFileName.replace(/\.[^/.]+$/, ''),
                 originalFileName: task.originalFileName,
                 baseName: derivedBaseName,
-                storageKey: task.storageKey,
+                storageKey: optimizedVideoKey,
                 mimeType: task.mimeType,
                 isLive: true,
-                videoUrl: `${this.uploadBaseUrl}/photos/${task.storageKey}`,
-                videoKey: task.storageKey,
+                videoUrl: `${this.uploadBaseUrl}/photos/${optimizedVideoKey}`,
+                videoKey: optimizedVideoKey,
                 status: 'processing',
                 uploadedBy: task.uploadedBy
               }
@@ -279,7 +305,7 @@ class UploadQueueManager extends EventEmitter {
         console.error('内容类型检测失败，继续走原逻辑:', err)
       }
 
-      // 阶段2: 格式转换和元数据提取
+      // 阶段2: 格式转换（HEIC/BMP → JPEG）
       task.stage = 'format_conversion'
       task.progress = 20
       await task.save()
@@ -290,6 +316,11 @@ class UploadQueueManager extends EventEmitter {
         tempDir,
         { sourceFilePath: filePath }
       )
+
+      // 阶段3: EXIF 元数据提取
+      task.stage = 'metadata_extraction'
+      task.progress = 35
+      await task.save()
 
       // 若原图为 HEIC/HEIF，转存为 JPG 以便浏览器访问
       let finalStorageKey = task.storageKey
@@ -303,29 +334,48 @@ class UploadQueueManager extends EventEmitter {
         await fs.unlink(filePath).catch(() => {})
       }
 
-      // 生成 WebP 版本
+      // 生成 WebP 缩略图版本（600px宽，高质量压缩）
       const webpFileName = `${path.parse(finalStorageKey).name}.webp`
       const webpPath = path.join(this.webpDir, webpFileName)
       await fs.mkdir(path.dirname(webpPath), { recursive: true })
       
-      const webpBuffer = await new Promise((resolve, reject) => {
-        require('sharp')(processed.processedBuffer)
-          .webp({ quality: 80 })
-          .toBuffer((err, data) => {
-            if (err) reject(err)
-            else resolve(data)
-          })
+      const sharp = require('sharp')
+      const imageInfo = await sharp(processed.processedBuffer).metadata()
+      
+      // 600px 宽度的WebP缩略图，体积比JPEG小30-50%
+      const targetWidth = 600
+      
+      const webpBuffer = await sharp(processed.processedBuffer, {
+        failOnError: false,
+        limitInputPixels: false
       })
+        .resize(targetWidth, null, {
+          fit: 'inside', // 保持宽高比
+          withoutEnlargement: true, // 小图不放大
+          kernel: 'lanczos3' // 高质量缩放
+        })
+        .webp({ 
+          quality: 85, // 高质量
+          effort: 6, // 最大压缩努力
+          smartSubsample: true, // 智能色度采样
+          nearLossless: false, // 有损压缩获得更小体积
+          alphaQuality: 90 // 透明度质量
+        })
+        .toBuffer() // 自动剥离元数据减小体积
+      
       await fs.writeFile(webpPath, webpBuffer)
+      
+      const compressionRatio = ((1 - webpBuffer.length / processed.processedBuffer.length) * 100).toFixed(1)
+      console.log(`WebP 缩略图: ${imageInfo.width}x${imageInfo.height} -> 600px宽, ${(webpBuffer.length / 1024).toFixed(1)}KB (压缩${compressionRatio}%)`)
 
-      // 阶段3: 生成缩略图
+      // 阶段4: 生成缩略图
       task.stage = 'thumbnail_generation'
-      task.progress = 50
+      task.progress = 55
       await task.save()
 
-      // 阶段4: 反向地理编码
+      // 阶段5: 反向地理编码
       task.stage = 'location_lookup'
-      task.progress = 70
+      task.progress = 75
       await task.save()
 
       let geoinfo = null
@@ -336,7 +386,7 @@ class UploadQueueManager extends EventEmitter {
         )
       }
 
-      // 阶段5: 保存到数据库
+      // 阶段6: 保存到数据库
       task.stage = 'database_save'
       task.progress = 90
       await task.save()
@@ -368,6 +418,7 @@ class UploadQueueManager extends EventEmitter {
         try {
           const uploadedFiles = await fs.readdir(this.uploadDir)
           const videoExts = ['.mp4', '.mov', '.avi', '.mkv', '.m4v']
+          const MAX_LIVEPHOTO_SIZE = 12 * 1024 * 1024 // 12MB
           
           for (const file of uploadedFiles) {
             // 提取文件的 baseName（去掉结尾的 _时间戳 和扩展名）
@@ -378,10 +429,18 @@ class UploadQueueManager extends EventEmitter {
             
             // 找到同名视频文件
             if (fileBaseName === derivedBaseName && videoExts.includes(fileExt)) {
-              isLive = true
-              videoKey = file
-              videoUrl = `${this.uploadBaseUrl}/photos/${file}`
-              console.log(`✨ 检测到同名视频文件: ${file}`)
+              // 检查视频文件大小，只有 ≤12MB 才算 LivePhoto
+              const videoPath = path.join(this.uploadDir, file)
+              const videoStats = await fs.stat(videoPath)
+              
+              if (videoStats.size <= MAX_LIVEPHOTO_SIZE) {
+                isLive = true
+                videoKey = file
+                videoUrl = `${this.uploadBaseUrl}/photos/${file}`
+                console.log(`✨ 检测到 LivePhoto 视频文件: ${file} (${(videoStats.size / 1024 / 1024).toFixed(2)}MB)`)
+              } else {
+                console.log(`⚠️ 视频文件 ${file} 超过 12MB (${(videoStats.size / 1024 / 1024).toFixed(2)}MB)，不作为 LivePhoto 处理`)
+              }
               break
             }
           }

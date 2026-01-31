@@ -67,11 +67,27 @@ app.use(cors({
 // 静态文件：对外暴露 uploads 目录（放在限流前，避免静态资源被时间戳校验拦截）
 const uploadDir = process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads');
 const uploadBaseUrl = process.env.UPLOAD_BASE_URL || '/uploads';
-app.use(mount(uploadBaseUrl, koaStatic(uploadDir)));
+
+// 为视频文件添加缓存头
+const videoCache = (ctx, next) => {
+  if (ctx.path.endsWith('.mov') || ctx.path.endsWith('.mp4') || ctx.path.endsWith('.m4v')) {
+    // 视频文件：24小时缓存
+    ctx.set('Cache-Control', 'public, max-age=86400, immutable');
+    ctx.set('ETag', `"${Date.now()}"`);
+  }
+  return next();
+};
+
+app.use(videoCache);
+app.use(mount(uploadBaseUrl, koaStatic(uploadDir, {
+  maxage: 86400000, // 24小时
+})));
 
 // 对外暴露 WebP 目录
 const webpDir = process.env.UPLOAD_WEBP_DIR || path.join(uploadDir, 'photos-webp');
-app.use(mount('/uploads/photos-webp', koaStatic(webpDir)));
+app.use(mount('/uploads/photos-webp', koaStatic(webpDir, {
+  maxage: 86400000, // 24小时
+})));
 
 // 全局中间件：日志、请求信息、错误处理
 app.use(logger);

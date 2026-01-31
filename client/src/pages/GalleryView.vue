@@ -6,7 +6,10 @@
         v-if="!loading && photos.length > 0"
         :items="photos"
         :column-width="columnWidth"
-        :gap="8"
+        :gap="gridGap"
+        :min-columns="minColumns"
+        :max-columns="maxColumns"
+        :key-mapper="keyMapper"
         class="masonry p-1 sm:p-2"
       >
         <template #default="{ item: photo }">
@@ -14,7 +17,7 @@
             class="group cursor-pointer"
             @click="viewPhoto(photo)"
           >
-            <div class="relative overflow-hidden rounded-sm shadow-lg  transition-all bg-gray-900 ">
+            <div class="relative overflow-hidden rounded-md shadow-lg transition-all bg-gray-900 ">
               <LivePhoto
                 v-if="photo.isLive"
                 :image-url="photo.originalUrl"
@@ -23,6 +26,7 @@
                 :thumb-hash="photo.thumbHash || photo.thumbnailHash"
                 :width="photo.width"
                 :height="photo.height"
+                :photo-id="photo._id"
               />
               <LazyImage
                 v-else
@@ -83,7 +87,7 @@
           <img
             :src="currentPhoto.originalUrl"
             :alt="currentPhoto.title"
-            class="w-full rounded-lg shadow-lg"
+            class="w-full rounded-xl shadow-lg"
           />
         </div>
 
@@ -183,7 +187,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, reactive, computed } from 'vue'
+import { ref, onMounted, onBeforeUnmount, reactive, computed } from 'vue'
 import { ImageIcon, MapPin, Info, Camera, Settings } from 'lucide-vue-next'
 import MasonryWall from '@yeger/vue-masonry-wall'
 import request from '@/api/request'
@@ -197,25 +201,63 @@ interface PhotoWithLoaded extends Photo {
   loaded?: boolean
 }
 
+import { useImageLoader } from '@/composables/useImageLoader'
+
 const photos = ref<PhotoWithLoaded[]>([])
 const loading = ref(false)
 const loadingMore = ref(false)
 const photoDialogVisible = ref(false)
 const currentPhoto = ref<PhotoWithLoaded | null>(null)
 
+// 图片缓存管理
+const { getCacheStats, clearCache } = useImageLoader()
+const imageCacheStats = computed(() => getCacheStats())
+
+const handleClearImageCache = () => {
+  clearCache()
+  console.log('🗑️ 已清空图片缓存')
+}
+
+const windowWidth = ref(window.innerWidth)
+
 // 检测是否是移动端
 const isMobile = computed(() => {
-  return window.innerWidth < 768
+  return windowWidth.value < 768
 })
 
 // 响应式列宽
 const columnWidth = computed(() => {
-  const width = window.innerWidth
-  if (width < 640) return 150      // 手机：2-3列
-  if (width < 1024) return 250     // 平板：3-4列
-  if (width < 1536) return 320     // 小屏PC：4-5列
-  return 380                        // 大屏PC：5-6列
+  const width = windowWidth.value
+  if (width < 640) return 160      // 手机：2列
+  if (width < 1024) return 240     // 平板：3-4列
+  if (width < 1536) return 300     // 小屏PC：4-5列
+  return 360                       // 大屏PC：5-6列
 })
+
+const minColumns = computed(() => {
+  const width = windowWidth.value
+  if (width < 640) return 2
+  if (width < 1024) return 3
+  if (width < 1536) return 4
+  return 5
+})
+
+const maxColumns = computed(() => {
+  const width = windowWidth.value
+  if (width < 640) return 2
+  if (width < 1024) return 4
+  if (width < 1536) return 5
+  return 6
+})
+
+const gridGap = computed(() => {
+  const width = windowWidth.value
+  if (width < 640) return 6
+  if (width < 1024) return 8
+  return 10
+})
+
+const keyMapper = (item: PhotoWithLoaded) => item._id
 
 const pagination = reactive({
   page: 1,
@@ -259,7 +301,7 @@ const loadPhotos = async (reset = true) => {
       if (reset) {
         photos.value = newPhotos
       } else {
-        photos.value.push(...newPhotos)
+        photos.value = [...photos.value, ...newPhotos]
       }
 
       Object.assign(pagination, res.data.pagination)
@@ -329,8 +371,17 @@ const exifItems = computed(() => {
   return items.filter((item) => item.value !== undefined && item.value !== null && item.value !== '')
 })
 
+const handleResize = () => {
+  windowWidth.value = window.innerWidth
+}
+
 onMounted(() => {
   loadPhotos()
+  window.addEventListener('resize', handleResize, { passive: true })
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', handleResize)
 })
 </script>
 

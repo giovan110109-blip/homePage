@@ -1,12 +1,12 @@
 <template>
-  <div class="w-full h-full flex flex-col overflow-auto">
-    <div class="mb-6">
-      <h2 class="text-2xl font-bold text-gray-900 dark:text-white">相册管理</h2>
+  <div class="w-full min-h-screen flex flex-col p-4 sm:p-6">
+    <div class="mb-4 sm:mb-6">
+      <h2 class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">相册管理</h2>
       <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">上传和管理照片</p>
     </div>
 
     <!-- 上传区域 -->
-    <el-card shadow="hover" class="mb-6">
+    <el-card shadow="hover" class="mb-4 sm:mb-6">
       <template #header>
         <div class="flex items-center justify-between">
           <span class="font-semibold">上传照片</span>
@@ -16,16 +16,16 @@
       <div class="space-y-4">
         <!-- 拖拽上传区域 -->
         <div
-          class="border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-all duration-300"
+          class="border-2 border-dashed rounded-lg p-4 sm:p-8 text-center cursor-pointer transition-all duration-300 min-h-[180px] flex flex-col items-center justify-center"
           :class="isDragging ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 shadow-lg' : 'border-gray-300 dark:border-gray-600'"
           @dragover.prevent="isDragging = true"
           @dragleave="isDragging = false"
           @drop.prevent="handleDrop"
           @click="fileInput?.click()"
         >
-          <Upload class="w-12 h-12 mx-auto mb-4 text-gray-400" />
-          <p class="text-gray-600 dark:text-gray-300 mb-2 font-medium">点击或拖拽文件到这里上传</p>
-          <p class="text-sm text-gray-500">支持图片（JPG、PNG、HEIC）和视频（MOV、MP4）格式，单个文件最大 200MB</p>
+          <Upload class="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-3 sm:mb-4 text-gray-400" />
+          <p class="text-sm sm:text-base text-gray-600 dark:text-gray-300 mb-2 font-medium px-2">点击或拖拽文件到这里上传</p>
+          <p class="text-xs sm:text-sm text-gray-500 px-4">支持图片（JPG、PNG、HEIC）和视频（MOV、MP4）格式，单个文件最大 200MB</p>
           <input
             ref="fileInput"
             type="file"
@@ -39,38 +39,38 @@
     </el-card>
 
     <!-- 任务队列统计 -->
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
       <el-card shadow="hover">
         <div class="text-center">
-          <p class="text-gray-500 text-sm mb-2">总任务数</p>
-          <p class="text-3xl font-bold text-blue-600">{{ taskStats.total }}</p>
+          <p class="text-gray-500 text-xs sm:text-sm mb-1 sm:mb-2">总任务数</p>
+          <p class="text-2xl sm:text-3xl font-bold text-blue-600">{{ taskStats.total }}</p>
         </div>
       </el-card>
       
       <el-card shadow="hover">
         <div class="text-center">
-          <p class="text-gray-500 text-sm mb-2">成功</p>
-          <p class="text-3xl font-bold text-green-600">{{ taskStats.completed }}</p>
+          <p class="text-gray-500 text-xs sm:text-sm mb-1 sm:mb-2">成功</p>
+          <p class="text-2xl sm:text-3xl font-bold text-green-600">{{ taskStats.completed }}</p>
         </div>
       </el-card>
       
       <el-card shadow="hover">
         <div class="text-center">
-          <p class="text-gray-500 text-sm mb-2">处理中</p>
-          <p class="text-3xl font-bold text-yellow-600">{{ taskStats.processing }}</p>
+          <p class="text-gray-500 text-xs sm:text-sm mb-1 sm:mb-2">处理中</p>
+          <p class="text-2xl sm:text-3xl font-bold text-yellow-600">{{ taskStats.processing }}</p>
         </div>
       </el-card>
       
       <el-card shadow="hover">
         <div class="text-center">
-          <p class="text-gray-500 text-sm mb-2">失败</p>
-          <p class="text-3xl font-bold text-red-600">{{ taskStats.failed }}</p>
+          <p class="text-gray-500 text-xs sm:text-sm mb-1 sm:mb-2">失败</p>
+          <p class="text-2xl sm:text-3xl font-bold text-red-600">{{ taskStats.failed }}</p>
         </div>
       </el-card>
     </div>
 
     <!-- 失败任务列表 -->
-    <el-card shadow="hover" class="mb-6">
+    <el-card shadow="hover" class="mb-4 sm:mb-6">
       <template #header>
         <div class="flex items-center justify-between">
           <span class="font-semibold">失败任务</span>

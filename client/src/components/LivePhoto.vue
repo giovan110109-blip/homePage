@@ -35,10 +35,10 @@
         border: 'none',
         outline: 'none',
       }"
-      :src="videoUrl"
+      :src="cachedVideoUrl || videoUrl"
       muted
       playsinline
-      preload="metadata"
+      preload="none"
       title=""
       aria-label=""
       tabindex="-1"
@@ -138,8 +138,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onUnmounted, computed, nextTick } from "vue";
+import { ref, onUnmounted, computed, nextTick, watch, onMounted } from "vue";
 import LazyImage from "./LazyImage.vue";
+import { useLivePhotoCache } from "@/composables/useLivePhotoCache";
 
 interface Props {
   imageUrl: string;
@@ -148,6 +149,7 @@ interface Props {
   thumbHash?: string;
   width?: number;
   height?: number;
+  photoId?: string; // 新增：用于缓存标识
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -158,7 +160,12 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   click: [event: MouseEvent];
-}>();
+}>()
+
+// LivePhoto 缓存
+const { loadLivePhoto, getState } = useLivePhotoCache()
+const cachedVideoUrl = ref<string | null>(null)
+const cacheState = props.photoId ? getState(props.photoId) : null;
 
 // Refs
 const videoRef = ref<HTMLVideoElement | null>(null);
@@ -402,7 +409,46 @@ onUnmounted(() => {
   if (longPressTimer.value !== null) {
     clearTimeout(longPressTimer.value);
   }
-});
+  
+  // 释放缓存的 URL
+  if (cachedVideoUrl.value) {
+    URL.revokeObjectURL(cachedVideoUrl.value)
+    cachedVideoUrl.value = null
+  }
+})
+
+// 监听视频 URL 变化，预加载到缓存
+watch(() => props.videoUrl, async (newUrl) => {
+  if (!newUrl || !props.photoId || !props.isLive) return
+  
+  console.log(`👀 开始缓存: ${props.photoId}`)
+  
+  try {
+    const blob = await loadLivePhoto(newUrl, props.photoId)
+    if (blob) {
+      // 释放旧的 URL
+      if (cachedVideoUrl.value) {
+        console.log(`🗑️ 释放旧的 Object URL: ${props.photoId}`)
+        URL.revokeObjectURL(cachedVideoUrl.value)
+      }
+      
+      // 创建新的 object URL
+      cachedVideoUrl.value = URL.createObjectURL(blob)
+      console.log(`🎬 Object URL 已创建: ${cachedVideoUrl.value.substring(0, 50)}...`)
+    } else {
+      console.warn(`⚠️ 缓存失败: ${props.photoId} (blob 为 null)`)
+    }
+  } catch (error) {
+    console.error('❌ 缓存异常:', error)
+  }
+}, { 
+  immediate: true,
+  flush: 'post'  // 后置刷新，避免快速重复触发
+})
+
+// 组件挂载时预加载
+// ⚠️ 注意：watch with immediate: true 已经会在挂载时加载，不需要再在 onMounted 中加载
+// onMounted 的加载已移除以避免重复请求
 </script>
 
 <style scoped>
