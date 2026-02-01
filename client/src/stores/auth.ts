@@ -35,8 +35,9 @@ export const useAuthStore = defineStore('auth', {
 
     async verifyToken() {
       try {
-        const data = await verifyTokenApi()
-        if (data.valid) {
+        const res = await verifyTokenApi()
+        const data = res?.data
+        if (data?.valid) {
           // token 有效，更新用户信息
           if (data.user) {
             this.user = data.user
