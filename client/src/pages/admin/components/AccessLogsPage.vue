@@ -9,7 +9,7 @@
       <template #header>
         <div class="flex items-center justify-between font-semibold text-gray-900 dark:text-white">
           <span>访问列表</span>
-          <el-button type="primary" @click="handleFetch">刷新</el-button>
+          <AppButton variant="primary" size="sm" @click="handleFetch">刷新</AppButton>
         </div>
       </template>
 
@@ -23,7 +23,7 @@
         <el-table-column prop="os" label="操作系统" width="140">
           <template #default="scope">
             <span class="inline-flex items-center gap-1.5">
-              <component :is="getOsIcon(scope.row.os)" class="w-3.5 h-3.5 text-gray-500" />
+              <component :is="getOsIcon(scope.row.os)" class="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />
               {{ scope.row.os || '-' }}
             </span>
           </template>
@@ -31,7 +31,7 @@
         <el-table-column prop="browser" label="浏览器" width="140">
           <template #default="scope">
             <span class="inline-flex items-center gap-1.5">
-              <Globe class="w-3.5 h-3.5 text-gray-500" />
+              <Globe class="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />
               {{ scope.row.browser || '-' }}
             </span>
           </template>
@@ -39,7 +39,7 @@
         <el-table-column prop="deviceType" label="设备" width="120">
           <template #default="scope">
             <span class="inline-flex items-center gap-1.5">
-              <component :is="getDeviceIcon(scope.row.deviceType)" class="w-3.5 h-3.5 text-gray-500" />
+              <component :is="getDeviceIcon(scope.row.deviceType)" class="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />
               {{ scope.row.deviceType || '-' }}
             </span>
           </template>
@@ -73,6 +73,7 @@
 import { onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import request from '@/api/request'
+import AppButton from '@/components/ui/AppButton.vue'
 import { Globe, Monitor, Smartphone, Apple, Laptop } from 'lucide-vue-next'
 import { useTableFetch } from '@/composables/useTableFetch'
 import { useMessageFilterForm } from '@/composables/useMessageFilterForm'

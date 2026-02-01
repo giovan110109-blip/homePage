@@ -126,17 +126,18 @@
                 </div>
 
                 <!-- Check Button -->
-                <button
-                  @click="checkWebsite(index)"
+                <AppButton
+                  variant="check"
+                  nativeType="button"
                   :disabled="website.checking"
-                  class="check-button"
+                  @click="checkWebsite(index)"
                 >
                   <RotateCw
                     class="w-4 h-4"
                     :class="{ 'animate-spin': website.checking }"
                   />
                   {{ website.checking ? "检测中..." : "立即检测" }}
-                </button>
+                </AppButton>
               </div>
             </div>
           </div>
@@ -169,6 +170,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
 import { ExternalLink, RotateCw } from "lucide-vue-next";
+import AppButton from "@/components/ui/AppButton.vue";
 import request from "@/api/request";
 
 interface Website {
@@ -898,43 +900,6 @@ const formatCheckTime = (date: Date | null) => {
 
 .detail-value.server-error {
   color: #ef4444;
-}
-
-.check-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 10px 16px;
-  background: #f0f9ff;
-  border: 1px solid #bfdbfe;
-  color: #0284c7;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 500;
-  transition: all 0.2s ease;
-}
-
-.dark .check-button {
-  background: #082f49;
-  border-color: #0e4a8b;
-  color: #38bdf8;
-}
-
-.check-button:hover:not(:disabled) {
-  background: #bfdbfe;
-  color: #0c4a6e;
-}
-
-.dark .check-button:hover:not(:disabled) {
-  background: #0e4a8b;
-  color: #38bdf8;
-}
-
-.check-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
 }
 
 .animate-spin {

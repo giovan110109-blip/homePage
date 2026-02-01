@@ -34,9 +34,9 @@
           <div class="flex flex-col gap-2">
             <span class="text-sm text-slate-600 dark:text-slate-400">点击头像上传新图片</span>
             <span class="text-xs text-slate-500">建议尺寸：200x200</span>
-            <el-button v-if="form.avatar" type="danger" size="small" text @click="form.avatar = ''">
+            <AppButton v-if="form.avatar" variant="ghost-danger" size="xs" @click="form.avatar = ''">
               删除头像
-            </el-button>
+            </AppButton>
           </div>
         </div>
       </el-form-item>
@@ -126,10 +126,10 @@
 
     <template #footer>
       <div class="flex justify-end gap-3">
-        <el-button @click="handleClose">取消</el-button>
-        <el-button type="primary" :loading="saving" @click="handleSave">
+        <AppButton variant="reset" size="sm" @click="handleClose">取消</AppButton>
+        <AppButton variant="primary" size="sm" :loading="saving" @click="handleSave">
           保存
-        </el-button>
+        </AppButton>
       </div>
     </template>
   </el-dialog>
@@ -138,6 +138,7 @@
 <script setup lang="ts">
 import { ref, reactive, watch, computed } from 'vue'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
+import AppButton from '@/components/ui/AppButton.vue'
 import { User } from 'lucide-vue-next'
 import request from '@/api/request'
 import {  getAssetURL } from '@/utils'

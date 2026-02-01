@@ -12,6 +12,7 @@ export {}
 declare module 'vue' {
   export interface GlobalComponents {
     ApiButton: typeof import('./src/components/Api-Button.vue')['default']
+    AppButton: typeof import('./src/components/ui/AppButton.vue')['default']
     Background: typeof import('./src/components/widgets/Background.vue')['default']
     Border: typeof import('./src/components/widgets/Border.vue')['default']
     Button: typeof import('./src/components/ui/Button.vue')['default']
@@ -59,6 +60,7 @@ declare module 'vue' {
     ElUpload: typeof import('element-plus/es')['ElUpload']
     EmojiReaction: typeof import('./src/components/EmojiReaction.vue')['default']
     Footer: typeof import('./src/components/layout/Footer.vue')['default']
+    GradientButton: typeof import('./src/components/ui/GradientButton.vue')['default']
     Header: typeof import('./src/components/layout/Header.vue')['default']
     ImageUpload: typeof import('./src/components/ui/ImageUpload.vue')['default']
     Layout: typeof import('./src/components/layout/Layout.vue')['default']

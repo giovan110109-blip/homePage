@@ -9,8 +9,8 @@
       <el-tabs v-model="activeTab">
         <el-tab-pane label="赞助记录" name="records">
           <div class="flex justify-end gap-3 mb-4">
-            <el-button type="primary" @click="openSponsorDialog()">新增记录</el-button>
-            <el-button plain @click="() => fetchSponsors(filter.toParams())">刷新</el-button>
+            <AppButton variant="primary" size="sm" @click="openSponsorDialog()">新增记录</AppButton>
+            <AppButton variant="reset" size="sm" @click="() => fetchSponsors(filter.toParams())">刷新</AppButton>
           </div>
 
           <el-table :data="sponsors" stripe v-loading="loadingSponsors">
@@ -29,8 +29,8 @@
             </el-table-column>
             <el-table-column label="操作" width="160" fixed="right">
               <template #default="scope">
-                <el-button link type="primary" size="small" @click="openSponsorDialog(scope.row)">编辑</el-button>
-                <el-button link type="danger" size="small" @click="deleteSponsor(scope.row)">删除</el-button>
+                <AppButton variant="link-primary" size="none" @click="openSponsorDialog(scope.row)">编辑</AppButton>
+                <AppButton variant="link-danger" size="none" @click="deleteSponsor(scope.row)">删除</AppButton>
               </template>
             </el-table-column>
             <template #empty>
@@ -53,8 +53,8 @@
 
         <el-tab-pane label="赞助方式" name="methods">
           <div class="card-toolbar">
-            <el-button type="primary" @click="openMethodDialog()">新增方式</el-button>
-            <el-button plain @click="fetchMethods">刷新</el-button>
+            <AppButton variant="primary" size="sm" @click="openMethodDialog()">新增方式</AppButton>
+            <AppButton variant="reset" size="sm" @click="fetchMethods">刷新</AppButton>
           </div>
 
           <el-table :data="methods" stripe v-loading="loadingMethods">
@@ -82,8 +82,8 @@
             </el-table-column>
             <el-table-column label="操作" width="160" fixed="right">
               <template #default="scope">
-                <el-button link type="primary" size="small" @click="openMethodDialog(scope.row)">编辑</el-button>
-                <el-button link type="danger" size="small" @click="deleteMethod(scope.row)">删除</el-button>
+                <AppButton variant="link-primary" size="none" @click="openMethodDialog(scope.row)">编辑</AppButton>
+                <AppButton variant="link-danger" size="none" @click="deleteMethod(scope.row)">删除</AppButton>
               </template>
             </el-table-column>
             <template #empty>
@@ -115,8 +115,8 @@
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="sponsorDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="savingSponsor" @click="saveSponsor">保存</el-button>
+        <AppButton variant="reset" size="sm" @click="sponsorDialogVisible = false">取消</AppButton>
+        <AppButton variant="primary" size="sm" :loading="savingSponsor" @click="saveSponsor">保存</AppButton>
       </template>
     </el-dialog>
 
@@ -152,8 +152,8 @@
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="methodDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="savingMethod" @click="saveMethod">保存</el-button>
+        <AppButton variant="reset" size="sm" @click="methodDialogVisible = false">取消</AppButton>
+        <AppButton variant="primary" size="sm" :loading="savingMethod" @click="saveMethod">保存</AppButton>
       </template>
     </el-dialog>
   </div>
@@ -163,6 +163,7 @@
 import { onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import request from '@/api/request'
+import AppButton from '@/components/ui/AppButton.vue'
 import { useMessageFilterForm } from '@/composables/useMessageFilterForm'
 import { useTableFetch } from '@/composables/useTableFetch'
 import ImageUpload from '@/components/ui/ImageUpload.vue'

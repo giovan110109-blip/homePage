@@ -34,7 +34,7 @@
                     </el-upload>
 
                     <div class="flex flex-col">
-                      <el-button v-if="form.avatar" type="danger" size="small" @click="confirmDeleteAvatar">删除头像</el-button>
+                      <AppButton v-if="form.avatar" variant="ghost-danger" size="xs" @click="confirmDeleteAvatar">删除头像</AppButton>
                       <div v-else class="text-sm text-gray-500">未设置头像</div>
                     </div>
                   </div>
@@ -116,7 +116,7 @@
         </el-tabs>
 
         <el-form-item>
-          <el-button type="primary" :loading="saving" @click="handleSave">保存设置</el-button>
+          <AppButton variant="primary" size="md" :disabled="saving" @click="handleSave">保存设置</AppButton>
         </el-form-item>
       </el-form>
     </el-card>
@@ -127,6 +127,7 @@
 import { onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import request from '@/api/request'
+import AppButton from '@/components/ui/AppButton.vue'
 import { getBaseURL, getAssetURL } from '@/utils'
 
 const apiBaseUrl = getBaseURL()

@@ -8,13 +8,13 @@
 
     <!-- 操作按钮 - 固定 -->
     <div class="flex-shrink-0 mb-6 flex gap-3">
-      <button
+      <AppButton
+        variant="primary"
         @click="showDialog = true"
-        class="inline-flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-lg hover:shadow-lg hover:from-indigo-700 hover:to-purple-700 transition-all duration-200"
       >
         <Plus class="w-5 h-5" />
         新建文章
-      </button>
+      </AppButton>
     </div>
 
     <!-- 文章列表卡片 - 可滚动区域 -->
@@ -69,57 +69,62 @@
 
           <!-- 操作按钮 -->
           <div class="flex flex-wrap items-center gap-2 sm:gap-3">
-            <button
+            <AppButton
+              variant="custom"
+              size="sm"
+              class="bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-200 border-indigo-200 dark:border-indigo-800"
               @click="editArticle(article)"
-              class="inline-flex items-center gap-2 px-3 sm:px-4 py-2 bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-200 font-semibold rounded-lg hover:bg-indigo-200 dark:hover:bg-indigo-900/60 transition-colors"
             >
               <Edit class="w-4 h-4" />
               <span class="hidden sm:inline">编辑</span>
-            </button>
-            <button
-              @click="toggleTop(article)"
+            </AppButton>
+            <AppButton
+              variant="custom"
+              size="sm"
               :class="[
-                'inline-flex items-center gap-2 px-3 sm:px-4 py-2 font-semibold rounded-lg transition-colors',
                 article.isTop
-                  ? 'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-200 hover:bg-yellow-200 dark:hover:bg-yellow-900/60'
-                  : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600'
+                  ? 'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-200 border-yellow-200 dark:border-yellow-800'
+                  : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-600'
               ]"
+              @click="toggleTop(article)"
             >
               <Pin class="w-4 h-4" />
               <span class="hidden sm:inline">{{ article.isTop ? '取消置顶' : '置顶' }}</span>
-            </button>
-            <button
-              @click="togglePublish(article)"
+            </AppButton>
+            <AppButton
+              variant="custom"
+              size="sm"
               :class="[
-                'inline-flex items-center gap-2 px-3 sm:px-4 py-2 font-semibold rounded-lg transition-colors',
                 article.status === 'published'
-                  ? 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600'
-                  : 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-200 hover:bg-green-200 dark:hover:bg-green-900/60'
+                  ? 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-600'
+                  : 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-200 border-green-200 dark:border-green-800'
               ]"
+              @click="togglePublish(article)"
             >
               <Send class="w-4 h-4" />
               <span class="hidden sm:inline">{{ article.status === 'published' ? '取消发布' : '发布' }}</span>
-            </button>
-            <button
+            </AppButton>
+            <AppButton
+              variant="danger"
+              size="sm"
               @click="deleteArticle(article._id)"
-              class="inline-flex items-center gap-2 px-3 sm:px-4 py-2 bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-200 font-semibold rounded-lg hover:bg-red-200 dark:hover:bg-red-900/60 transition-colors"
             >
               <Trash2 class="w-4 h-4" />
               <span class="hidden sm:inline">删除</span>
-            </button>
+            </AppButton>
           </div>
         </div>
       </div>
 
       <!-- 加载更多按钮 -->
       <div v-if="hasMore" class="flex justify-center py-6">
-        <button
+        <AppButton
+          variant="primary"
           @click="loadMore"
           :disabled="loading"
-          class="px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-lg hover:shadow-lg hover:from-indigo-700 hover:to-purple-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {{ loading ? '加载中...' : '加载更多' }}
-        </button>
+        </AppButton>
       </div>
 
       <!-- 空状态 -->
@@ -139,12 +144,14 @@
           <h2 class="text-2xl font-bold text-slate-950 dark:text-slate-50">
             {{ editingArticle ? '编辑文章' : '新建文章' }}
           </h2>
-          <button
+          <AppButton
+            variant="custom"
+            size="none"
             @click="showDialog = false"
             class="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
           >
             <X class="w-6 h-6 text-slate-700 dark:text-slate-300" />
-          </button>
+          </AppButton>
         </div>
 
         <!-- 对话框内容 - 可滚动 -->
@@ -229,18 +236,21 @@
 
         <!-- 对话框底部 - 固定 -->
         <div class="flex-shrink-0 bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 p-4 sm:p-6 flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3">
-          <button
+          <AppButton
+            variant="reset"
+            size="sm"
             @click="showDialog = false"
-            class="px-6 py-2.5 text-slate-700 dark:text-slate-300 font-semibold border border-slate-200 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors order-2 sm:order-1"
           >
             取消
-          </button>
-          <button
+          </AppButton>
+          <AppButton
+            variant="primary"
+            size="sm"
             @click="saveArticle"
-            class="px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-lg hover:shadow-lg hover:from-indigo-700 hover:to-purple-700 transition-all duration-200 order-1 sm:order-2"
+            class="order-1 sm:order-2"
           >
             保存文章
-          </button>
+          </AppButton>
         </div>
       </div>
     </div>
@@ -251,6 +261,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { Plus, Edit, Send, Trash2, Heart, Eye, FileText, X, Pin } from 'lucide-vue-next'
 import { ElMessage } from 'element-plus'
+import AppButton from '@/components/ui/AppButton.vue'
 import QuillEditor from '@/components/ui/QuillEditor.vue'
 import ImageUpload from '@/components/ui/ImageUpload.vue'
 import request from '@/api/request'

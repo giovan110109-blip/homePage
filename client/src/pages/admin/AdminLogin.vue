@@ -19,22 +19,22 @@
       </div>
 
       <!-- 右侧登录卡片 -->
-      <el-card class="rounded-2xl border border-slate-200 shadow-lg dark:border-slate-700 dark:bg-slate-900/85" shadow="hover">
+      <el-card class="rounded-2xl border border-slate-200 shadow-lg dark:border-slate-700 bg-gradient-to-br from-white/90 via-white/80 to-blue-50/70 dark:from-slate-900/90 dark:via-slate-900/85 dark:to-blue-950/60" shadow="hover">
         <div class="flex items-center justify-between gap-3 mb-2">
           <div class="text-xl font-bold text-gray-900 dark:text-white">后台登录</div>
-          <el-button
-            type="primary"
-            link
+          <AppButton
+            variant="link-primary"
+            size="none"
             @click="handleBackHome"
             class="text-xs"
           >
             <ArrowLeft class="w-4 h-4" />
             返回首页
-          </el-button>
+          </AppButton>
         </div>
         <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">请输入管理员账号密码进入后台。</p>
         
-        <el-form :model="form" :rules="rules" ref="formRef">
+        <el-form :model="form" :rules="rules" ref="formRef" @submit.prevent="handleLogin">
           <el-form-item label="账号" prop="username">
             <el-input v-model="form.username" placeholder="请输入账号" />
           </el-form-item>
@@ -42,7 +42,14 @@
             <el-input v-model="form.password" type="password" show-password placeholder="请输入密码" />
           </el-form-item>
           <el-form-item>
-            <el-button type="primary" class="w-full" :loading="loading" @click="handleLogin">登录</el-button>
+            <AppButton
+              variant="primary"
+              nativeType="submit"
+              class="w-full"
+              :disabled="loading"
+            >
+              登录
+            </AppButton>
           </el-form-item>
         </el-form>
 
@@ -74,6 +81,7 @@ import { useRouter, useRoute } from 'vue-router'
 import type { FormInstance, FormRules } from 'element-plus'
 import { ElMessage } from 'element-plus'
 import { ArrowLeft } from 'lucide-vue-next'
+import AppButton from '@/components/ui/AppButton.vue'
 import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()

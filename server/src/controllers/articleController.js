@@ -84,18 +84,24 @@ class ArticleController extends BaseController {
                 this.throwHttpError('文章不存在或未发布', HttpStatus.NOT_FOUND);
             }
 
-            // 检查是否已点赞
-            if (article.likedBy.includes(clientIp)) {
-                this.throwHttpError('您已经点赞过了', HttpStatus.BAD_REQUEST);
+            const likedIndex = article.likedBy.indexOf(clientIp);
+            let liked = true;
+
+            if (likedIndex > -1) {
+                // 已点赞则取消点赞
+                article.likedBy.splice(likedIndex, 1);
+                article.likes = Math.max(0, article.likes - 1);
+                liked = false;
+            } else {
+                article.likes += 1;
+                article.likedBy.push(clientIp);
             }
 
-            article.likes += 1;
-            article.likedBy.push(clientIp);
             await article.save();
 
             ctx.body = {
                 success: true,
-                data: { likes: article.likes }
+                data: { likes: article.likes, liked }
             };
         } catch (error) {
             this.throwHttpError(error.message, HttpStatus.INTERNAL_SERVER_ERROR);

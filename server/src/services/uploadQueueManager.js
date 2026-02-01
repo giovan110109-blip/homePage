@@ -7,6 +7,49 @@ const Photo = require('../models/photo')
 const imageProcessing = require('./imageProcessing')
 const videoOptimizer = require('./videoOptimizer')
 const geocoding = require('./geocoding')
+const { execFile } = require('child_process')
+const { promisify } = require('util')
+
+const execFileAsync = promisify(execFile)
+
+const LIVEPHOTO_MAX_VIDEO_SIZE = 12 * 1024 * 1024 // 12MB
+const LIVEPHOTO_MAX_TIME_DIFF_MS = 10 * 60 * 1000 // 10分钟
+
+const getVideoDurationSeconds = async (filePath) => {
+  try {
+    const { stdout } = await execFileAsync(
+      'ffprobe',
+      [
+        '-v', 'error',
+        '-show_entries', 'format=duration',
+        '-of', 'default=noprint_wrappers=1:nokey=1',
+        filePath
+      ],
+      { timeout: 5000 }
+    )
+    const duration = parseFloat(String(stdout).trim())
+    return Number.isFinite(duration) ? duration : null
+  } catch (error) {
+    return null
+  }
+}
+
+const isLikelyLiveVideo = async (videoPath, imageDateTaken, taskCreatedAt) => {
+  try {
+    const stats = await fs.stat(videoPath)
+    if (stats.size > LIVEPHOTO_MAX_VIDEO_SIZE) return false
+
+    const refTime = imageDateTaken || taskCreatedAt
+    if (refTime) {
+      const diff = Math.abs(stats.mtimeMs - new Date(refTime).getTime())
+      if (diff > LIVEPHOTO_MAX_TIME_DIFF_MS) return false
+    }
+
+    return true
+  } catch {
+    return false
+  }
+}
 
 /**
  * 上传任务队列管理器
@@ -413,9 +456,13 @@ class UploadQueueManager extends EventEmitter {
         const videoExts = ['.mp4', '.mov', '.avi', '.mkv', '.m4v']
         
         if (videoExts.includes(pairedExt)) {
-          isLive = true
-          videoKey = task.pairedFile
-          videoUrl = `${this.uploadBaseUrl}/photos/${task.pairedFile}`
+          const pairedPath = path.join(this.uploadDir, task.pairedFile)
+          const valid = await isLikelyLiveVideo(pairedPath, dateTaken, task.createdAt)
+          if (valid) {
+            isLive = true
+            videoKey = task.pairedFile
+            videoUrl = `${this.uploadBaseUrl}/photos/${task.pairedFile}`
+          }
         }
       }
       
@@ -424,7 +471,6 @@ class UploadQueueManager extends EventEmitter {
         try {
           const uploadedFiles = await fs.readdir(this.uploadDir)
           const videoExts = ['.mp4', '.mov', '.avi', '.mkv', '.m4v']
-          const MAX_LIVEPHOTO_SIZE = 12 * 1024 * 1024 // 12MB
           
           for (const file of uploadedFiles) {
             // 提取文件的 baseName（去掉结尾的 _时间戳 和扩展名）
@@ -435,17 +481,13 @@ class UploadQueueManager extends EventEmitter {
             
             // 找到同名视频文件
             if (fileBaseName === derivedBaseName && videoExts.includes(fileExt)) {
-              // 检查视频文件大小，只有 ≤12MB 才算 LivePhoto
               const videoPath = path.join(this.uploadDir, file)
-              const videoStats = await fs.stat(videoPath)
-              
-              if (videoStats.size <= MAX_LIVEPHOTO_SIZE) {
+              const valid = await isLikelyLiveVideo(videoPath, dateTaken, task.createdAt)
+              if (valid) {
                 isLive = true
                 videoKey = file
                 videoUrl = `${this.uploadBaseUrl}/photos/${file}`
-                console.log(`✨ 检测到 LivePhoto 视频文件: ${file} (${(videoStats.size / 1024 / 1024).toFixed(2)}MB)`)
-              } else {
-                console.log(`⚠️ 视频文件 ${file} 超过 12MB (${(videoStats.size / 1024 / 1024).toFixed(2)}MB)，不作为 LivePhoto 处理`)
+                console.log(`✨ 检测到 LivePhoto 视频文件: ${file}`)
               }
               break
             }
@@ -460,10 +502,15 @@ class UploadQueueManager extends EventEmitter {
       if (derivedBaseName) {
         existingByBase = await Photo.findOne({ baseName: derivedBaseName })
 
-        if (existingByBase?.videoKey) {
-          isLive = true
-          videoKey = existingByBase.videoKey
-          videoUrl = existingByBase.videoUrl
+        if (existingByBase?.videoKey && existingByBase?.isLive) {
+          const timeDiff = existingByBase.createdAt && task.createdAt
+            ? Math.abs(new Date(existingByBase.createdAt).getTime() - new Date(task.createdAt).getTime())
+            : 0
+          if (timeDiff <= LIVEPHOTO_MAX_TIME_DIFF_MS) {
+            isLive = true
+            videoKey = existingByBase.videoKey
+            videoUrl = existingByBase.videoUrl
+          }
         }
       }
 

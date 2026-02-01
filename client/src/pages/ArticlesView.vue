@@ -33,24 +33,23 @@
           </select>
 
           <!-- 搜索按钮 -->
-          <button
-            @click="handleSearch"
-            class="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-xl hover:shadow-lg transition-all duration-300 font-medium"
-          >
+          <AppButton variant="primary" size="md" @click="handleSearch">
             搜索
-          </button>
+          </AppButton>
         </div>
 
         <!-- 标签云 -->
         <div v-if="tags.length > 0" class="mt-4 flex flex-wrap gap-2">
-          <button
+          <AppButton
             v-for="tag in tags"
             :key="tag"
-            @click="filterByTag(tag)"
+            variant="custom"
+            size="none"
             class="px-3 py-1.5 text-sm rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
+            @click="filterByTag(tag)"
           >
             #{{ tag }}
-          </button>
+          </AppButton>
         </div>
       </div>
 
@@ -157,28 +156,31 @@
                 <!-- 右侧按钮组 -->
                 <div class="flex items-center gap-3">
                   <!-- 点赞按钮 -->
-                  <button
+                  <AppButton
+                    variant="custom"
+                    size="none"
                     @click="handleLike(article)"
-                    :disabled="isLiked(article._id)"
                     :class="[
                       'flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-300',
                       isLiked(article._id)
-                        ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 cursor-not-allowed'
+                        ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
                         : 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/50'
                     ]"
                   >
                     <Heart :class="{ 'fill-current': isLiked(article._id) }" class="w-4 h-4" />
                     <span>{{ article.likes }}</span>
-                  </button>
+                  </AppButton>
 
                   <!-- 分享按钮 -->
-                  <button
+                  <AppButton
+                    variant="custom"
+                    size="none"
                     @click="shareArticle(article._id)"
                     class="flex items-center gap-2 px-4 py-2 rounded-lg bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 hover:bg-purple-200 dark:hover:bg-purple-900/50 font-medium transition-all duration-300"
                   >
                     <Share2 class="w-4 h-4" />
                     <span>分享</span>
-                  </button>
+                  </AppButton>
                 </div>
               </div>
             </div>
@@ -189,18 +191,22 @@
       <!-- 分页 -->
       <div v-if="pagination.pages > 1" class="mt-12 flex justify-center">
         <div class="flex items-center gap-2">
-          <button
+          <AppButton
+            variant="custom"
+            size="none"
             :disabled="pagination.page === 1"
             @click="changePage(pagination.page - 1)"
             class="px-4 py-2 rounded-lg bg-white/60 dark:bg-white/10 border border-gray-200 dark:border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
           >
             <ChevronLeft class="w-5 h-5" />
-          </button>
+          </AppButton>
 
           <div class="flex gap-2">
-            <button
+            <AppButton
               v-for="page in visiblePages"
               :key="page"
+              variant="custom"
+              size="none"
               @click="changePage(page)"
               :class="[
                 'px-4 py-2 rounded-lg transition-colors',
@@ -210,16 +216,18 @@
               ]"
             >
               {{ page }}
-            </button>
+            </AppButton>
           </div>
 
-          <button
+          <AppButton
+            variant="custom"
+            size="none"
             :disabled="pagination.page === pagination.pages"
             @click="changePage(pagination.page + 1)"
             class="px-4 py-2 rounded-lg bg-white/60 dark:bg-white/10 border border-gray-200 dark:border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
           >
             <ChevronRight class="w-5 h-5" />
-          </button>
+          </AppButton>
         </div>
       </div>
     </div>
@@ -230,6 +238,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Search, Eye, Heart, Calendar, User, FileText, ChevronLeft, ChevronRight, TrendingUp, Share2 } from 'lucide-vue-next'
+import AppButton from '@/components/ui/AppButton.vue'
 import EmojiReaction from '@/components/EmojiReaction.vue'
 import { ElMessage } from 'element-plus'
 import request from '@/api/request'
@@ -378,14 +387,24 @@ const isLiked = (articleId: string) => {
 }
 
 const handleLike = async (article: Article) => {
-  if (isLiked(article._id)) return
-
   try {
-    await request.post(`/articles/${article._id}/like`)
-    article.likes += 1
-    likedArticles.value.add(article._id)
-    localStorage.setItem(`article_liked_${article._id}`, 'true')
-    ElMessage.success('点赞成功')
+    const res: any = await request.post(`/articles/${article._id}/like`)
+    const liked = res?.data?.liked
+    const likes = res?.data?.likes
+
+    if (typeof likes === 'number') {
+      article.likes = likes
+    }
+
+    if (liked) {
+      likedArticles.value.add(article._id)
+      localStorage.setItem(`article_liked_${article._id}`, 'true')
+      ElMessage.success('点赞成功')
+    } else {
+      likedArticles.value.delete(article._id)
+      localStorage.removeItem(`article_liked_${article._id}`)
+      ElMessage.success('已取消点赞')
+    }
   } catch (error: any) {
     ElMessage.error(error.message || '点赞失败')
   }

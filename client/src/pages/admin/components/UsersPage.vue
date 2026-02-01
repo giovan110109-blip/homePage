@@ -9,7 +9,7 @@
       <template #header>
         <div class="flex items-center justify-between font-semibold text-gray-900 dark:text-white">
           <span>用户列表</span>
-          <el-button type="primary" size="small">添加用户</el-button>
+          <AppButton variant="primary" size="sm">添加用户</AppButton>
         </div>
       </template>
 
@@ -30,8 +30,8 @@
         </el-table-column>
         <el-table-column label="操作" width="150">
           <template #default>
-            <el-button link type="primary" size="small">编辑</el-button>
-            <el-button link type="danger" size="small">删除</el-button>
+            <AppButton variant="link-primary" size="none">编辑</AppButton>
+            <AppButton variant="link-danger" size="none">删除</AppButton>
           </template>
         </el-table-column>
       </el-table>
@@ -41,6 +41,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import AppButton from '@/components/ui/AppButton.vue'
 
 const users = ref([
   { name: 'Alice', email: 'alice@example.com', role: '管理员', status: '活跃' },

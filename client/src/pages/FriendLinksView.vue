@@ -172,20 +172,17 @@
             </div>
 
             <div class="flex items-center justify-end space-x-4">
-              <button
-                type="button"
-                @click="resetForm"
-                class="px-6 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors"
-              >
+              <AppButton variant="reset" nativeType="button" @click="resetForm">
                 重置
-              </button>
-              <button
-                type="submit"
+              </AppButton>
+              <AppButton
+                variant="primary"
+                nativeType="submit"
+                :loading="submitting"
                 :disabled="submitting"
-                class="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-xl hover:from-blue-600 hover:to-purple-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
               >
                 {{ submitting ? '提交中...' : '提交申请' }}
-              </button>
+              </AppButton>
             </div>
           </form>
         </div>
@@ -198,6 +195,7 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Eye, ExternalLink } from 'lucide-vue-next'
+import AppButton from '@/components/ui/AppButton.vue'
 import { getFriendLinks, applyFriendLink, recordFriendLinkClick } from '@/api/friendLink'
 import type { FriendLink, FriendLinkFormData } from '@/types/api'
 

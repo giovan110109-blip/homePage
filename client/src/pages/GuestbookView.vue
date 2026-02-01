@@ -80,13 +80,13 @@
                 ></textarea>
               </div>
 
-              <button
-                type="submit"
-                class="submit-button"
+              <AppButton
+                variant="primary"
+                nativeType="submit"
                 :disabled="submitting"
               >
                 {{ submitting ? "提交中..." : "提交留言" }}
-              </button>
+              </AppButton>
             </form>
           </div>
 
@@ -211,6 +211,7 @@ import {
 } from "lucide-vue-next";
 import { ElMessage } from "element-plus";
 import EmojiReaction from "@/components/EmojiReaction.vue";
+import AppButton from "@/components/ui/AppButton.vue";
 import request from "@/api/request";
 import { buildAvatarSvg } from "@/utils/avatarSvg";
 
@@ -640,31 +641,6 @@ const getDeviceIcon = (device?: string) => {
 .form-textarea {
   resize: vertical;
   min-height: 120px;
-}
-
-.submit-button {
-  padding: $spacing-xs $spacing-lg;
-  background: linear-gradient(
-    135deg,
-    $color-primary 0%,
-    $color-primary-dark 100%
-  );
-  color: white;
-  font-weight: 600;
-  border: none;
-  border-radius: $radius-md;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-size: $font-sm;
-
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
-  }
-
-  &:active {
-    transform: translateY(0);
-  }
 }
 
 .messages-section {

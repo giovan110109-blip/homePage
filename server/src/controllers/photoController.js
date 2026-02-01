@@ -256,7 +256,8 @@ class PhotoController {
 
       task.status = 'pending'
       task.stage = 'upload'
-      task.progress = 0
+      // 重试时重置进度为 5（表示重新处理开始），前端 Math.max 保护会确保不倒退显示
+      task.progress = 5
       task.error = null
       task.attempts = 0
       task.failedAt = null

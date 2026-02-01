@@ -77,7 +77,7 @@
         <el-table-column prop="date" label="时间" width="180"></el-table-column>
         <el-table-column label="操作" width="100">
           <template #default>
-            <el-button link type="primary" size="small">查看</el-button>
+            <AppButton variant="link-primary" size="none">查看</AppButton>
           </template>
         </el-table-column>
       </el-table>
@@ -88,6 +88,7 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { Eye, Users, MessageSquare, Briefcase, Clock } from "lucide-vue-next";
+import AppButton from "@/components/ui/AppButton.vue";
 
 const recentActivity = ref([
   { title: "新用户注册", type: "用户", date: "2026-01-26 10:30" },

@@ -34,7 +34,7 @@
               <el-option label="工具" value="tools" />
               <el-option label="其他" value="other" />
             </el-select>
-            <el-button type="primary" @click="loadData">刷新</el-button>
+            <AppButton variant="primary" size="sm" @click="loadData">刷新</AppButton>
           </div>
         </div>
       </template>
@@ -124,36 +124,36 @@
         <el-table-column label="操作" width="220" fixed="right">
           <template #default="scope">
             <div class="flex gap-2">
-              <el-button
+              <AppButton
                 v-if="scope.row.status === 'pending'"
-                type="success"
-                size="small"
+                variant="success"
+                size="sm"
                 @click="handleReview(scope.row, 'approved')"
               >
                 通过
-              </el-button>
-              <el-button
+              </AppButton>
+              <AppButton
                 v-if="scope.row.status === 'pending'"
-                type="danger"
-                size="small"
+                variant="danger"
+                size="sm"
                 @click="handleReject(scope.row)"
               >
                 拒绝
-              </el-button>
-              <el-button
-                type="primary"
-                size="small"
+              </AppButton>
+              <AppButton
+                variant="primary"
+                size="sm"
                 @click="handleEdit(scope.row)"
               >
                 编辑
-              </el-button>
-              <el-button
-                type="danger"
-                size="small"
+              </AppButton>
+              <AppButton
+                variant="danger"
+                size="sm"
                 @click="handleDelete(scope.row)"
               >
                 删除
-              </el-button>
+              </AppButton>
             </div>
           </template>
         </el-table-column>
@@ -185,8 +185,8 @@
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="rejectDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="confirmReject">确认拒绝</el-button>
+        <AppButton variant="reset" size="sm" @click="rejectDialogVisible = false">取消</AppButton>
+        <AppButton variant="danger" size="sm" @click="confirmReject">确认拒绝</AppButton>
       </template>
     </el-dialog>
 
@@ -228,8 +228,8 @@
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="editDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="confirmEdit">保存</el-button>
+        <AppButton variant="reset" size="sm" @click="editDialogVisible = false">取消</AppButton>
+        <AppButton variant="primary" size="sm" @click="confirmEdit">保存</AppButton>
       </template>
     </el-dialog>
   </div>
@@ -239,6 +239,7 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ExternalLink } from 'lucide-vue-next'
+import AppButton from '@/components/ui/AppButton.vue'
 import {
   adminGetFriendLinks,
   adminReviewFriendLink,

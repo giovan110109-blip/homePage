@@ -9,16 +9,18 @@
       <!-- 左侧：Logo + Title -->
       <div class="flex items-center gap-3 min-w-0 flex-1">
         <!-- 侧边栏折叠按钮（PC 端） -->
-        <button
+        <AppButton
+          variant="custom"
+          size="none"
           @click="sidebarCollapsed = !sidebarCollapsed"
-          class="hidden lg:flex items-center justify-center w-9 h-9 rounded-lg hover:bg-indigo-100 dark:hover:bg-slate-800 transition-colors duration-200 cursor-pointer text-slate-700 dark:text-slate-300"
+          class="hidden lg:flex items-center justify-center w-9 h-9 rounded-lg hover:bg-indigo-100 dark:hover:bg-slate-800 transition-colors duration-200 text-slate-700 dark:text-slate-300"
           aria-label="切换侧边栏"
         >
           <component
             :is="sidebarCollapsed ? ChevronRight : ChevronLeft"
             class="w-5 h-5"
           />
-        </button>
+        </AppButton>
 
         <!-- Logo 和标题 -->
         <div class="hidden sm:block">
@@ -33,17 +35,24 @@
         </div>
 
         <!-- 移动端菜单按钮 -->
-        <button
+        <AppButton
+          variant="custom"
+          size="none"
           @click="mobileMenuOpen = true"
-          class="lg:hidden flex items-center justify-center w-9 h-9 rounded-lg hover:bg-indigo-100 dark:hover:bg-slate-800 transition-colors duration-200 cursor-pointer"
+          class="lg:hidden flex items-center justify-center w-9 h-9 rounded-lg hover:bg-indigo-100 dark:hover:bg-slate-800 transition-colors duration-200"
           aria-label="打开菜单"
         >
           <Menu class="w-5 h-5 text-slate-700 dark:text-slate-300" />
-        </button>
+        </AppButton>
       </div>
 
       <!-- 右侧：用户菜单和操作 -->
-      <div class="flex items-center gap-3">
+      <div class="flex items-center gap-2 sm:gap-3">
+        <!-- 主题切换（响应式） -->
+        <div class="hidden sm:block">
+          <ThemeToggle />
+        </div>
+
         <!-- 用户名显示（大屏） -->
         <span
           class="hidden sm:inline text-sm text-slate-600 dark:text-slate-400"
@@ -66,20 +75,20 @@
             <el-dropdown-menu>
               <el-dropdown-item command="profile">
                 <div class="flex items-center gap-2">
-                  <User class="w-4 h-4" />
-                  <span>个人信息</span>
+                  <User class="w-4 h-4 text-slate-700 dark:text-slate-300" />
+                  <span class="text-slate-900 dark:text-slate-100">个人信息</span>
                 </div>
               </el-dropdown-item>
               <el-dropdown-item command="home">
                 <div class="flex items-center gap-2">
-                  <Home class="w-4 h-4" />
-                  <span>前往首页</span>
+                  <Home class="w-4 h-4 text-slate-700 dark:text-slate-300" />
+                  <span class="text-slate-900 dark:text-slate-100">前往首页</span>
                 </div>
               </el-dropdown-item>
               <el-dropdown-item divided command="logout">
                 <div class="flex items-center gap-2">
-                  <LogOut class="w-4 h-4" />
-                  <span>退出登录</span>
+                  <LogOut class="w-4 h-4 text-slate-700 dark:text-slate-300" />
+                  <span class="text-slate-900 dark:text-slate-100">退出登录</span>
                 </div>
               </el-dropdown-item>
             </el-dropdown-menu>
@@ -134,17 +143,35 @@
     <el-footer
       class="h-12 flex items-center justify-center text-xs text-slate-500 dark:text-slate-400 bg-white/50 dark:bg-slate-900/50 border-t border-slate-200/50 dark:border-slate-700/50 backdrop-blur-xl"
     >
-      <span>© 2026 Admin Dashboard. All rights reserved.</span>
+      <span>© 2026 Admin Giovan. All rights reserved.</span>
     </el-footer>
 
     <!-- 移动端抽屉菜单 -->
     <el-drawer
       v-model="mobileMenuOpen"
-      title="导航菜单"
       size="280px"
       direction="ltr"
       class="lg:hidden"
+      :show-close="false"
     >
+      <template #header>
+        <div class="flex items-center justify-between w-full">
+          <span class="text-base font-semibold text-slate-900 dark:text-white">导航菜单</span>
+          <div class="flex items-center gap-2">
+            <ThemeToggle />
+            <AppButton
+              variant="custom"
+              size="none"
+              @click="mobileMenuOpen = false"
+              class="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-indigo-100 dark:hover:bg-slate-800 transition-colors"
+              aria-label="关闭菜单"
+            >
+              <X class="w-5 h-5 text-slate-700 dark:text-slate-300" />
+            </AppButton>
+          </div>
+        </div>
+      </template>
+
       <el-menu
         :default-active="activeMenu"
         @select="handleMobileSelect"
@@ -158,7 +185,7 @@
         >
           <component :is="item.icon" class="w-5 h-5" />
           <template #title>
-            <span>{{ item.label }}</span>
+            <span class="ml-2">{{ item.label }}</span>
           </template>
         </el-menu-item>
       </el-menu>
@@ -191,6 +218,8 @@ import {
   Image,
 } from "lucide-vue-next";
 import { ref, computed, onMounted, watch } from "vue";
+import AppButton from "@/components/ui/AppButton.vue";
+import ThemeToggle from "@/components/ui/ThemeToggle.vue";
 import DashboardPage from "./components/DashboardPage.vue";
 import UsersPage from "./components/UsersPage.vue";
 import MessagesPage from "./components/MessagesPage.vue";
@@ -307,6 +336,10 @@ watch(activeMenu, (value) => {
   transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+.dark :deep(.el-menu-item) {
+  color: #cbd5e1;
+}
+
 :deep(.el-menu-item:hover) {
   background-color: #6366f1 !important;
   color: white !important;
@@ -353,6 +386,14 @@ watch(activeMenu, (value) => {
     0 10px 10px -5px rgba(0, 0, 0, 0.04);
 }
 
+.dark :deep(.el-dropdown-menu) {
+  background-color: #1e293b;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  box-shadow:
+    0 20px 25px -5px rgba(0, 0, 0, 0.5),
+    0 10px 10px -5px rgba(0, 0, 0, 0.3);
+}
+
 :deep(.el-dropdown-menu__item) {
   color: #334155;
   padding: 10px 16px;
@@ -361,9 +402,18 @@ watch(activeMenu, (value) => {
   margin: 4px 8px;
 }
 
+.dark :deep(.el-dropdown-menu__item) {
+  color: #cbd5e1;
+}
+
 :deep(.el-dropdown-menu__item:hover) {
   background-color: #e0e7ff;
   color: #6366f1;
+}
+
+.dark :deep(.el-dropdown-menu__item:hover) {
+  background-color: #4f46e5;
+  color: #f1f5f9;
 }
 
 /* Dark mode 支持 */
