@@ -44,8 +44,8 @@ class DashboardController extends BaseController {
         }),
         
         // 图片统计
-        Photo.countDocuments({ status: 'published' }),
-        Photo.countDocuments({ status: 'published', createdAt: { $gte: oneWeekAgo } }),
+        Photo.countDocuments({ status: 'completed' }),
+        Photo.countDocuments({ status: 'completed', createdAt: { $gte: oneWeekAgo } }),
         
         // 访问日志总数
         AccessLog.countDocuments({}),
