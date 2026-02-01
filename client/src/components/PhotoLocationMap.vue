@@ -3,10 +3,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
+import { useTheme } from '@/composables/useTheme'
+import lightMapStyleJson from '@/assets/mapStyles/chronoframe_light.json'
+import darkMapStyleJson from '@/assets/mapStyles/chronoframe_dark.json'
+import type { StyleSpecification } from 'maplibre-gl'
 
 interface Props {
   latitude: number
@@ -22,38 +26,16 @@ const router = useRouter()
 const mapContainer = ref<HTMLDivElement>()
 const map = ref<maplibregl.Map>()
 const marker = ref<maplibregl.Marker>()
+const { isDark } = useTheme()
 
 const initMap = () => {
   if (!mapContainer.value) return
 
-  // 使用高德/天地图瓦片
+  const initialStyle = isDark.value ? darkMapStyleJson : lightMapStyleJson
+
   map.value = new maplibregl.Map({
     container: mapContainer.value,
-    style: {
-      version: 8,
-      sources: {
-        'osm': {
-          type: 'raster',
-          tiles: [
-            'https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
-            'https://b.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
-            'https://c.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
-            'https://d.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png'
-          ],
-          tileSize: 256,
-          attribution: '© CartoDB © OpenStreetMap'
-        }
-      },
-      layers: [
-        {
-          id: 'osm',
-          type: 'raster',
-          source: 'osm',
-          minzoom: 0,
-          maxzoom: 19
-        }
-      ]
-    },
+    style: initialStyle as any,
     center: [props.longitude, props.latitude],
     zoom: props.zoom,
     interactive: true
@@ -72,6 +54,13 @@ const initMap = () => {
   })
 }
 
+watch(isDark, (newDarkMode) => {
+  if (map.value) {
+    const newStyle = newDarkMode ? darkMapStyleJson : lightMapStyleJson
+    map.value.setStyle(newStyle as any)
+  }
+})
+
 // 监听坐标变化
 watch([() => props.latitude, () => props.longitude], ([newLat, newLng]) => {
   if (map.value && marker.value) {
@@ -81,7 +70,7 @@ watch([() => props.latitude, () => props.longitude], ([newLat, newLng]) => {
   }
 })
 
-onMounted(() => {
+onMounted(async () => {
   initMap()
 })
 

@@ -1,57 +1,66 @@
 
 type Theme = 'light' | 'dark'
 
-export function useTheme() {
-  const theme = ref<Theme>('light')
-  const isUserSet = ref(false)
-
-  const getPreferredTheme = (): Theme => {
-    const saved = localStorage.getItem('theme') as Theme | null
-    if (saved === 'light' || saved === 'dark') {
-      isUserSet.value = true
-      return saved
-    }
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+// 全局单例状态 - 在模块加载时初始化，只初始化一次
+const getPreferredTheme = (): Theme => {
+  const saved = localStorage.getItem('theme') as Theme | null
+  if (saved === 'light' || saved === 'dark') {
+    return saved
   }
+  return typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+}
 
-  const applyTheme = (t: Theme, saveToStorage = true) => {
+const applyTheme = (t: Theme) => {
+  if (typeof document !== 'undefined') {
     document.documentElement.classList.remove('light', 'dark')
     document.documentElement.classList.add(t)
     document.documentElement.style.colorScheme = t
-    if (saveToStorage && isUserSet.value) {
-      localStorage.setItem('theme', t)
-    } else if (!isUserSet.value) {
-      // 如果用户没有手动设置，不保存到localStorage，跟随浏览器
-      localStorage.removeItem('theme')
-    }
   }
+}
 
-  const toggleTheme = () => {
-    isUserSet.value = true
-    theme.value = theme.value === 'light' ? 'dark' : 'light'
-  }
+const globalTheme = ref<Theme>(getPreferredTheme())
+let isUserSet = false
+let initialized = false
 
+// 页面加载时立即应用主题
+applyTheme(globalTheme.value)
+
+export function useTheme() {
   onMounted(() => {
-    theme.value = getPreferredTheme()
-    applyTheme(theme.value, false)
-    
-    // 监听浏览器主题变化
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
-    const handleChange = () => {
-      if (!isUserSet.value) {
-        theme.value = mediaQuery.matches ? 'dark' : 'light'
+    if (!initialized) {
+      // 保存用户设置到localStorage
+      if (isUserSet) {
+        localStorage.setItem('theme', globalTheme.value)
       }
+      
+      // 监听浏览器主题变化
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+      const handleChange = () => {
+        if (!isUserSet) {
+          globalTheme.value = mediaQuery.matches ? 'dark' : 'light'
+        }
+      }
+      mediaQuery.addEventListener('change', handleChange)
+      
+      initialized = true
     }
-    mediaQuery.addEventListener('change', handleChange)
   })
 
   watchEffect(() => {
-    applyTheme(theme.value, isUserSet.value)
+    applyTheme(globalTheme.value)
+    if (isUserSet) {
+      localStorage.setItem('theme', globalTheme.value)
+    }
   })
 
+  const toggleTheme = () => {
+    isUserSet = true
+    globalTheme.value = globalTheme.value === 'light' ? 'dark' : 'light'
+  }
+
   return {
-    theme,
+    theme: globalTheme,
     toggleTheme,
-    isDark: computed(() => theme.value === 'dark'),
+    isDark: computed(() => globalTheme.value === 'dark'),
   }
 }

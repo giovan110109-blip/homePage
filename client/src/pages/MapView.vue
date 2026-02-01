@@ -78,13 +78,17 @@
 
 <script setup lang="ts">
 // @ts-nocheck
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { ArrowLeft, MapPin, X } from 'lucide-vue-next'
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import request from '@/api/request'
 import { getAssetURL } from '@/utils'
 import LazyImage from '@/components/LazyImage.vue'
+import { useTheme } from '@/composables/useTheme'
+import lightMapStyleJson from '@/assets/mapStyles/chronoframe_light.json'
+import darkMapStyleJson from '@/assets/mapStyles/chronoframe_dark.json'
+import type { StyleSpecification } from 'maplibre-gl'
 
 interface MapLocation {
   city: string
@@ -116,38 +120,16 @@ const currentPhoto = ref<any>(null)
 const totalPhotos = ref(0)
 const mapReady = ref(false)
 const markers = ref<maplibregl.Marker[]>([])
+const { isDark } = useTheme()
 
 const initMap = () => {
   if (!mapContainer.value) return
 
-  // 使用高德/天地图瓦片
+  const initialStyle = isDark.value ? darkMapStyleJson : lightMapStyleJson
+
   map.value = new maplibregl.Map({
     container: mapContainer.value,
-    style: {
-      version: 8,
-      sources: {
-        'osm': {
-          type: 'raster',
-          tiles: [
-            'https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
-            'https://b.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
-            'https://c.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
-            'https://d.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png'
-          ],
-          tileSize: 256,
-          attribution: '© CartoDB © OpenStreetMap'
-        }
-      },
-      layers: [
-        {
-          id: 'osm',
-          type: 'raster',
-          source: 'osm',
-          minzoom: 0,
-          maxzoom: 19
-        }
-      ]
-    },
+    style: initialStyle as any,
     center: [104.066, 30.573], // 成都
     zoom: 4
   })
@@ -162,7 +144,21 @@ const initMap = () => {
       fitMapBounds()
     }
   })
+
+  map.value.on('style.load', () => {
+    if (mapData.value.length > 0) {
+      addMarkersToMap()
+      fitMapBounds()
+    }
+  })
 }
+
+watch(isDark, (newDarkMode) => {
+  if (map.value) {
+    const newStyle = newDarkMode ? darkMapStyleJson : lightMapStyleJson
+    map.value.setStyle(newStyle as any)
+  }
+})
 
 const loadMapData = async () => {
   try {
