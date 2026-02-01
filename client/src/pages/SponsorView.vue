@@ -1,137 +1,104 @@
 <template>
   <div
-    class="sponsor-page min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-blue-50 dark:from-gray-900 dark:via-blue-900 dark:to-blue-900 relative"
+    class="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-blue-50 dark:from-gray-900 dark:via-blue-900 dark:to-blue-900 py-16 sm:py-20"
   >
-    <!-- Background blur effects -->
-    <div class="absolute inset-0 overflow-hidden">
-      <div
-        class="absolute -top-40 -right-40 w-80 h-80 bg-blue-300/20 dark:bg-blue-500/10 rounded-full blur-3xl"
-      ></div>
-      <div
-        class="hidden absolute -bottom-40 -left-40 w-80 h-80 bg-purple-300/20 dark:bg-purple-500/10 rounded-full blur-3xl"
-      ></div>
-      <div
-        class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-pink-300/10 dark:bg-pink-500/5 rounded-full blur-3xl"
-      ></div>
-    </div>
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      <!-- 页面标题 -->
+      <div class="text-center mb-12 sm:mb-16">
+        <span class="inline-flex items-center gap-2 px-3 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">SPONSOR</span>
+        <h1 class="text-4xl sm:text-5xl font-bold text-gray-900 dark:text-white mt-4 mb-3 tracking-tight">赞助支持</h1>
+        <p class="text-gray-600 dark:text-gray-400">您的每一份支持都是我们前进的动力，让我们共同创造更多可能 ✨。</p>
+      </div>
 
-    <!-- Content overlay -->
-    <div class="relative z-10">
-      <div class="sponsor-container">
-        <div class="sponsor-card">
-          <div class="header">
-            <!-- <div class="icon">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" fill="#64ffda"/>
-            </svg>
-          </div> -->
-            <h1 class="title">赞助支持</h1>
-            <p class="subtitle">
-              您的每一份支持都是我们前进的动力，让我们共同创造更多可能 ✨。
-            </p>
-          </div>
-
-          <div class="qr-codes">
-            <div
-              v-for="(method, index) in displayMethods"
-              :key="method._id || method.name || index"
-              class="qr-card"
-              :ref="(el) => (qrCardRefs[index] = el as HTMLElement)"
-              @mousemove="(event) => handleQrCardMouseMove(event, index)"
-              @mouseleave="() => handleQrCardMouseLeave(index)"
-            >
-              <!-- 鼠标跟随效果 -->
-              <div
-                v-if="qrCardEffects[index]?.show"
-                class="absolute w-40 h-40 rounded-full blur-2xl transition-all duration-75 ease-out pointer-events-none z-0"
-                :style="{
-                  left: qrCardEffects[index]?.x - 80 + 'px',
-                  top: qrCardEffects[index]?.y - 80 + 'px',
-                }"
-              ></div>
-              <div class="qr-icon" v-if="method.icon">
-                <img
-                  class="w-32px h-32px"
-                  :src="method.icon"
-                  :alt="method.name"
-                />
-              </div>
-              <h3>{{ method.name }}</h3>
-              <div class="qr-placeholder">
-                <img
-                  v-if="method.qrCode"
-                  :src="method.qrCode"
-                  :alt="method.name"
-                />
-                <span v-else>暂无二维码</span>
-              </div>
-              <p class="qr-description">
-                {{ method.description || "扫一扫，请我喝杯咖啡" }}
-              </p>
-            </div>
-          </div>
-
-          <!-- 特别赞助提示 -->
+      <div class="qr-codes">
+        <div
+          v-for="(method, index) in displayMethods"
+          :key="method._id || method.name || index"
+          class="bg-white/80 dark:bg-white/5 backdrop-blur-xl rounded-3xl p-8 border border-gray-200/60 dark:border-white/10 text-center flex-1 relative overflow-hidden hover:shadow-2xl hover:border-blue-400/50 dark:hover:border-blue-400/30 transition-all"
+          :ref="(el) => (qrCardRefs[index] = el as HTMLElement)"
+          @mousemove="(event) => handleQrCardMouseMove(event, index)"
+          @mouseleave="() => handleQrCardMouseLeave(index)"
+        >
+          <!-- 鼠标跟随效果 -->
           <div
-            class="my-8 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/50 dark:to-indigo-950/50 border-2 border-blue-200 dark:border-blue-700 rounded-xl p-6 flex items-center gap-4 shadow-lg hover:shadow-xl transition-shadow"
-          >
-            <div
-              class="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 dark:from-blue-400 dark:to-indigo-500 rounded-full flex items-center justify-center animate-pulse"
-            >
-              <Heart class="w-6 h-6 text-white" />
-            </div>
-            <div class="flex-1 text-left">
-              <span
-                class="inline-block bg-blue-500 dark:bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded-full mb-2"
-                >特别赞助</span
-              >
-              <p
-                class="text-gray-900 dark:text-gray-100 text-base font-semibold"
-              >
-                婧女士特别赞助 Mac Mini 一台
-              </p>
-            </div>
+            v-if="qrCardEffects[index]?.show"
+            class="absolute w-40 h-40 rounded-full blur-2xl transition-all duration-75 ease-out pointer-events-none z-0"
+            :style="{
+              left: qrCardEffects[index]?.x - 80 + 'px',
+              top: qrCardEffects[index]?.y - 80 + 'px',
+            }"
+          ></div>
+          <div class="qr-icon" v-if="method.icon">
+            <img class="w-32px h-32px" :src="method.icon" :alt="method.name" />
           </div>
+          <h3>{{ method.name }}</h3>
+          <div class="qr-placeholder">
+            <img v-if="method.qrCode" :src="method.qrCode" :alt="method.name" />
+            <span v-else>暂无二维码</span>
+          </div>
+          <p class="qr-description">
+            {{ method.description || "扫一扫，请我喝杯咖啡" }}
+          </p>
+        </div>
+      </div>
 
-          <div class="sponsors-table">
-            <h2>赞助名单</h2>
-            <el-empty
-              v-if="!sponsors.length"
-              description="暂无赞助记录"
-              class="empty-state"
-            />
-            <table v-else>
-              <thead>
-                <tr>
-                  <th>赞助者</th>
-                  <th>日期</th>
-                  <th>寄语</th>
-                  <th>金额</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr
-                  v-for="(sponsor, index) in sponsors"
-                  :key="sponsor._id || index"
-                >
-                  <td>{{ sponsor.name }}</td>
-                  <td>{{ formatDate(sponsor.date || sponsor.createdAt) }}</td>
-                  <td>{{ sponsor.message || "-" }}</td>
-                  <td>{{ formatAmount(sponsor.amount) }}</td>
-                </tr>
-              </tbody>
-            </table>
-            <div v-if="sponsors.length" class="mt-8">
-              <div v-if="loadingSponsors" class="loading-state">
-                <div class="spinner"></div>
-                <p>加载中...</p>
-              </div>
-              <div v-else-if="!hasMoreSponsors" class="no-more-state">
-                没有更多了
-              </div>
-              <div v-else class="load-more-hint">下滑加载更多</div>
-            </div>
+      <!-- 特别赞助提示 -->
+      <div
+        class="my-8 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/50 dark:to-indigo-950/50 border-2 border-blue-200 dark:border-blue-700 rounded-xl p-6 flex items-center gap-4 shadow-lg hover:shadow-xl transition-shadow"
+      >
+        <div
+          class="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 dark:from-blue-400 dark:to-indigo-500 rounded-full flex items-center justify-center animate-pulse"
+        >
+          <Heart class="w-6 h-6 text-white" />
+        </div>
+        <div class="flex-1 text-left">
+          <span
+            class="inline-block bg-blue-500 dark:bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded-full mb-2"
+            >特别赞助</span
+          >
+          <p class="text-gray-900 dark:text-gray-100 text-base font-semibold">
+            婧女士特别赞助 Mac Mini 一台
+          </p>
+        </div>
+      </div>
+
+      <div class="sponsors-table">
+        <h2>赞助名单</h2>
+        <el-empty
+          v-if="!sponsors.length"
+          description="暂无赞助记录"
+          class="empty-state"
+        />
+        <table v-else>
+          <thead>
+            <tr>
+              <th>赞助者</th>
+              <th>日期</th>
+              <th>寄语</th>
+              <th>金额</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="(sponsor, index) in sponsors"
+              :key="sponsor._id || index"
+            >
+              <td>{{ sponsor.name }}</td>
+              <td>{{ formatDate(sponsor.date || sponsor.createdAt) }}</td>
+              <td>{{ sponsor.message || "-" }}</td>
+              <td>{{ formatAmount(sponsor.amount) }}</td>
+            </tr>
+          </tbody>
+        </table>
+        <div v-if="sponsors.length" class="mt-8">
+          <div v-if="loadingSponsors" class="loading-state">
+            <div class="spinner"></div>
+            <p>加载中...</p>
           </div>
+          <div v-else-if="!hasMoreSponsors" class="no-more-state">
+            没有更多了
+          </div>
+          <div v-else class="load-more-hint">下滑加载更多</div>
         </div>
       </div>
     </div>
@@ -290,59 +257,6 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.sponsor-container {
-  width: 100%;
-  max-width: 56rem;
-  margin: 0 auto;
-  padding: 80px 16px 80px 16px;
-}
-
-@media (min-width: 640px) {
-  .sponsor-container {
-    padding: 80px 24px 80px 24px;
-  }
-}
-
-@media (min-width: 1024px) {
-  .sponsor-container {
-    padding: 80px 32px 80px 32px;
-  }
-}
-
-.sponsor-card {
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(20px);
-  border-radius: 16px;
-  padding: 48px;
-  text-align: center;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-}
-
-.header {
-  margin-bottom: 48px;
-}
-
-.icon {
-  margin-bottom: 24px;
-  display: flex;
-  justify-content: center;
-}
-
-.title {
-  font-size: 36px;
-  font-weight: 700;
-  color: #1f2937;
-  margin-bottom: 12px;
-  letter-spacing: -0.5px;
-}
-
-.subtitle {
-  font-size: 18px;
-  color: #6b7280;
-  font-weight: 400;
-}
-
 .qr-codes {
   display: flex;
   justify-content: space-between;
@@ -358,14 +272,33 @@ onBeforeUnmount(() => {
 }
 
 .qr-card {
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  padding: 32px 24px;
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(209, 213, 219, 0.6);
+  border-radius: 24px;
+  padding: 32px;
   text-align: center;
   flex: 1;
   position: relative;
   overflow: hidden;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.dark .qr-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.qr-card:hover {
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+  border-color: rgba(59, 130, 246, 0.7);
+  transform: translateY(-2px);
+}
+
+.dark .qr-card:hover {
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.3);
+  border-color: rgba(59, 130, 246, 0.5);
 }
 
 .qr-icon {
@@ -472,7 +405,6 @@ onBeforeUnmount(() => {
   background: #e2e8f0;
 }
 
-
 .sponsors-table h2 {
   color: #1f2937;
   font-size: 24px;
@@ -573,10 +505,6 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 768px) {
-  .sponsor-card {
-    padding: 32px 24px;
-  }
-
   .title {
     font-size: 28px;
   }
@@ -609,18 +537,6 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 480px) {
-  .sponsor-container {
-    padding: 16px;
-  }
-
-  .sponsor-card {
-    padding: 24px 20px;
-  }
-
-  .header {
-    margin-bottom: 32px;
-  }
-
   .notice {
     padding: 20px;
     flex-direction: column;

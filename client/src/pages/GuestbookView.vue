@@ -1,85 +1,86 @@
 <template>
   <div
-    class="guestbook-page min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-blue-50 dark:from-gray-900 dark:via-blue-900 dark:to-blue-900 relative"
+    class="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-blue-50 dark:from-gray-900 dark:via-blue-900 dark:to-blue-900 py-16 sm:py-20"
   >
-    <!-- Background blur effects -->
-    <div class="absolute inset-0 overflow-hidden">
-      <div
-        class="absolute -top-40 -right-40 w-80 h-80 bg-blue-300/20 dark:bg-blue-500/10 rounded-full blur-3xl"
-      ></div>
-      <div
-        class="hidden absolute -bottom-40 -left-40 w-80 h-80 bg-purple-300/20 dark:bg-purple-500/10 rounded-full blur-3xl"
-      ></div>
-      <div
-        class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-pink-300/10 dark:bg-pink-500/5 rounded-full blur-3xl"
-      ></div>
-    </div>
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      <!-- 页面标题 -->
+      <div class="text-center mb-12 sm:mb-16">
+        <span class="inline-flex items-center gap-2 px-3 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">GUESTBOOK</span>
+        <h1 class="text-4xl sm:text-5xl font-bold text-gray-900 dark:text-white mt-4 mb-3 tracking-tight">留言板</h1>
+        <p class="text-gray-600 dark:text-gray-400">在这里留下你的想法和建议，我会认真阅读每一条留言 💬。</p>
+      </div>
 
-    <!-- Content overlay -->
-    <div class="relative z-10">
-      <div class="guestbook-container">
-        <div class="guestbook-card">
-          <!-- Header -->
-          <div class="header">
-            <h1 class="title">留言板</h1>
-            <p class="subtitle">
-              在这里留下你的想法和建议，我会认真阅读每一条留言 💬。
-            </p>
-          </div>
+      <!-- Message Form -->
+      <div class="max-w-2xl mx-auto">
+        <div
+          class="bg-white/80 dark:bg-white/5 backdrop-blur-xl rounded-3xl p-8 sm:p-10 border border-gray-200/60 dark:border-white/10 shadow-2xl mb-8"
+        >
+          <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">
+            发表留言
+          </h2>
+          <form @submit.prevent="submitMessage" class="space-y-6">
+            <div>
+              <label
+                class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+              >
+                昵称 <span class="text-red-500">*</span>
+              </label>
+              <input
+                v-model="formData.name"
+                type="text"
+                required
+                class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white/50 dark:bg-white/5 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                placeholder="请输入你的昵称"
+              />
+            </div>
 
-          <!-- Message Form -->
-          <div class="message-form-section">
-            <h2 class="section-title">发表留言</h2>
-            <form @submit.prevent="submitMessage" class="message-form">
-              <div class="form-group">
-                <label for="name" class="form-label">昵称 <span class="text-red-500">*</span></label>
-                <input
-                  id="name"
-                  v-model="formData.name"
-                  type="text"
-                  class="form-input"
-                  placeholder="请输入你的昵称"
-                  required
-                />
-              </div>
+            <div>
+              <label
+                class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+              >
+                邮箱 <span class="text-red-500">*</span>
+              </label>
+              <input
+                v-model="formData.email"
+                type="email"
+                required
+                class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white/50 dark:bg-white/5 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                placeholder="请输入你的邮箱"
+              />
+            </div>
 
-              <div class="form-group">
-                <label for="email" class="form-label">邮箱 <span class="text-red-500">*</span></label>
-                <input
-                  id="email"
-                  v-model="formData.email"
-                  type="email"
-                  class="form-input"
-                  placeholder="请输入你的邮箱"
-                  required
-                />
-              </div>
+            <div>
+              <label
+                class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+              >
+                网站 (可选)
+              </label>
+              <input
+                v-model="formData.website"
+                type="text"
+                inputmode="url"
+                class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white/50 dark:bg-white/5 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                placeholder="例如：example.com 或 https://example.com"
+                autocomplete="url"
+              />
+            </div>
 
-              <div class="form-group">
-                <label for="website" class="form-label">网站 (可选)</label>
-                <input
-                  id="website"
-                  v-model="formData.website"
-                  type="text"
-                  inputmode="url"
-                  class="form-input"
-                  placeholder="例如：example.com 或 https://example.com"
-                  autocomplete="url"
-                />
-              </div>
+            <div>
+              <label
+                class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+              >
+                留言内容 <span class="text-red-500">*</span>
+              </label>
+              <textarea
+                v-model="formData.message"
+                required
+                rows="5"
+                class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white/50 dark:bg-white/5 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all resize-none"
+                placeholder="请输入你的留言..."
+              ></textarea>
+            </div>
 
-              <div class="form-group">
-                <label for="message" class="form-label">留言内容 <span class="text-red-500">*</span></label>
-                <textarea
-                  id="message"
-                  v-model="formData.message"
-                  class="form-textarea"
-                  placeholder="请输入你的留言..."
-                  rows="5"
-                  required
-                ></textarea>
-              </div>
-
+            <div class="flex items-center justify-end space-x-4">
               <AppButton
                 variant="primary"
                 nativeType="submit"
@@ -87,110 +88,110 @@
               >
                 {{ submitting ? "提交中..." : "提交留言" }}
               </AppButton>
-            </form>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Messages List -->
+      <div class="messages-section">
+        <h2 class="section-title">留言列表</h2>
+
+        <!-- 优先显示 loading -->
+        <div v-if="isLoading" class="loading-state">
+          <div class="spinner"></div>
+          <p>加载中...</p>
+        </div>
+
+        <!-- 仅在非 loading 且无留言时显示空状态 -->
+        <div v-else-if="messages.length === 0" class="empty-state">
+          <p>还没有留言，成为第一个留言的人吧！</p>
+        </div>
+
+        <div v-else class="messages-list" ref="messageListRef">
+          <div
+            v-for="(message, index) in displayedMessages"
+            :key="message.id || index"
+            :class="[
+              'bg-white/80 dark:bg-white/5 backdrop-blur-xl rounded-3xl p-6 border border-gray-200/60 dark:border-white/10 shadow-2xl hover:shadow-2xl hover:border-blue-400/50 dark:hover:border-blue-400/30 transition-all',
+              `note-color-${index % 5}`,
+            ]"
+          >
+            <div class="message-header">
+              <div class="user-info">
+                <div class="flex items-end gap-20px">
+                  <div v-if="message.avatar" v-html="message.avatar"></div>
+                  <h3 class="user-name">{{ message.name }}</h3>
+                </div>
+                <span class="message-time">{{
+                  formatDate(message.createdAt)
+                }}</span>
+              </div>
+              <div class="message-actions">
+                <EmojiReaction
+                  :message-id="message.id || index"
+                  :reactions="message.reactions"
+                />
+                <a
+                  v-if="message.website"
+                  :href="message.website"
+                  target="_blank"
+                  class="website-link"
+                  title="访问网站"
+                >
+                  <ExternalLink class="w-4 h-4" />
+                </a>
+              </div>
+            </div>
+            <p class="message-content">{{ message.content }}</p>
+            <div class="message-meta">
+              <span
+                v-if="message.os || message.browser || message.deviceType"
+                class="meta-chip"
+              >
+                <component
+                  v-if="getOsIcon(message.os)"
+                  :is="getOsIcon(message.os)"
+                  class="meta-icon"
+                />
+                {{ message.os || "未知OS" }}
+                <span class="meta-sep">·</span>
+                <component
+                  v-if="getBrowserIcon(message.browser)"
+                  :is="getBrowserIcon(message.browser)"
+                  class="meta-icon"
+                />
+                {{ message.browser || "未知浏览器" }}
+                <template v-if="message.deviceType">
+                  <span class="meta-sep">·</span>
+                  <component
+                    :is="getDeviceIcon(message.deviceType)"
+                    class="meta-icon"
+                  />
+                  {{ message.deviceType }}
+                </template>
+              </span>
+              <span v-if="message.location" class="meta-chip">
+                来源：{{ formatLocation(message.location) }}
+              </span>
+            </div>
           </div>
 
-          <!-- Messages List -->
-          <div class="messages-section">
-            <h2 class="section-title">留言列表</h2>
+          <!-- 加载更多提示 -->
+          <div v-if="isLoading" class="loading-state">
+            <div class="spinner"></div>
+            <p>加载中...</p>
+          </div>
 
-            <!-- 优先显示 loading -->
-            <div v-if="isLoading" class="loading-state">
-              <div class="spinner"></div>
-              <p>加载中...</p>
-            </div>
+          <div v-if="hasMoreMessages && !isLoading" class="load-more-hint">
+            向下滑动加载更多
+          </div>
 
-            <!-- 仅在非 loading 且无留言时显示空状态 -->
-            <div v-else-if="messages.length === 0" class="empty-state">
-              <p>还没有留言，成为第一个留言的人吧！</p>
-            </div>
-
-            <div v-else class="messages-list" ref="messageListRef">
-              <div
-                v-for="(message, index) in displayedMessages"
-                :key="message.id || index"
-                :class="['message-item', `note-color-${index % 5}`]"
-              >
-                <div class="message-header">
-                  <div class="user-info">
-                    <div class="flex items-end gap-20px" >
-                      <div
-                        v-if="message.avatar"
-                        v-html="message.avatar"
-                      ></div>
-                      <h3 class="user-name">{{ message.name }}</h3>
-                    </div>
-                    <span class="message-time">{{
-                      formatDate(message.createdAt)
-                    }}</span>
-                  </div>
-                  <div class="message-actions">
-                    <EmojiReaction
-                      :message-id="message.id || index"
-                      :reactions="message.reactions"
-                    />
-                    <a
-                      v-if="message.website"
-                      :href="message.website"
-                      target="_blank"
-                      class="website-link"
-                      title="访问网站"
-                    >
-                      <ExternalLink class="w-4 h-4" />
-                    </a>
-                  </div>
-                </div>
-                <p class="message-content">{{ message.content }}</p>
-                <div class="message-meta">
-                  <span
-                    v-if="message.os || message.browser || message.deviceType"
-                    class="meta-chip"
-                  >
-                    <component
-                      v-if="getOsIcon(message.os)"
-                      :is="getOsIcon(message.os)"
-                      class="meta-icon"
-                    />
-                    {{ message.os || "未知OS" }}
-                    <span class="meta-sep">·</span>
-                    <component
-                      v-if="getBrowserIcon(message.browser)"
-                      :is="getBrowserIcon(message.browser)"
-                      class="meta-icon"
-                    />
-                    {{ message.browser || "未知浏览器" }}
-                    <template v-if="message.deviceType">
-                      <span class="meta-sep">·</span>
-                      <component
-                        :is="getDeviceIcon(message.deviceType)"
-                        class="meta-icon"
-                      />
-                      {{ message.deviceType }}
-                    </template>
-                  </span>
-                  <span v-if="message.location" class="meta-chip">
-                    来源：{{ formatLocation(message.location) }}
-                  </span>
-                </div>
-              </div>
-
-              <!-- 加载更多提示 -->
-              <div v-if="isLoading" class="loading-state">
-                <div class="spinner"></div>
-                <p>加载中...</p>
-              </div>
-
-              <div v-if="hasMoreMessages && !isLoading" class="load-more-hint">
-                向下滑动加载更多
-              </div>
-
-              <div
-                v-if="!hasMoreMessages && displayedMessages.length > 0"
-                class="no-more-state"
-              >
-                已加载全部留言
-              </div>
-            </div>
+          <div
+            v-if="!hasMoreMessages && displayedMessages.length > 0"
+            class="no-more-state"
+          >
+            已加载全部留言
           </div>
         </div>
       </div>
@@ -385,7 +386,7 @@ const submitMessage = async () => {
       name: formData.value.name,
       email: formData.value.email,
       website: websiteNormalized || undefined,
-      avatar:avatarSvg,
+      avatar: avatarSvg,
       content: formData.value.message,
     });
 
@@ -529,119 +530,7 @@ const getDeviceIcon = (device?: string) => {
 @use "sass:list";
 @use "@/style.scss" as *;
 
-.guestbook-container {
-  width: 100%;
-  max-width: 56rem;
-  margin: 0 auto;
-  padding: $spacing-3xl $spacing-sm;
 
-  @media (min-width: 640px) {
-    padding: $spacing-3xl $spacing-lg;
-  }
-
-  @media (min-width: 1024px) {
-    padding: $spacing-3xl $spacing-xl;
-  }
-}
-
-.guestbook-card {
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(20px);
-  border-radius: $radius-xl;
-  padding: $spacing-2xl;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-}
-
-.header {
-  margin-bottom: $spacing-2xl;
-  text-align: center;
-}
-
-.icon {
-  display: flex;
-  justify-content: center;
-  margin-bottom: $spacing-lg;
-}
-
-.title {
-  font-size: $font-4xl;
-  font-weight: 700;
-  color: $color-text-dark;
-  margin-bottom: $spacing-xs;
-  letter-spacing: -0.5px;
-}
-
-.subtitle {
-  font-size: $font-xl;
-  color: $color-text-gray;
-  font-weight: 400;
-}
-
-.message-form-section {
-  margin-bottom: $spacing-2xl;
-  padding: $spacing-xl;
-  background: $color-bg-light;
-  border-radius: $radius-lg;
-  border: 1px solid $color-border;
-}
-
-.message-form {
-  --el-fill-color-light: transparent;
-  --el-border-color: #e5e7eb;
-  --el-text-color-regular: $color-text-dark;
-}
-
-
-.section-title {
-  font-size: $font-2xl;
-  font-weight: 600;
-  color: $color-text-dark;
-  margin-bottom: $spacing-lg;
-  padding-bottom: $spacing-xs;
-  border-bottom: 2px solid $color-border;
-}
-
-.message-form {
-  display: flex;
-  flex-direction: column;
-  gap: $spacing-md;
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-}
-
-.form-label {
-  font-size: $font-sm;
-  font-weight: 500;
-  color: $color-dark-border;
-  margin-bottom: $spacing-xs;
-}
-
-.form-input,
-.form-textarea {
-  padding: $spacing-xs $spacing-sm;
-  border: 1px solid $color-border;
-  border-radius: $radius-md;
-  font-size: $font-sm;
-  background: white;
-  color: $color-text-dark;
-  font-family: inherit;
-  transition: all 0.2s ease;
-
-  &:focus {
-    outline: none;
-    border-color: $color-primary;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-  }
-}
-
-.form-textarea {
-  resize: vertical;
-  min-height: 120px;
-}
 
 .messages-section {
   margin-top: $spacing-2xl;
@@ -661,13 +550,30 @@ const getDeviceIcon = (device?: string) => {
 }
 
 .message-item {
-  background: white;
-  border-radius: $radius-md;
-  padding: $spacing-md;
-  transition: all 0.2s ease;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 24px;
+  padding: $spacing-lg;
+  transition: all 0.3s ease;
+  border: 1px solid rgba(209, 213, 219, 0.6);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+
+  @media (prefers-color-scheme: dark) {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
 
   &:hover {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+    border-color: rgba(59, 130, 246, 0.7);
+    transform: translateY(-2px);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    &:hover {
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.3);
+      border-color: rgba(59, 130, 246, 0.5);
+    }
   }
 
   // 便签样式
@@ -717,9 +623,17 @@ const getDeviceIcon = (device?: string) => {
   border-radius: 999px;
   font-size: $font-xs;
   background: rgba(255, 255, 255, 0.6);
-  color: $color-text-gray-dark;
+  color: #6b7280;
   border: 1px solid rgba(0, 0, 0, 0.05);
   gap: 4px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .meta-chip {
+    background: rgba(255, 255, 255, 0.08);
+    color: #a0aec0;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
 }
 
 .meta-icon {
@@ -748,13 +662,25 @@ const getDeviceIcon = (device?: string) => {
 .user-name {
   font-size: $font-lg;
   font-weight: 600;
-  color: $color-text-dark;
+  color: #1f2937;
   margin: 0;
+}
+
+@media (prefers-color-scheme: dark) {
+  .user-name {
+    color: white;
+  }
 }
 
 .message-time {
   font-size: $font-xs;
-  color: $color-text-gray-light;
+  color: #9ca3af;
+}
+
+@media (prefers-color-scheme: dark) {
+  .message-time {
+    color: #6b7280;
+  }
 }
 
 .website-link {
@@ -764,24 +690,42 @@ const getDeviceIcon = (device?: string) => {
   width: 32px;
   height: 32px;
   border-radius: $radius-sm;
-  background: $color-bg-light;
-  color: $color-dark-border;
+  background: rgba(255, 255, 255, 0.5);
+  color: #6b7280;
   text-decoration: none;
   transition: all 0.2s ease;
   flex-shrink: 0;
 
   &:hover {
-    background: $color-border;
-    color: $color-text-dark;
+    background: rgba(255, 255, 255, 0.7);
+    color: #1f2937;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .website-link {
+    background: rgba(255, 255, 255, 0.1);
+    color: #a0aec0;
+  }
+
+  .website-link:hover {
+    background: rgba(255, 255, 255, 0.15);
+    color: #d1d5db;
   }
 }
 
 .message-content {
-  color: $color-text-gray-dark;
+  color: #374151;
   font-size: $font-base;
   line-height: 1.6;
   margin: 0;
   word-break: break-word;
+}
+
+@media (prefers-color-scheme: dark) {
+  .message-content {
+    color: #d1d5db;
+  }
 }
 
 // 加载状态样式
@@ -836,10 +780,6 @@ const getDeviceIcon = (device?: string) => {
 }
 
 @media (max-width: 768px) {
-  .guestbook-card {
-    padding: $spacing-xl $spacing-lg;
-  }
-
   .title {
     font-size: $font-3xl;
   }
@@ -858,14 +798,6 @@ const getDeviceIcon = (device?: string) => {
 }
 
 @media (max-width: 480px) {
-  .guestbook-container {
-    padding: $spacing-sm;
-  }
-
-  .guestbook-card {
-    padding: $spacing-lg $spacing-md;
-  }
-
   .header {
     margin-bottom: $spacing-xl;
   }

@@ -62,7 +62,6 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed, onMounted, onUnmounted } from "vue";
 import { thumbHashToDataURL } from "thumbhash";
 import { useImageLoader } from "@/composables/useImageLoader";
 
@@ -161,7 +160,7 @@ const preloadWebpImage = async () => {
   try {
     const result = await loadImage(webpUrl, {
       onProgress: (progress) => {
-        console.log(`📥 图片加载进度: ${progress.toFixed(0)}%`);
+        // console.log(`📥 图片加载进度: ${progress.toFixed(0)}%`);
       },
       onError: () => {
         console.warn(`⚠️ WebP 图片加载失败: ${webpUrl}`);
@@ -172,7 +171,6 @@ const preloadWebpImage = async () => {
 
     if (result.blobSrc) {
       cachedImageUrl.value = result.blobSrc;
-      console.log(`✅ 图片已缓存: ${webpUrl}`);
     }
   } catch (error) {
     if (currentId !== requestId.value) return;
@@ -225,7 +223,6 @@ onMounted(() => {
           // 进入可视区域
           isVisible.value = true;
           if (!isLoadingImage.value && !imageLoaded.value) {
-            console.log(`👁️ 图片进入可视区域，开始加载: ${props.src}`);
             preloadWebpImage();
           }
           // 监听到了就可以停止监听了（因为图片已经加载）
@@ -237,9 +234,9 @@ onMounted(() => {
     },
     {
       // 提前 200px 开始加载（还未完全进入视口时）
-      rootMargin: '200px',
-      threshold: 0
-    }
+      rootMargin: "200px",
+      threshold: 0,
+    },
   );
 
   intersectionObserver.value.observe(wrapper.value);

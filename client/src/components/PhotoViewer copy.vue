@@ -1,0 +1,607 @@
+<template>
+  <!-- 照片详情对话框 -->
+  <el-dialog
+    v-model="photoDialogVisible"
+    :title="currentPhoto?.title"
+    :width="isMobile ? '100%' : '95%'"
+    :fullscreen="isMobile"
+    :style="{ maxWidth: isMobile ? 'none' : '1200px' }"
+    :append-to-body="true"
+    :modal-append-to-body="true"
+    :z-index="4000"
+    :top="isMobile ? '0' : '5vh'"
+    class="photo-detail-dialog"
+  >
+    <div
+      v-if="currentPhoto"
+      class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6"
+    >
+      <!-- 图片 -->
+      <div class="lg:col-span-2">
+        <LivePhoto
+          v-if="currentPhoto.isLive"
+          :image-url="currentPhoto.originalUrl"
+          :video-url="currentPhoto.videoUrl"
+          :is-live="currentPhoto.isLive"
+          :thumb-hash="currentPhoto.thumbHash || currentPhoto.thumbnailHash"
+          :width="currentPhoto.width"
+          :height="currentPhoto.height"
+          :photo-id="currentPhoto._id"
+        />
+        <WebGLImageViewer
+          v-else
+          :src="currentPhoto.originalUrl"
+          class="w-full rounded-xl shadow-lg"
+        ></WebGLImageViewer>
+      </div>
+
+      <!-- 信息 -->
+      <div class="space-y-4 sm:space-y-6">
+        <!-- 基本信息 -->
+        <div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 sm:p-4">
+          <h3 class="font-semibold mb-3 flex items-center gap-2">
+            <Info class="w-5 h-5" />
+            基本信息
+          </h3>
+          <div class="space-y-2 text-sm">
+            <div class="flex justify-between">
+              <span class="text-gray-500">尺寸</span>
+              <span
+                >{{ currentPhoto.width }} × {{ currentPhoto.height }}</span
+              >
+            </div>
+            <div class="flex justify-between">
+              <span class="text-gray-500">拍摄时间</span>
+              <span>{{ formatDate(currentPhoto.dateTaken) }}</span>
+            </div>
+            <div
+              v-if="currentPhoto.tags?.length"
+              class="flex flex-wrap gap-1 mt-2"
+            >
+              <el-tag
+                v-for="tag in currentPhoto.tags"
+                :key="tag"
+                size="small"
+              >
+                {{ tag }}
+              </el-tag>
+            </div>
+          </div>
+        </div>
+
+        <!-- 相机信息 -->
+        <div
+          v-if="currentPhoto.camera"
+          class="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 sm:p-4"
+        >
+          <h3 class="font-semibold mb-3 flex items-center gap-2">
+            <Camera class="w-5 h-5" />
+            相机信息
+          </h3>
+          <div class="space-y-2 text-sm">
+            <div v-if="currentPhoto.camera.make" class="flex justify-between">
+              <span class="text-gray-500">品牌</span>
+              <span>{{ currentPhoto.camera.make }}</span>
+            </div>
+            <div
+              v-if="currentPhoto.camera.model"
+              class="flex justify-between"
+            >
+              <span class="text-gray-500">型号</span>
+              <span>{{ currentPhoto.camera.model }}</span>
+            </div>
+            <div v-if="currentPhoto.camera.lens" class="flex justify-between">
+              <span class="text-gray-500">镜头</span>
+              <span>{{ currentPhoto.camera.lens }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- EXIF信息 -->
+        <div
+          v-if="exifItems.length"
+          class="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 sm:p-4"
+        >
+          <h3 class="font-semibold mb-3 flex items-center gap-2">
+            <Settings class="w-5 h-5" />
+            拍摄参数
+          </h3>
+          <div class="space-y-2 text-sm">
+            <div
+              v-for="item in exifItems"
+              :key="item.label"
+              class="flex justify-between"
+            >
+              <span class="text-gray-500">{{ item.label }}</span>
+              <span>{{ item.value }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 位置信息 -->
+        <div
+          v-if="currentPhoto.location"
+          class="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 sm:p-4"
+        >
+          <h3 class="font-semibold mb-3 flex items-center gap-2">
+            <MapPin class="w-5 h-5" />
+            位置信息
+          </h3>
+          <div class="space-y-2 text-sm">
+            <div v-if="currentPhoto.geoinfo?.formatted">
+              <p class="text-gray-700 dark:text-gray-300">
+                {{ currentPhoto.geoinfo.formatted }}
+              </p>
+            </div>
+          </div>
+
+          <!-- 地图 -->
+          <div class="mt-3 h-40 sm:h-48">
+            <PhotoLocationMap
+              :latitude="currentPhoto.location.latitude"
+              :longitude="currentPhoto.location.longitude"
+              :zoom="14"
+            />
+          </div>
+        </div>
+
+        <!-- 完整 EXIF 信息 -->
+        <div
+          v-if="currentPhoto.exif"
+          class="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 sm:p-4"
+        >
+          <el-collapse v-model="exifCollapseActive" accordion>
+            <el-collapse-item name="exif">
+              <template #title>
+                <h3 class="font-semibold flex items-center gap-2">
+                  <Settings class="w-5 h-5" />
+                  完整 EXIF 数据
+                  <el-tag size="small" type="info" class="ml-2">
+                    {{ Object.keys(currentPhoto.exif).length }} 个字段
+                  </el-tag>
+                </h3>
+              </template>
+              <div class="space-y-1 text-xs max-h-96 overflow-y-auto">
+                <div
+                  v-for="[key, value] in sortedExifEntries"
+                  :key="key"
+                  class="flex justify-between py-1 border-b border-gray-200 dark:border-gray-700 last:border-0 hover:bg-gray-100 dark:hover:bg-gray-700 px-2 rounded"
+                >
+                  <span class="text-gray-600 dark:text-gray-400 font-mono">{{
+                    getExifFieldLabel(key)
+                  }}</span>
+                  <span
+                    class="text-gray-900 dark:text-gray-200 text-right ml-4 break-all max-w-xs"
+                  >
+                    {{ formatExifValue(value) }}
+                  </span>
+                </div>
+              </div>
+            </el-collapse-item>
+          </el-collapse>
+        </div>
+      </div>
+    </div>
+  </el-dialog>
+</template>
+
+<script setup lang="ts">
+import { ref, computed } from "vue";
+import { Info, Camera, Settings, MapPin } from "lucide-vue-next";
+import request from "@/api/request";
+import { WebGLImageViewer } from "@decanter/webgl-image";
+import LivePhoto from "./LivePhoto.vue";
+import PhotoLocationMap from "./PhotoLocationMap.vue";
+import type { Photo } from "@/types/api";
+
+interface PhotoWithLoaded extends Photo {
+  loaded?: boolean;
+}
+
+const props = defineProps<{
+  visible: boolean;
+  photo: PhotoWithLoaded | null;
+}>();
+
+const emit = defineEmits<{
+  "update:visible": [boolean];
+}>();
+
+const photoDialogVisible = computed({
+  get: () => props.visible,
+  set: (val) => emit("update:visible", val),
+});
+
+const currentPhoto = computed(() => props.photo);
+const exifCollapseActive = ref<string[]>([]);
+
+const windowWidth = ref(window.innerWidth);
+
+// 检测是否是移动端
+const isMobile = computed(() => {
+  return windowWidth.value < 768;
+});
+
+const formatDate = (date: string) => {
+  return new Date(date).toLocaleString("zh-CN", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
+
+const getExifValue = (exif: any, key: string) => {
+  if (!exif) return undefined;
+  return exif[key] ?? exif[key.toLowerCase()] ?? exif[key.toUpperCase()];
+};
+
+const exifItems = computed(() => {
+  const exif = currentPhoto.value?.exif;
+  if (!exif) return [];
+
+  const items = [
+    { label: "曝光时间", value: getExifValue(exif, "ExposureTime") },
+    {
+      label: "曝光补偿",
+      value:
+        getExifValue(exif, "ExposureCompensation") ??
+        getExifValue(exif, "ExposureBiasValue"),
+    },
+    {
+      label: "光圈",
+      value:
+        getExifValue(exif, "FNumber") ?? getExifValue(exif, "ApertureValue"),
+    },
+    { label: "ISO", value: getExifValue(exif, "ISO") },
+    { label: "焦距", value: getExifValue(exif, "FocalLength") },
+    { label: "等效焦距", value: getExifValue(exif, "FocalLengthIn35mmFormat") },
+    { label: "测光模式", value: getExifValue(exif, "MeteringMode") },
+    { label: "白平衡", value: getExifValue(exif, "WhiteBalance") },
+    { label: "闪光灯", value: getExifValue(exif, "Flash") },
+    { label: "曝光程序", value: getExifValue(exif, "ExposureProgram") },
+    { label: "镜头", value: getExifValue(exif, "LensModel") },
+  ];
+
+  return items.filter(
+    (item) =>
+      item.value !== undefined && item.value !== null && item.value !== "",
+  );
+});
+
+// 完整 EXIF 数据排序
+const sortedExifEntries = computed(() => {
+  const exif = currentPhoto.value?.exif;
+  if (!exif) return [];
+
+  // 过滤掉不需要显示的字段
+  const skipKeys = [
+    "errors",
+    "warnings",
+    "SourceFile",
+    "Directory",
+    "FileName",
+  ];
+
+  return Object.entries(exif)
+    .filter(([key]) => !skipKeys.includes(key))
+    .sort(([a], [b]) => a.localeCompare(b));
+});
+
+// EXIF 字段中英文映射表
+const exifFieldNameMap: Record<string, string> = {
+  // 基本信息
+  Make: "相机品牌",
+  Model: "相机型号",
+  Software: "软件版本",
+  Orientation: "方向",
+  ExifVersion: "EXIF版本",
+  ExifToolVersion: "ExifTool版本",
+
+  // 拍摄参数
+  ExposureTime: "曝光时间",
+  ShutterSpeed: "快门速度",
+  ShutterSpeedValue: "快门速度值",
+  FNumber: "光圈值",
+  Aperture: "光圈",
+  ApertureValue: "光圈数值",
+  ISO: "ISO感光度",
+  FocalLength: "焦距",
+  FocalLengthIn35mmFormat: "等效35mm焦距",
+  ExposureProgram: "曝光程序",
+  ExposureMode: "曝光模式",
+  ExposureCompensation: "曝光补偿",
+  MeteringMode: "测光模式",
+  Flash: "闪光灯",
+  WhiteBalance: "白平衡",
+  DigitalZoomRatio: "数码变焦",
+  SceneType: "场景类型",
+  BrightnessValue: "亮度值",
+  LightValue: "光线值",
+
+  // 镜头信息
+  LensModel: "镜头型号",
+  LensMake: "镜头品牌",
+  LensInfo: "镜头信息",
+
+  // 日期时间
+  DateTimeOriginal: "拍摄时间",
+  CreateDate: "创建时间",
+  ModifyDate: "修改时间",
+  DateCreated: "日期创建",
+  SubSecTimeOriginal: "亚秒时间",
+  SubSecCreateDate: "亚秒创建时间",
+  SubSecDateTimeOriginal: "亚秒拍摄时间",
+  SubSecModifyDate: "亚秒修改时间",
+  OffsetTime: "时区偏移",
+  OffsetTimeOriginal: "原始时区",
+  OffsetTimeDigitized: "数字化时区",
+
+  // GPS信息
+  GPSLatitude: "GPS纬度",
+  GPSLongitude: "GPS经度",
+  GPSAltitude: "GPS海拔",
+  GPSLatitudeRef: "纬度参考",
+  GPSLongitudeRef: "经度参考",
+  GPSAltitudeRef: "海拔参考",
+  GPSPosition: "GPS位置",
+  GPSSpeed: "GPS速度",
+  GPSSpeedRef: "速度参考",
+  GPSImgDirection: "图像方向",
+  GPSImgDirectionRef: "图像方向参考",
+  GPSDestBearing: "目标方位",
+  GPSDestBearingRef: "方位参考",
+  GPSDateStamp: "GPS日期",
+  GPSTimeStamp: "GPS时间",
+  GPSDateTime: "GPS日期时间",
+  GPSHPositioningError: "GPS水平误差",
+
+  // 图像信息
+  ImageWidth: "图像宽度",
+  ImageHeight: "图像高度",
+  ImageSize: "图像尺寸",
+  ExifImageWidth: "EXIF图像宽度",
+  ExifImageHeight: "EXIF图像高度",
+  Megapixels: "百万像素",
+  ColorSpace: "色彩空间",
+  ColorSpaceData: "色彩空间数据",
+  XResolution: "X分辨率",
+  YResolution: "Y分辨率",
+  ResolutionUnit: "分辨率单位",
+  Rotation: "旋转角度",
+  AspectRatio: "宽高比",
+
+  // 文件信息
+  FileType: "文件类型",
+  FileTypeExtension: "文件扩展名",
+  MIMEType: "MIME类型",
+  FileSize: "文件大小",
+  FileModifyDate: "文件修改日期",
+  FileAccessDate: "文件访问日期",
+  FileInodeChangeDate: "文件节点变更日期",
+  FilePermissions: "文件权限",
+
+  // 相机特定
+  SensingMethod: "感光方式",
+  CompositeImage: "合成图像",
+  HostComputer: "主机",
+  TileWidth: "瓦片宽度",
+  TileLength: "瓦片长度",
+  SubjectArea: "主体区域",
+  FocusDistanceRange: "对焦距离范围",
+  FocusPosition: "对焦位置",
+  AFStable: "AF稳定",
+  AFMeasuredDepth: "AF测量深度",
+  AFConfidence: "AF置信度",
+  FrontFacingCamera: "前置摄像头",
+
+  // iPhone 特定
+  RunTimeFlags: "运行时标志",
+  RunTimeValue: "运行时值",
+  RunTimeScale: "运行时刻度",
+  RunTimeEpoch: "运行时纪元",
+  RunTimeSincePowerUp: "开机运行时间",
+  AEStable: "AE稳定",
+  AETarget: "AE目标",
+  AEAverage: "AE平均",
+  AccelerationVector: "加速度矢量",
+  ContentIdentifier: "内容标识符",
+  ImageCaptureType: "图像捕获类型",
+  LivePhotoVideoIndex: "Live Photo视频索引",
+  HDRHeadroom: "HDR余量",
+  HDRGain: "HDR增益",
+  HDRGainMapVersion: "HDR增益映射版本",
+  SignalToNoiseRatio: "信噪比",
+  PhotoIdentifier: "照片标识符",
+  SemanticStyle: "语义风格",
+
+  // 色彩管理
+  ProfileCMMType: "配置文件CMM类型",
+  ProfileVersion: "配置文件版本",
+  ProfileClass: "配置文件类别",
+  ProfileConnectionSpace: "配置文件连接空间",
+  ProfileDateTime: "配置文件日期",
+  ProfileFileSignature: "配置文件签名",
+  PrimaryPlatform: "主平台",
+  ProfileDescription: "配置文件描述",
+  ProfileCopyright: "配置文件版权",
+  ProfileCreator: "配置文件创建者",
+  ProfileID: "配置文件ID",
+  DeviceManufacturer: "设备制造商",
+  DeviceModel: "设备型号",
+  DeviceAttributes: "设备属性",
+  RenderingIntent: "渲染意图",
+  MediaWhitePoint: "媒体白点",
+  RedMatrixColumn: "红色矩阵列",
+  GreenMatrixColumn: "绿色矩阵列",
+  BlueMatrixColumn: "蓝色矩阵列",
+  RedTRC: "红色TRC",
+  GreenTRC: "绿色TRC",
+  BlueTRC: "蓝色TRC",
+  ChromaticAdaptation: "色适应",
+  ConnectionSpaceIlluminant: "连接空间照明",
+  CMMFlags: "CMM标志",
+
+  // HEIC/编码信息
+  MajorBrand: "主品牌",
+  MinorVersion: "次版本",
+  CompatibleBrands: "兼容品牌",
+  HandlerType: "处理器类型",
+  PrimaryItemReference: "主项引用",
+  MetaImageSize: "元图像尺寸",
+  ExifByteOrder: "EXIF字节序",
+  MediaDataSize: "媒体数据大小",
+  MediaDataOffset: "媒体数据偏移",
+
+  // 视频编码
+  HEVCConfigurationVersion: "HEVC配置版本",
+  GeneralProfileSpace: "通用配置空间",
+  GeneralTierFlag: "通用层标志",
+  GeneralProfileIDC: "通用配置IDC",
+  GenProfileCompatibilityFlags: "通用配置兼容标志",
+  ConstraintIndicatorFlags: "约束指示标志",
+  GeneralLevelIDC: "通用级别IDC",
+  MinSpatialSegmentationIDC: "最小空间分割IDC",
+  ParallelismType: "并行类型",
+  ChromaFormat: "色度格式",
+  BitDepthLuma: "亮度位深",
+  BitDepthChroma: "色度位深",
+  AverageFrameRate: "平均帧率",
+  ConstantFrameRate: "恒定帧率",
+  NumTemporalLayers: "时间层数",
+  TemporalIDNested: "时间ID嵌套",
+  ImageSpatialExtent: "图像空间范围",
+  ImagePixelDepth: "图像像素深度",
+  AuxiliaryImageType: "辅助图像类型",
+
+  // XMP
+  XMPToolkit: "XMP工具包",
+  CreatorTool: "创建工具",
+
+  // 其他
+  ScaleFactor35efl: "35mm等效比例因子",
+  CircleOfConfusion: "弥散圆",
+  FOV: "视场角",
+  HyperfocalDistance: "超焦距",
+  LensID: "镜头ID",
+  tz: "时区",
+  tzSource: "时区来源",
+};
+
+// 获取字段的中文名称
+const getExifFieldLabel = (key: string): string => {
+  return exifFieldNameMap[key] || key;
+};
+
+// 格式化 EXIF 值
+const formatExifValue = (value: any): string => {
+  if (value === null || value === undefined) return "-";
+
+  // 处理对象类型（如日期对象）
+  if (typeof value === "object") {
+    // 处理日期对象
+    if (value.year && value.month && value.day) {
+      const parts = [
+        `${value.year}-${String(value.month).padStart(2, "0")}-${String(value.day).padStart(2, "0")}`,
+      ];
+      if (value.hour !== undefined) {
+        parts.push(
+          `${String(value.hour).padStart(2, "0")}:${String(value.minute).padStart(2, "0")}:${String(value.second).padStart(2, "0")}`,
+        );
+      }
+      if (value.zone) {
+        parts.push(value.zone);
+      }
+      return parts.join(" ");
+    }
+
+    // 处理数组
+    if (Array.isArray(value)) {
+      if (value.length > 5) {
+        return `[${value.slice(0, 5).join(", ")}...] (${value.length} items)`;
+      }
+      return `[${value.join(", ")}]`;
+    }
+
+    // 处理其他对象
+    try {
+      const str = JSON.stringify(value);
+      if (str.length > 100) {
+        return str.substring(0, 100) + "...";
+      }
+      return str;
+    } catch {
+      return String(value);
+    }
+  }
+
+  // 处理数字
+  if (typeof value === "number") {
+    // 如果是小数且很长，保留6位
+    if (value % 1 !== 0 && Math.abs(value) < 1000) {
+      return value.toFixed(6).replace(/\.?0+$/, "");
+    }
+    return String(value);
+  }
+
+  // 处理字符串
+  const strValue = String(value);
+  if (strValue.length > 150) {
+    return strValue.substring(0, 150) + "...";
+  }
+
+  return strValue;
+};
+</script>
+
+<style scoped>
+.photo-detail-dialog :deep(.el-dialog) {
+  margin: 0 auto;
+  max-height: 90vh;
+}
+
+.photo-detail-dialog :deep(.el-dialog__body) {
+  max-height: calc(90vh - 56px);
+  overflow-y: auto;
+}
+
+.photo-detail-dialog :deep(.el-dialog__header) {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--el-bg-color, #fff);
+}
+
+.photo-detail-dialog :deep(.el-dialog__headerbtn) {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+@media (max-width: 768px) {
+  .photo-detail-dialog :deep(.el-dialog) {
+    margin: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    max-height: 100vh;
+    border-radius: 0;
+  }
+
+  .photo-detail-dialog :deep(.el-dialog__body) {
+    max-height: calc(
+      100vh - 56px - env(safe-area-inset-top) - env(safe-area-inset-bottom)
+    );
+    padding-top: calc(1rem + env(safe-area-inset-top));
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+  }
+
+  .photo-detail-dialog :deep(.el-dialog__header) {
+    padding-top: calc(1rem + env(safe-area-inset-top));
+  }
+}
+
+.photo-detail-dialog :deep(.el-dialog__body) {
+  padding: 1.5rem;
+}
+</style>

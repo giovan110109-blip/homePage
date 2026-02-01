@@ -125,7 +125,7 @@
           <template #default="scope">
             <div class="flex gap-2">
               <AppButton
-                v-if="scope.row.status === 'pending'"
+                v-if="canApprove(scope.row.status)"
                 variant="success"
                 size="sm"
                 @click="handleReview(scope.row, 'approved')"
@@ -133,7 +133,7 @@
                 通过
               </AppButton>
               <AppButton
-                v-if="scope.row.status === 'pending'"
+                v-if="canReject(scope.row.status)"
                 variant="danger"
                 size="sm"
                 @click="handleReject(scope.row)"
@@ -366,13 +366,18 @@ const handleSortChange = async (row: FriendLink) => {
 }
 
 // 工具函数
+const normalizeStatus = (status?: string) => String(status || '').toLowerCase()
+
+const canApprove = (status?: string) => normalizeStatus(status) !== 'approved'
+const canReject = (status?: string) => normalizeStatus(status) !== 'rejected'
+
 const getStatusLabel = (status: string) => {
   const map: Record<string, string> = {
     pending: '待审核',
     approved: '已通过',
     rejected: '已拒绝'
   }
-  return map[status] || status
+  return map[normalizeStatus(status)] || status
 }
 
 const getStatusTagType = (status: string) => {
@@ -381,7 +386,7 @@ const getStatusTagType = (status: string) => {
     approved: 'success',
     rejected: 'danger'
   }
-  return map[status] || ''
+  return map[normalizeStatus(status)] || ''
 }
 
 const getCategoryLabel = (category: string) => {

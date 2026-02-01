@@ -54,7 +54,7 @@
           <div class="lg:col-span-3 space-y-12">
             <!-- Bio Section -->
             <div 
-              class="relative animate-fade-in-up bg-white/60 dark:bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-gray-300/40 dark:border-white/20 shadow-xl"
+              class="relative animate-fade-in-up bg-white/80 dark:bg-white/5 backdrop-blur-xl rounded-3xl p-8 border border-gray-200/60 dark:border-white/10 shadow-2xl hover:shadow-2xl hover:border-blue-400/50 dark:hover:border-blue-400/30 transition-all"
               :ref="el => aboutCardRefs[0] = el as HTMLElement"
               @mousemove="(event) => handleAboutCardMouseMove(event, 0)"
               @mouseleave="() => handleAboutCardMouseLeave(0)"
@@ -83,7 +83,7 @@
             
             <!-- Experience Timeline -->
             <div 
-              class="relative animate-fade-in-up bg-white/60 dark:bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-gray-300/40 dark:border-white/20 shadow-xl"
+              class="relative animate-fade-in-up bg-white/80 dark:bg-white/5 backdrop-blur-xl rounded-3xl p-8 border border-gray-200/60 dark:border-white/10 shadow-2xl hover:shadow-2xl hover:border-blue-400/50 dark:hover:border-blue-400/30 transition-all"
               :ref="el => aboutCardRefs[1] = el as HTMLElement"
               @mousemove="(event) => handleAboutCardMouseMove(event, 1)"
               @mouseleave="() => handleAboutCardMouseLeave(1)"
@@ -101,7 +101,7 @@
               ></div>
               <h3 class="relative z-10 text-xl font-medium text-gray-900 dark:text-white mb-4 drop-shadow-lg">站点历程</h3>
               <div class="relative z-10 space-y-6">
-                <div v-for="(experience, index) in experiences" :key="index" class="relative timeline-item hover:bg-white/40 dark:hover:bg-white/5 rounded-lg p-3 -m-3 backdrop-blur-sm">
+                <div v-for="(experience, index) in experiences" :key="index" class="relative timeline-item rounded-lg p-3 -m-3 transition-all">
                   <div class="timeline-content">
                     <div class="flex items-start">
                       <div class="flex-shrink-0">
@@ -126,7 +126,7 @@
         
             <!-- Interests -->
             <div 
-              class="relative animate-fade-in-up bg-white/60 dark:bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-gray-300/40 dark:border-white/20 shadow-xl"
+              class="relative animate-fade-in-up bg-white/80 dark:bg-white/5 backdrop-blur-xl rounded-3xl p-8 border border-gray-200/60 dark:border-white/10 shadow-2xl hover:shadow-2xl hover:border-blue-400/50 dark:hover:border-blue-400/30 transition-all"
               :ref="el => aboutCardRefs[3] = el as HTMLElement"
               @mousemove="(event) => handleAboutCardMouseMove(event, 3)"
               @mouseleave="() => handleAboutCardMouseLeave(3)"
@@ -157,7 +157,7 @@
             
             <!-- Contact Section -->
             <div 
-              class="relative animate-fade-in-up bg-white/60 dark:bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-gray-300/40 dark:border-white/20 shadow-xl"
+              class="relative animate-fade-in-up bg-white/80 dark:bg-white/5 backdrop-blur-xl rounded-3xl p-8 border border-gray-200/60 dark:border-white/10 shadow-2xl hover:shadow-2xl hover:border-blue-400/50 dark:hover:border-blue-400/30 transition-all"
               :ref="el => aboutCardRefs[4] = el as HTMLElement"
               @mousemove="(event) => handleAboutCardMouseMove(event, 4)"
               @mouseleave="() => handleAboutCardMouseLeave(4)"

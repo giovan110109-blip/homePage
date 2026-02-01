@@ -1,98 +1,83 @@
 <template>
   <div
-    class="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-blue-50 dark:from-gray-900 dark:via-blue-900 dark:to-blue-900 relative"
+    class="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-blue-50 dark:from-gray-900 dark:via-blue-900 dark:to-blue-900 py-16 sm:py-20"
   >
-    <!-- Background blur effects -->
-    <div class="absolute inset-0 overflow-hidden">
-      <div
-        class="absolute -top-40 -right-40 w-80 h-80 bg-blue-300/20 dark:bg-blue-500/10 rounded-full blur-3xl"
-      ></div>
-      <div
-        class="hidden absolute -bottom-40 -left-40 w-80 h-80 bg-purple-300/20 dark:bg-purple-500/10 rounded-full blur-3xl"
-      ></div>
-      <div
-        class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-pink-300/10 dark:bg-pink-500/5 rounded-full blur-3xl"
-      ></div>
-    </div>
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      <!-- 页面标题 -->
+      <div class="text-center mb-12 sm:mb-16">
+        <span class="inline-flex items-center gap-2 px-3 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">WEBSITE STATUS</span>
+        <h1 class="text-4xl sm:text-5xl font-bold text-gray-900 dark:text-white mt-4 mb-3 tracking-tight">网站监控</h1>
+        <p class="text-gray-600 dark:text-gray-400">实时监控我的网站和项目状态，展示在线情况和响应速度 🌐。</p>
+      </div>
 
-    <!-- Content overlay -->
-    <div class="relative z-10">
-      <div class="status-container">
-        <div class="status-card">
-          <!-- Header -->
-          <div class="header">
-            <h1 class="title">网站监控</h1>
-            <p class="subtitle">
-              实时监控我的网站和项目状态，展示在线情况和响应速度 🌐。
-            </p>
-          </div>
+      <!-- Websites Status List -->
+      <div class="status-section">
+        <h2 class="section-title">在线状态</h2>
 
-          <!-- Websites Status List -->
-          <div class="status-section">
-            <h2 class="section-title">在线状态</h2>
+        <div v-if="websites.length === 0" class="empty-state">
+          <p>暂无网站监控记录</p>
+        </div>
 
-            <div v-if="websites.length === 0" class="empty-state">
-              <p>暂无网站监控记录</p>
+        <div v-else class="websites-grid">
+          <div
+            v-for="(website, index) in websites"
+            :key="index"
+            class="bg-white/80 dark:bg-white/5 backdrop-blur-xl rounded-3xl p-8 border border-gray-200/60 dark:border-white/10  hover:shadow-2xl hover:border-blue-400/50 dark:hover:border-blue-400/30 transition-all flex flex-col"
+          >
+            <!-- Status Indicator -->
+            <div class="card-header">
+              <div class="status-badge" :class="website.status">
+                <div class="status-dot"></div>
+                <span>{{ getStatusText(website.status) }}</span>
+              </div>
             </div>
 
-            <div v-else class="websites-grid">
-              <div
-                v-for="(website, index) in websites"
-                :key="index"
-                class="website-card"
-              >
-                <!-- Status Indicator -->
-                <div class="card-header">
-                  <div class="status-badge" :class="website.status">
-                    <div class="status-dot"></div>
-                    <span>{{ getStatusText(website.status) }}</span>
-                  </div>
-                </div>
+            <!-- Website Info -->
+            <div class="website-info">
+              <h3 class="website-name">{{ website.name }}</h3>
+              <p v-if="website.description" class="website-description">
+                {{ website.description }}
+              </p>
+              <a :href="website.url" target="_blank" class="website-url">
+                {{ website.url }}
+                <ExternalLink class="w-3 h-3" />
+              </a>
+            </div>
 
-                <!-- Website Info -->
-                <div class="website-info">
-                  <h3 class="website-name">{{ website.name }}</h3>
-                  <p v-if="website.description" class="website-description">
-                    {{ website.description }}
-                  </p>
-                  <a :href="website.url" target="_blank" class="website-url">
-                    {{ website.url }}
-                    <ExternalLink class="w-3 h-3" />
-                  </a>
-                </div>
+            <!-- Metrics -->
+            <div class="metrics">
+              <div class="metric">
+                <span class="metric-label">响应时间</span>
+                <span
+                  class="metric-value"
+                  :class="getLatencyClass(website.latency)"
+                >
+                  {{
+                    website.latency !== null
+                      ? website.latency + "ms"
+                      : "检测中..."
+                  }}
+                </span>
+              </div>
 
-                <!-- Metrics -->
-                <div class="metrics">
-                  <div class="metric">
-                    <span class="metric-label">响应时间</span>
-                    <span
-                      class="metric-value"
-                      :class="getLatencyClass(website.latency)"
-                    >
-                      {{
-                        website.latency !== null
-                          ? website.latency + "ms"
-                          : "检测中..."
-                      }}
-                    </span>
-                  </div>
+              <div class="metric">
+                <span class="metric-label">检查时间</span>
+                <span class="metric-value">{{
+                  formatCheckTime(website.lastCheck)
+                }}</span>
+              </div>
 
-                  <div class="metric">
-                    <span class="metric-label">检查时间</span>
-                    <span class="metric-value">{{
-                      formatCheckTime(website.lastCheck)
-                    }}</span>
-                  </div>
+              <div class="metric">
+                <span class="metric-label">正常率</span>
+                <span class="metric-value"
+                  >{{ formatUptime(website.uptime) }}%</span
+                >
+              </div>
+            </div>
 
-                  <div class="metric">
-                    <span class="metric-label">正常率</span>
-                    <span class="metric-value">{{ formatUptime(website.uptime) }}%</span>
-                  </div>
-                </div>
-
-                <!-- Status Details -->
-                <div class="status-details">
-                  <!-- <div v-if="website.statusCode" class="detail-item">
+            <!-- Status Details -->
+            <div class="status-details">
+              <!-- <div v-if="website.statusCode" class="detail-item">
                     <span class="detail-label">HTTP 状态码：</span>
                     <span
                       class="detail-value"
@@ -105,62 +90,60 @@
                     <span class="detail-label">信息：</span>
                     <span class="detail-value">{{ formatMessage(website.message) }}</span>
                   </div> -->
-                  <div v-if="website.ssl" class="detail-item">
-                    <span class="detail-label">证书状态：</span>
-                    <span
-                      class="detail-value"
-                      :class="getCertStatusClass(website.ssl.status)"
-                    >
-                      {{ getCertStatusText(website.ssl.status) }}
-                    </span>
-                  </div>
-                  <div v-if="website.ssl?.validTo" class="detail-item">
-                    <span class="detail-label">证书到期：</span>
-                    <span class="detail-value">
-                      {{ formatDate(website.ssl.validTo) }}
-                      <span v-if="website.ssl?.daysRemaining !== null"
-                        >（剩余 {{ website.ssl.daysRemaining }} 天）</span
-                      >
-                    </span>
-                  </div>
-                </div>
-
-                <!-- Check Button -->
-                <AppButton
-                  variant="check"
-                  nativeType="button"
-                  :disabled="website.checking"
-                  @click="checkWebsite(index)"
+              <div v-if="website.ssl" class="detail-item">
+                <span class="detail-label">证书状态：</span>
+                <span
+                  class="detail-value"
+                  :class="getCertStatusClass(website.ssl.status)"
                 >
-                  <RotateCw
-                    class="w-4 h-4"
-                    :class="{ 'animate-spin': website.checking }"
-                  />
-                  {{ website.checking ? "检测中..." : "立即检测" }}
-                </AppButton>
+                  {{ getCertStatusText(website.ssl.status) }}
+                </span>
+              </div>
+              <div v-if="website.ssl?.validTo" class="detail-item">
+                <span class="detail-label">证书到期：</span>
+                <span class="detail-value">
+                  {{ formatDate(website.ssl.validTo) }}
+                  <span v-if="website.ssl?.daysRemaining !== null"
+                    >（剩余 {{ website.ssl.daysRemaining }} 天）</span
+                  >
+                </span>
               </div>
             </div>
-          </div>
 
-          <!-- Summary Stats -->
-          <div v-if="websites.length > 0" class="summary-stats">
-            <div class="stat-item">
-              <span class="stat-label">监控网站</span>
-              <span class="stat-value">{{ websites.length }}</span>
-            </div>
-            <div class="stat-item">
-              <span class="stat-label">在线</span>
-              <span class="stat-value online">{{ onlineCount }}</span>
-            </div>
-            <div class="stat-item">
-              <span class="stat-label">离线</span>
-              <span class="stat-value offline">{{ offlineCount }}</span>
-            </div>
-            <div class="stat-item">
-              <span class="stat-label">平均延迟</span>
-              <span class="stat-value">{{ averageLatency }}ms</span>
-            </div>
+            <!-- Check Button -->
+            <AppButton
+              variant="check"
+              nativeType="button"
+              :disabled="website.checking"
+              @click="checkWebsite(index)"
+            >
+              <RotateCw
+                class="w-4 h-4"
+                :class="{ 'animate-spin': website.checking }"
+              />
+              {{ website.checking ? "检测中..." : "立即检测" }}
+            </AppButton>
           </div>
+        </div>
+      </div>
+
+      <!-- Summary Stats -->
+      <div v-if="websites.length > 0" class="summary-stats">
+        <div class="stat-item">
+          <span class="stat-label">监控网站</span>
+          <span class="stat-value">{{ websites.length }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">在线</span>
+          <span class="stat-value online">{{ onlineCount }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">离线</span>
+          <span class="stat-value offline">{{ offlineCount }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">平均延迟</span>
+          <span class="stat-value">{{ averageLatency }}ms</span>
         </div>
       </div>
     </div>
@@ -238,7 +221,7 @@ const websites = ref<Website[]>([
       daysRemaining: null,
     },
   },
-   {
+  {
     name: "UptimeKuma",
     url: "https://monitor.giovan.cn",
     description: "UptimeKuma",
@@ -255,7 +238,7 @@ const websites = ref<Website[]>([
       daysRemaining: null,
     },
   },
-     {
+  {
     name: "webDav",
     url: "https://file.giovan.cn",
     description: "webDav",
@@ -436,73 +419,6 @@ const formatCheckTime = (date: Date | null) => {
 </script>
 
 <style scoped>
-.status-container {
-  width: 100%;
-  max-width: 60rem;
-  margin: 0 auto;
-  padding: 80px 16px 80px 16px;
-}
-
-@media (min-width: 640px) {
-  .status-container {
-    padding: 80px 24px 80px 24px;
-  }
-}
-
-@media (min-width: 1024px) {
-  .status-container {
-    padding: 80px 32px 80px 32px;
-  }
-}
-
-.status-card {
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(20px);
-  border-radius: 16px;
-  padding: 48px;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-}
-
-.dark .status-card {
-  background: rgba(17, 24, 39, 0.7);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-}
-
-.header {
-  margin-bottom: 48px;
-  text-align: center;
-}
-
-.icon {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 24px;
-}
-
-.title {
-  font-size: 36px;
-  font-weight: 700;
-  color: #1f2937;
-  margin-bottom: 12px;
-  letter-spacing: -0.5px;
-}
-
-.dark .title {
-  color: rgba(255, 255, 255, 0.95);
-}
-
-.subtitle {
-  font-size: 18px;
-  color: #6b7280;
-  font-weight: 400;
-}
-
-.dark .subtitle {
-  color: rgba(255, 255, 255, 0.6);
-}
-
 .form-section {
   margin-bottom: 48px;
   padding: 32px;
@@ -644,27 +560,31 @@ const formatCheckTime = (date: Date | null) => {
 }
 
 .website-card {
-  background: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  padding: 24px;
-  transition: all 0.2s ease;
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(209, 213, 219, 0.6);
+  border-radius: 24px;
+  padding: 32px;
+  transition: all 0.3s ease;
   display: flex;
   flex-direction: column;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
 }
 
 .dark .website-card {
-  background: #1f2937;
-  border: 1px solid #374151;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .website-card:hover {
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
-  transform: translateY(-4px);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+  border-color: rgba(59, 130, 246, 0.7);
 }
 
 .dark .website-card:hover {
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.3);
+  border-color: rgba(59, 130, 246, 0.5);
 }
 
 .card-header {
@@ -795,12 +715,14 @@ const formatCheckTime = (date: Date | null) => {
   gap: 12px;
   margin-bottom: 20px;
   padding: 16px;
-  background: #f9fafb;
+  background: rgba(255, 255, 255, 0.4);
   border-radius: 8px;
+  border: 1px solid rgba(209, 213, 219, 0.3);
 }
 
 .dark .metrics {
-  background: #111827;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .metric {
@@ -812,12 +734,12 @@ const formatCheckTime = (date: Date | null) => {
 
 .metric-label {
   font-size: 12px;
-  color: #9ca3af;
+  color: #6b7280;
   margin-bottom: 4px;
 }
 
 .dark .metric-label {
-  color: #6b7280;
+  color: #a0aec0;
 }
 
 .metric-value {
@@ -851,14 +773,16 @@ const formatCheckTime = (date: Date | null) => {
   flex-direction: column;
   gap: 8px;
   padding: 12px;
-  background: #f9fafb;
+  background: rgba(255, 255, 255, 0.4);
   border-radius: 6px;
   margin-bottom: 16px;
   font-size: 13px;
+  border: 1px solid rgba(209, 213, 219, 0.3);
 }
 
 .dark .status-details {
-  background: #111827;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .detail-item {
@@ -873,7 +797,7 @@ const formatCheckTime = (date: Date | null) => {
 }
 
 .dark .detail-label {
-  color: #9ca3af;
+  color: #a0aec0;
 }
 
 .detail-value {
@@ -883,7 +807,7 @@ const formatCheckTime = (date: Date | null) => {
 }
 
 .dark .detail-value {
-  color: #d1d5db;
+  color: #e5e7eb;
 }
 
 .detail-value.success {
@@ -971,10 +895,6 @@ const formatCheckTime = (date: Date | null) => {
 }
 
 @media (max-width: 768px) {
-  .status-card {
-    padding: 32px 24px;
-  }
-
   .title {
     font-size: 28px;
   }
@@ -985,14 +905,6 @@ const formatCheckTime = (date: Date | null) => {
 }
 
 @media (max-width: 480px) {
-  .status-container {
-    padding: 16px;
-  }
-
-  .status-card {
-    padding: 24px 20px;
-  }
-
   .header {
     margin-bottom: 32px;
   }

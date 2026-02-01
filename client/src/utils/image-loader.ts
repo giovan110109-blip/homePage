@@ -79,7 +79,6 @@ export class ImageLoaderManager {
     // 检查内存缓存
     const cached = normalImageCache.get(src)
     if (cached) {
-      console.log(`✅ 图片缓存命中: ${src} | 当前缓存数: ${normalImageCache.size}/20`)
       onUpdateLoadingState?.({
         isVisible: false,
       })
@@ -89,7 +88,6 @@ export class ImageLoaderManager {
       }
     }
 
-    console.log(`📥 开始加载图片: ${src} | 当前缓存数: ${normalImageCache.size}/20`)
     onUpdateLoadingState?.({
       isVisible: true,
     })
@@ -202,10 +200,6 @@ export class ImageLoaderManager {
 
     // 缓存结果
     normalImageCache.set(cacheKey, result)
-    console.log(
-      `💾 已缓存图片: ${cacheKey} | 大小: ${(blob.size / 1024 / 1024).toFixed(2)}MB | 缓存数: ${normalImageCache.size}/20`
-    )
-
     onUpdateLoadingState?.({
       isVisible: false,
     })

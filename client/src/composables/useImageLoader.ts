@@ -21,7 +21,6 @@ export const useImageLoader = () => {
         },
       })
 
-      console.log(`✅ 图片加载完成: ${src} (${(result.size / 1024 / 1024).toFixed(2)}MB)`)
       return result
     } catch (error) {
       console.error(`❌ 加载图片失败: ${src}`, error)

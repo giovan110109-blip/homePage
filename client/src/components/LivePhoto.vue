@@ -36,7 +36,7 @@
         outline: 'none',
       }"
       :src="cachedVideoUrl || videoUrl"
-      muted
+      :muted="isMuted"
       playsinline
       webkit-playsinline
       :preload="isMobile ? 'metadata' : 'none'"
@@ -136,6 +136,63 @@
       </svg>
       <span>LIVE</span>
     </div>
+
+    <!-- 静音按钮 - 右上角，仅在播放时显示 -->
+    <button
+      class="absolute top-2 right-2 md:top-3 md:right-3 z-20 backdrop-blur-md rounded-full p-1.5 transition-all duration-300 hover:bg-white/20 active:scale-95"
+      :class="isMuted ? 'text-gray-300 bg-black/30' : 'text-white bg-black/30'"
+      @click.stop="toggleMute"
+      title="静音"
+      type="button"
+    >
+      <!-- 有声音图标 -->
+      <svg
+        v-if="!isMuted"
+        xmlns="http://www.w3.org/2000/svg"
+        width="20"
+        height="20"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        class="icon icon-tabler icons-tabler-outline icon-tabler-volume"
+      >
+        <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+        <path d="M15 8a5 5 0 0 1 0 8" />
+        <path d="M17.7 5a9 9 0 0 1 0 14" />
+        <path
+          d="M6 15h-2a1 1 0 0 1 -1 -1v-4a1 1 0 0 1 1 -1h2l3.5 -4.5a.8 .8 0 0 1 1.5 .5v14a.8 .8 0 0 1 -1.5 .5l-3.5 -4.5"
+        />
+      </svg>
+      <!-- 静音图标 -->
+      <svg
+        v-else
+        xmlns="http://www.w3.org/2000/svg"
+        width="20"
+        height="20"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        class="icon icon-tabler icons-tabler-outline icon-tabler-volume-off"
+      >
+        <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+        <path
+          d="M15 8a5 5 0 0 1 1.912 4.934m-1.377 2.602a5 5 0 0 1 -.535 .464"
+        />
+        <path
+          d="M17.7 5a9 9 0 0 1 2.362 11.086m-1.676 2.299a9 9 0 0 1 -.686 .615"
+        />
+        <path
+          d="M9.069 5.054l.431 -.554a.8 .8 0 0 1 1.5 .5v2m0 4v8a.8 .8 0 0 1 -1.5 .5l-3.5 -4.5h-2a1 1 0 0 1 -1 -1v-4a1 1 0 0 1 1 -1h2l1.294 -1.664"
+        />
+        <path d="M3 3l18 18" />
+      </svg>
+    </button>
   </div>
 </template>
 
@@ -162,17 +219,18 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   click: [event: MouseEvent];
-}>()
+}>();
 
 // LivePhoto 缓存
-const { loadLivePhoto, getState } = useLivePhotoCache()
-const cachedVideoUrl = ref<string | null>(null)
+const { loadLivePhoto, getState } = useLivePhotoCache();
+const cachedVideoUrl = ref<string | null>(null);
 const cacheState = props.photoId ? getState(props.photoId) : null;
 
 // Refs
 const videoRef = ref<HTMLVideoElement | null>(null);
 const isPlaying = ref(false);
 const videoCanPlay = ref(false);
+const isMuted = ref(true); // 默认静音
 
 // Touch interaction state
 const isTouching = ref(false);
@@ -224,17 +282,12 @@ const onVideoError = (e: Event) => {
 const handleMouseEnter = async () => {
   if (isMobile.value || !props.isLive || !props.videoUrl) return;
 
-  // 已经在播放，不要重复调用
-  if (isPlayingNow) return;
-
-  // 如果已经显示悬停状态，不要重复设置
-  if (isHovering.value) {
-    return;
-  }
+  // 已经在悬停状态，直接返回
+  if (isHovering.value) return;
 
   isHovering.value = true;
 
-  // 直接开始播放
+  // 如果视频已经加载好，立即播放
   if (videoCanPlay.value) {
     isPlayingNow = true;
     await playVideo();
@@ -244,20 +297,15 @@ const handleMouseEnter = async () => {
 const handleMouseLeave = (event: MouseEvent) => {
   if (isMobile.value) return;
 
-  const container = event.currentTarget as HTMLElement;
-  const rect = container.getBoundingClientRect();
-  const x = event.clientX;
-  const y = event.clientY;
-
-  // 检查鼠标是否真的在容器外
-  if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
-    return;
-  }
-
-  // 鼠标真的在容器外了
+  // 简单粗暴：直接停止播放
+  // 因为 mouseleave 事件本身就表示鼠标离开了容器
   isHovering.value = false;
-  isPlayingNow = false;
-  stopVideo();
+
+  // 如果正在播放，停止
+  if (isPlaying.value) {
+    isPlayingNow = false;
+    stopVideo();
+  }
 };
 
 // 移动端 - 长按触发 (350ms)
@@ -318,32 +366,34 @@ const playVideo = async () => {
     return;
   }
 
+  // 如果视频还没准备好，触发加载
   if (!videoCanPlay.value) {
-    // 触发加载，避免 preload=none 导致一直等待
     try {
       videoRef.value.load();
     } catch {
       // ignore
     }
 
-    // 等待视频准备好
-    let retries = 0;
-    const checkReady = setInterval(() => {
-      retries++;
-      if (videoRef.value && videoRef.value.readyState >= 2) {
+    // 等待视频元数据加载
+    return new Promise<void>((resolve) => {
+      const handler = () => {
+        videoRef.value?.removeEventListener("loadedmetadata", handler);
         videoCanPlay.value = true;
-      }
-      if (videoCanPlay.value) {
-        clearInterval(checkReady);
-        playVideo();
-        return;
-      }
-      if (retries > 10) {
-        clearInterval(checkReady);
+        // 元数据加载完成后，再次调用 playVideo
+        playVideo().then(resolve);
+      };
+
+      const timeout = setTimeout(() => {
+        videoRef.value?.removeEventListener("loadedmetadata", handler);
         isPlayingNow = false;
-      }
-    }, 100);
-    return;
+        resolve();
+      }, 3000); // 3秒超时
+
+      videoRef.value?.addEventListener("loadedmetadata", () => {
+        clearTimeout(timeout);
+        handler();
+      });
+    });
   }
 
   try {
@@ -351,8 +401,8 @@ const playVideo = async () => {
     videoRef.value.currentTime = 0;
     isPlaying.value = true;
 
-    // 确保音量和内联播放设置
-    videoRef.value.muted = true;
+    // 应用静音设置
+    videoRef.value.muted = isMuted.value;
     videoRef.value.playsInline = true;
 
     const playPromise = videoRef.value.play();
@@ -421,57 +471,71 @@ const handleClick = (event: MouseEvent) => {
   emit("click", event);
 };
 
+// 静音切换
+const toggleMute = () => {
+  isMuted.value = !isMuted.value;
+  if (videoRef.value) {
+    videoRef.value.muted = isMuted.value;
+  }
+};
+
 // 清理
 onUnmounted(() => {
   if (longPressTimer.value !== null) {
     clearTimeout(longPressTimer.value);
   }
-  
+
   // 释放缓存的 URL
   if (cachedVideoUrl.value) {
-    URL.revokeObjectURL(cachedVideoUrl.value)
-    cachedVideoUrl.value = null
+    URL.revokeObjectURL(cachedVideoUrl.value);
+    cachedVideoUrl.value = null;
   }
-})
+});
 
 // 监听视频 URL 变化，预加载到缓存
-watch(() => props.videoUrl, async (newUrl) => {
-  if (!newUrl || !props.photoId || !props.isLive) return
-  
-  console.log(`👀 开始缓存: ${props.photoId}`)
-  
-  try {
-    const blob = await loadLivePhoto(newUrl, props.photoId)
-    if (blob) {
-      // 释放旧的 URL
-      if (cachedVideoUrl.value) {
-        console.log(`🗑️ 释放旧的 Object URL: ${props.photoId}`)
-        URL.revokeObjectURL(cachedVideoUrl.value)
-      }
-      
-      // 创建新的 object URL
-      cachedVideoUrl.value = URL.createObjectURL(blob)
-      console.log(`🎬 Object URL 已创建: ${cachedVideoUrl.value.substring(0, 50)}...`)
+watch(
+  () => props.videoUrl,
+  async (newUrl) => {
+    if (!newUrl || !props.photoId || !props.isLive) return;
 
-      // 移动端预加载元数据，避免首次播放卡住
-      if (isMobile.value && videoRef.value) {
-        await nextTick()
-        try {
-          videoRef.value.load()
-        } catch {
-          // ignore
+    console.log(`👀 开始缓存: ${props.photoId}`);
+
+    try {
+      const blob = await loadLivePhoto(newUrl, props.photoId);
+      if (blob) {
+        // 释放旧的 URL
+        if (cachedVideoUrl.value) {
+          console.log(`🗑️ 释放旧的 Object URL: ${props.photoId}`);
+          URL.revokeObjectURL(cachedVideoUrl.value);
         }
+
+        // 创建新的 object URL
+        cachedVideoUrl.value = URL.createObjectURL(blob);
+        console.log(
+          `🎬 Object URL 已创建: ${cachedVideoUrl.value.substring(0, 50)}...`,
+        );
+
+        // 移动端预加载元数据，避免首次播放卡住
+        if (isMobile.value && videoRef.value) {
+          await nextTick();
+          try {
+            videoRef.value.load();
+          } catch {
+            // ignore
+          }
+        }
+      } else {
+        console.warn(`⚠️ 缓存失败: ${props.photoId} (blob 为 null)`);
       }
-    } else {
-      console.warn(`⚠️ 缓存失败: ${props.photoId} (blob 为 null)`)
+    } catch (error) {
+      console.error("❌ 缓存异常:", error);
     }
-  } catch (error) {
-    console.error('❌ 缓存异常:', error)
-  }
-}, { 
-  immediate: true,
-  flush: 'post'  // 后置刷新，避免快速重复触发
-})
+  },
+  {
+    immediate: true,
+    flush: "post", // 后置刷新，避免快速重复触发
+  },
+);
 
 // 组件挂载时预加载
 // ⚠️ 注意：watch with immediate: true 已经会在挂载时加载，不需要再在 onMounted 中加载

@@ -13,6 +13,16 @@ import { useSiteInfoStore } from './stores/siteInfo'
 
 const { VITE_SITE_TITLE } = import.meta.env
 
+if (import.meta.env.PROD) {
+  console.clear()
+  const noop = () => {}
+  console.log = noop
+  console.info = noop
+  console.warn = noop
+  console.error = noop
+  console.debug = noop
+}
+
 // 创建Vue应用实例
 const app = createApp(App)
 
