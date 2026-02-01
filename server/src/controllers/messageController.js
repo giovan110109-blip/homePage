@@ -4,6 +4,7 @@ const messageService = require('../services/messageService');
 const { getClientInfo } = require('../utils/requestInfo');
 const { getLocationByIp } = require('../utils/ipLocator');
 const reactionService = require('../services/reactionService');
+const ReactionLog = require('../models/reactionLog');
 
 class MessageController extends BaseController {
     // POST /api/messages  创建留言
@@ -94,14 +95,38 @@ class MessageController extends BaseController {
                 this.throwHttpError('invalid reaction type', HttpStatus.BAD_REQUEST);
             }
 
+            const client = ctx.state.clientInfo || getClientInfo(ctx);
+            const ip = client?.ip || ctx.ip || ctx.request.ip;
+            const targetId = String(ctx.params.id);
+
             if (action === 'remove') {
-                const counts = await reactionService.unreact('message', ctx.params.id, type); // 取消表态
+                const removed = await ReactionLog.findOneAndDelete({
+                    targetType: 'message',
+                    targetId,
+                    type,
+                    ip
+                });
+                if (!removed) {
+                    this.throwHttpError('您未表态过该表情', HttpStatus.BAD_REQUEST);
+                }
+                const counts = await reactionService.unreact('message', targetId, type); // 取消表态
                 if (!counts) this.throwHttpError('no reaction to remove or message not found', HttpStatus.BAD_REQUEST);
                 this.ok(ctx, counts, 'Reaction removed');
                 return;
             }
 
-            const counts = await reactionService.react('message', ctx.params.id, type); // 新增表态
+            const existed = await ReactionLog.findOne({
+                targetType: 'message',
+                targetId,
+                type,
+                ip
+            }).lean();
+            if (existed) {
+                this.throwHttpError('您已经表态过该表情', HttpStatus.BAD_REQUEST);
+            }
+
+            await ReactionLog.create({ targetType: 'message', targetId, type, ip });
+            const counts = await reactionService.react('message', targetId, type); // 新增表态
             this.ok(ctx, counts, 'Reaction updated');
         } catch (err) {
             this.fail(ctx, err);

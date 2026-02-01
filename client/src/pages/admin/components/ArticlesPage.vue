@@ -11,6 +11,7 @@
       <AppButton
         variant="primary"
         @click="showDialog = true"
+        :disabled="loading"
       >
         <Plus class="w-5 h-5" />
         新建文章
@@ -18,121 +19,132 @@
     </div>
 
     <!-- 文章列表卡片 - 可滚动区域 -->
-    <div class="flex-1 overflow-y-auto space-y-4 pr-2">
-      <div
-        v-for="article in displayedArticles"
-        :key="article._id"
-        class="group bg-white dark:bg-slate-800 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden border border-slate-200 dark:border-slate-700"
-      >
-        <!-- 封面图 -->
-        <div v-if="article.coverImage" class="w-full h-48 overflow-hidden bg-slate-100 dark:bg-slate-700">
-          <img :src="article.coverImage" :alt="article.title" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-        </div>
-        
-        <div class="p-6">
-          <!-- 标题和状态 -->
-          <div class="flex items-start justify-between mb-3">
-            <h2 class="text-xl font-bold text-slate-950 dark:text-slate-50 group-hover:text-indigo-600 dark:group-hover:text-indigo-300 transition-colors">
-              {{ article.title }}
-            </h2>
-            <span
-              :class="[
-                'px-3 py-1 rounded-full text-sm font-medium',
-                article.status === 'published'
-                  ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200'
-                  : 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200'
-              ]"
-            >
-              {{ article.status === 'published' ? '已发布' : '草稿' }}
-            </span>
-          </div>
-
-          <!-- 摘要 -->
-          <p class="text-slate-700 dark:text-slate-300 mb-4 line-clamp-2">
-            {{ article.summary || '暂无摘要' }}
-          </p>
-
-          <!-- 元信息 -->
-          <div class="flex items-center gap-4 text-sm text-slate-600 dark:text-slate-300 mb-4">
-            <span class="flex items-center gap-1">
-              <Eye class="w-4 h-4" />
-              {{ article.views }} 次浏览
-            </span>
-            <span class="flex items-center gap-1">
-              <Heart class="w-4 h-4" />
-              {{ article.likes }} 个赞
-            </span>
-            <span>
-              {{ formatDate(article.createdAt) }}
-            </span>
-          </div>
-
-          <!-- 操作按钮 -->
-          <div class="flex flex-wrap items-center gap-2 sm:gap-3">
-            <AppButton
-              variant="custom"
-              size="sm"
-              class="bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-200 border-indigo-200 dark:border-indigo-800"
-              @click="editArticle(article)"
-            >
-              <Edit class="w-4 h-4" />
-              <span class="hidden sm:inline">编辑</span>
-            </AppButton>
-            <AppButton
-              variant="custom"
-              size="sm"
-              :class="[
-                article.isTop
-                  ? 'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-200 border-yellow-200 dark:border-yellow-800'
-                  : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-600'
-              ]"
-              @click="toggleTop(article)"
-            >
-              <Pin class="w-4 h-4" />
-              <span class="hidden sm:inline">{{ article.isTop ? '取消置顶' : '置顶' }}</span>
-            </AppButton>
-            <AppButton
-              variant="custom"
-              size="sm"
-              :class="[
-                article.status === 'published'
-                  ? 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-600'
-                  : 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-200 border-green-200 dark:border-green-800'
-              ]"
-              @click="togglePublish(article)"
-            >
-              <Send class="w-4 h-4" />
-              <span class="hidden sm:inline">{{ article.status === 'published' ? '取消发布' : '发布' }}</span>
-            </AppButton>
-            <AppButton
-              variant="danger"
-              size="sm"
-              @click="deleteArticle(article._id)"
-            >
-              <Trash2 class="w-4 h-4" />
-              <span class="hidden sm:inline">删除</span>
-            </AppButton>
-          </div>
+    <div class="flex-1 overflow-y-auto space-y-4 pr-2 relative">
+      <!-- 加载状态 -->
+      <div v-if="loading" class="absolute inset-0 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm flex items-center justify-center z-50 rounded-lg">
+        <div class="flex flex-col items-center gap-3">
+          <div class="w-12 h-12 border-4 border-indigo-200 dark:border-indigo-800 border-t-indigo-600 dark:border-t-indigo-400 rounded-full animate-spin"></div>
+          <p class="text-sm text-gray-600 dark:text-gray-400">加载中...</p>
         </div>
       </div>
 
+      <!-- 空状态 -->
+      <div v-if="!loading && articleList.length === 0" class="flex items-center justify-center h-64">
+        <div class="text-center">
+          <FileText class="w-12 h-12 text-gray-400 dark:text-gray-500 mx-auto mb-3" />
+          <p class="text-gray-500 dark:text-gray-400">暂无文章，点击新建文章开始创建</p>
+        </div>
+      </div>
+
+      <!-- 文章列表 -->
+      <template v-if="!loading && articleList.length > 0">
+        <div
+          v-for="article in displayedArticles"
+          :key="article._id"
+          class="group bg-white dark:bg-slate-800 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden border border-slate-200 dark:border-slate-700"
+        >
+          <!-- 封面图 -->
+          <div v-if="article.coverImage" class="w-full h-48 overflow-hidden bg-slate-100 dark:bg-slate-700">
+            <img :src="article.coverImage" :alt="article.title" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+          </div>
+          
+          <div class="p-6">
+            <!-- 标题和状态 -->
+            <div class="flex items-start justify-between mb-3">
+              <h2 class="text-xl font-bold text-slate-950 dark:text-slate-50 group-hover:text-indigo-600 dark:group-hover:text-indigo-300 transition-colors">
+                {{ article.title }}
+              </h2>
+              <span
+                :class="[
+                  'px-3 py-1 rounded-full text-sm font-medium',
+                  article.status === 'published'
+                    ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200'
+                    : 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200'
+                ]"
+              >
+                {{ article.status === 'published' ? '已发布' : '草稿' }}
+              </span>
+            </div>
+
+            <!-- 摘要 -->
+            <p class="text-slate-700 dark:text-slate-300 mb-4 line-clamp-2">
+              {{ article.summary || '暂无摘要' }}
+            </p>
+
+            <!-- 元信息 -->
+            <div class="flex items-center gap-4 text-sm text-slate-600 dark:text-slate-300 mb-4">
+              <span class="flex items-center gap-1">
+                <Eye class="w-4 h-4" />
+                {{ article.views }} 次浏览
+              </span>
+              <span class="flex items-center gap-1">
+                <Heart class="w-4 h-4" />
+                {{ article.likes }} 个赞
+              </span>
+              <span>
+                {{ formatDate(article.createdAt) }}
+              </span>
+            </div>
+
+            <!-- 操作按钮 -->
+            <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+              <AppButton
+                variant="custom"
+                size="sm"
+                class="bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-200 border-indigo-200 dark:border-indigo-800"
+                @click="editArticle(article)"
+              >
+                <Edit class="w-4 h-4" />
+                <span class="hidden sm:inline">编辑</span>
+              </AppButton>
+              <AppButton
+                variant="custom"
+                size="sm"
+                :class="[
+                  article.isTop
+                    ? 'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-200 border-yellow-200 dark:border-yellow-800'
+                    : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-600'
+                ]"
+                @click="toggleTop(article)"
+              >
+                <Pin class="w-4 h-4" />
+                <span class="hidden sm:inline">{{ article.isTop ? '取消置顶' : '置顶' }}</span>
+              </AppButton>
+              <AppButton
+                variant="custom"
+                size="sm"
+                :class="[
+                  article.status === 'published'
+                    ? 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-600'
+                    : 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-200 border-green-200 dark:border-green-800'
+                ]"
+                @click="togglePublish(article)"
+              >
+                <Send class="w-4 h-4" />
+                <span class="hidden sm:inline">{{ article.status === 'published' ? '取消发布' : '发布' }}</span>
+              </AppButton>
+              <AppButton
+                variant="danger"
+                size="sm"
+                @click="deleteArticle(article._id)"
+              >
+                <Trash2 class="w-4 h-4" />
+                <span class="hidden sm:inline">删除</span>
+              </AppButton>
+            </div>
+          </div>
+        </div>
+      </template>
+
       <!-- 加载更多按钮 -->
-      <div v-if="hasMore" class="flex justify-center py-6">
+      <div v-if="hasMore && !loading" class="flex justify-center py-6">
         <AppButton
           variant="primary"
           @click="loadMore"
           :disabled="loading"
         >
-          {{ loading ? '加载中...' : '加载更多' }}
+          加载更多
         </AppButton>
-      </div>
-
-      <!-- 空状态 -->
-      <div v-if="articleList.length === 0" class="text-center py-16">
-        <FileText class="w-16 h-16 text-slate-400 dark:text-slate-500 mx-auto mb-4" />
-        <p class="text-slate-600 dark:text-slate-300 text-lg">
-          暂无文章，点击"新建文章"开始创建
-        </p>
       </div>
     </div>
 

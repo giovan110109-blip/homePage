@@ -35,7 +35,8 @@ function registerRoutes(app) {
         'articles.js',
         'adminArticles.js',
         'profile.js',
-        'photos.js'
+        'photos.js',
+        'dashboard.js'
     ]);
 
     // 过滤出路由文件

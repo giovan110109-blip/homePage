@@ -59,6 +59,20 @@ class AdminAuthController extends BaseController {
       this.fail(ctx, err, HttpStatus.UNAUTHORIZED);
     }
   }
+
+  // GET /api/admin/verify - 验证 token 是否有效
+  async verify(ctx) {
+    try {
+      // token 已通过中间件验证，ctx.state.user 存在表示 token 有效
+      const user = ctx.state.user;
+      this.ok(ctx, {
+        valid: true,
+        user: user
+      }, 'Token is valid');
+    } catch (err) {
+      this.fail(ctx, err);
+    }
+  }
 }
 
 module.exports = new AdminAuthController();

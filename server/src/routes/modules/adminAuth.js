@@ -6,5 +6,6 @@ const router = new Router({
 });
 
 router.post('/login', controller.login.bind(controller));
+router.get('/verify', controller.verify.bind(controller));
 
 module.exports = router;

@@ -11,8 +11,6 @@ import 'element-plus/theme-chalk/display.css'
 import 'maplibre-gl/dist/maplibre-gl.css' // 引入MapLibre GL样式
 import { useSiteInfoStore } from './stores/siteInfo'
 
-import { initImageCacheDiagnostics } from './utils/image-cache-diagnostics'
-
 const { VITE_SITE_TITLE } = import.meta.env
 
 // 创建Vue应用实例
@@ -30,9 +28,6 @@ app.use(ElementPlus)
 if (VITE_SITE_TITLE) {
   document.title = VITE_SITE_TITLE
 }
-
-// 初始化图片缓存诊断工具
-initImageCacheDiagnostics()
 
 // 处理404页面重定向，并在路由就绪后再挂载应用，避免刷新闪烁
 router.isReady().then(() => {

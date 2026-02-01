@@ -27,7 +27,7 @@
           <div
             class="text-base lg:text-lg font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent"
           >
-            Dashboard
+            Giovan Admin
           </div>
           <div class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
             欢迎回来
@@ -196,6 +196,9 @@
       v-model="profileDialogVisible"
       @updated="handleProfileUpdated"
     />
+
+    <!-- 上传任务队列浮窗（全局） -->
+    <UploadQueueFloat />
   </el-container>
 </template>
 
@@ -230,9 +233,11 @@ import FriendLinksPage from "./components/FriendLinksPage.vue";
 import ArticlesPage from "./components/ArticlesPage.vue";
 import PhotosPage from "./components/PhotosPage.vue";
 import ProfileDialog from "./components/ProfileDialog.vue";
+import UploadQueueFloat from "@/components/admin/UploadQueueFloat.vue";
 import { useAuthStore } from "@/stores/auth";
 import { useRouter } from "vue-router";
 import { getAssetURL } from "@/utils";
+import { ElMessage } from "element-plus";
 
 const sidebarCollapsed = ref(false);
 const ACTIVE_MENU_KEY = "admin:active-menu";
@@ -313,8 +318,29 @@ const handleLogout = () => {
   router.replace("/admin/login");
 };
 
+// 验证登录状态
+const checkAuthStatus = async () => {
+  if (!authStore.token) {
+    // 没有 token，重定向到登录
+    router.replace("/admin/login");
+    return;
+  }
+
+  // 验证 token 是否过期
+  const isValid = await authStore.verifyToken();
+  if (!isValid) {
+    // token 过期或无效
+    ElMessage.error("登录已过期，请重新登录");
+    router.replace("/admin/login");
+  }
+};
+
 watch(activeMenu, (value) => {
   localStorage.setItem(ACTIVE_MENU_KEY, value);
+});
+
+onMounted(() => {
+  checkAuthStatus();
 });
 </script>
 <style scoped>

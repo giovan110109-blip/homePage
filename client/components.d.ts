@@ -51,6 +51,7 @@ declare module 'vue' {
     ElRadioGroup: typeof import('element-plus/es')['ElRadioGroup']
     ElScrollbar: typeof import('element-plus/es')['ElScrollbar']
     ElSelect: typeof import('element-plus/es')['ElSelect']
+    ElSpin: typeof import('element-plus/es')['ElSpin']
     ElSwitch: typeof import('element-plus/es')['ElSwitch']
     ElTable: typeof import('element-plus/es')['ElTable']
     ElTableColumn: typeof import('element-plus/es')['ElTableColumn']
@@ -79,6 +80,7 @@ declare module 'vue' {
     SplitText: typeof import('./src/components/SplitText.vue')['default']
     TenYearPromise: typeof import('./src/components/ui/TenYearPromise.vue')['default']
     ThemeToggle: typeof import('./src/components/ui/ThemeToggle.vue')['default']
+    UploadQueueFloat: typeof import('./src/components/admin/UploadQueueFloat.vue')['default']
   }
   export interface GlobalDirectives {
     vLoading: typeof import('element-plus/es')['ElLoadingDirective']

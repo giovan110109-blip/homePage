@@ -33,20 +33,21 @@
       >
         <!-- Avatar (Mobile First) -->
         <div class="flex-shrink-0 mb-8 lg:mb-0 lg:order-2 lg:ml-12">
-          <div class="relative">
+          <div class="relative cursor-pointer group" @click="goToAdmin">
             <div
-              class="w-64 h-64 lg:w-80 lg:h-80 rounded-full overflow-hidden border-4 border-white/20 dark:border-white/10 shadow-2xl backdrop-blur-sm"
+              class="w-64 h-64 lg:w-80 lg:h-80 rounded-full overflow-hidden border-4 border-white/20 dark:border-white/10 shadow-2xl backdrop-blur-sm group-hover:border-blue-500/50 transition-all duration-300"
             >
               <img
                 :src="siteInfoStore.info.avatar"
                 :alt="siteInfoStore.info.name"
-                class="w-full h-full object-cover"
+                class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
               />
             </div>
             <!-- Glow effect around avatar -->
             <div
-              class="absolute inset-0 rounded-full bg-gradient-to-r from-blue-500/20 to-blue-500/20 blur-xl -z-10"
+              class="absolute inset-0 rounded-full bg-gradient-to-r from-blue-500/20 to-blue-500/20 blur-xl -z-10 group-hover:from-blue-500/40 group-hover:to-blue-500/40 transition-all duration-300"
             ></div>
+
           </div>
         </div>
 
@@ -126,6 +127,8 @@ import {
   Github,
   Phone,
 } from "lucide-vue-next";
+import { ref } from "vue";
+import { useRouter } from "vue-router";
 import { useSiteInfoStore } from "@/stores/siteInfo";
 import Button from "@/components/ui/Button.vue";
 import Card from "@/components/ui/Card.vue";
@@ -134,6 +137,7 @@ import SplitText from "@/components/SplitText.vue";
 import MagicCard from "@/components/ui/MagicCard.vue";
 import DotGrid from "@/components/DotGrid.vue";
 
+const router = useRouter();
 const dotGridRef = ref<InstanceType<typeof DotGrid>>();
 
 const handleGlobalMouseMove = (event: MouseEvent) => {
@@ -155,6 +159,10 @@ const scrollToSection = (sectionId: string) => {
   if (element) {
     element.scrollIntoView({ behavior: "smooth" });
   }
+};
+
+const goToAdmin = () => {
+  router.push("/admin");
 };
 </script>
 
