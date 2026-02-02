@@ -1,14 +1,23 @@
 <script lang="ts" setup>
 import { motion } from "motion-v";
 
-defineProps<{
+const props = defineProps<{
   photo: any;
   isVideoPlaying: boolean;
-  processingState?: {
-    isProcessing: boolean;
-    progress: number;
-  } | null;
+  processingState: boolean;
 }>();
+
+const canPlay = ref(false);
+
+watch(
+  () => props.processingState,
+  (newVal) => {
+    if (newVal) {
+      canPlay.value = newVal;
+    }
+  },
+  { immediate: true },
+);
 </script>
 
 <template>
@@ -25,7 +34,7 @@ defineProps<{
     }"
   >
     <svg
-      v-if="processingState?.isProcessing"
+      v-if="!canPlay"
       xmlns="http://www.w3.org/2000/svg"
       width="20"
       height="20"
@@ -86,14 +95,7 @@ defineProps<{
       <path d="M8.1 20.11l0 .01" />
       <path d="M12 21l0 .01" />
     </svg>
-    <span>实况</span>
-
-    <span
-      v-if="processingState?.isProcessing"
-      class="text-[12px] text-white/80 pl-1"
-    >
-      {{ Math.round(processingState.progress || 0) }}%
-    </span>
+    <span>LIVE</span>
   </motion.div>
 </template>
 

@@ -34,8 +34,7 @@
         <div
           v-for="photo in selectedLocation.photos"
           :key="photo._id"
-          class="aspect-square cursor-pointer rounded-lg overflow-hidden hover:ring-2 hover:ring-indigo-500 transition-all"
-          @click="viewPhoto(photo)"
+          class="aspect-square rounded-lg overflow-hidden"
         >
           <LazyImage
             :src="photo.originalUrl"

@@ -33,6 +33,7 @@ const swiperExtraProps: Record<string, any> = {
   },
 };
 // LivePhoto 状态
+const videoCanPlay=ref(false)
 const isLivePhotoHovering = ref(false);
 const isLivePhotoPlaying = ref(false);
 const isLivePhotoTouching = ref(false);
@@ -214,6 +215,16 @@ const handleLivePhotoIndicatorClick = () => {
 const playLivePhotoVideo = () => {
   if (!livePhotoVideoRef.value || !activePhoto.value?.videoUrl) return;
 
+  // 依赖 canplay：未就绪时先触发加载，等 canplay 事件
+  if (!videoCanPlay.value) {
+    try {
+      livePhotoVideoRef.value.load();
+    } catch {
+      // ignore
+    }
+    return;
+  }
+
   livePhotoVideoRef.value.currentTime = 0;
   isLivePhotoPlaying.value = true;
 
@@ -335,6 +346,12 @@ const handleLivePhotoMuteChange = (value: boolean) => {
     livePhotoVideoRef.value.muted = value;
   }
 };
+
+// 视频元数据加载完成
+const onVideoCanPlay = () => {
+  videoCanPlay.value = true;
+};
+
 watch(
   () => props.modelValue,
   async (newVal) => {
@@ -417,7 +434,11 @@ onBeforeUnmount(() => {
         :exit="{ opacity: 0 }"
         :transition="{ duration: 0.3 }"
         class="fixed inset-0 z-50 flex overflow-hidden"
-        :class="isMobile ? 'items-stretch justify-start' : 'items-center justify-center'"
+        :class="
+          isMobile
+            ? 'items-stretch justify-start'
+            : 'items-center justify-center'
+        "
         @click="emit('update:modelValue', false)"
       >
         <div
@@ -449,7 +470,7 @@ onBeforeUnmount(() => {
                     :class="isMobile ? 'cursor-default' : 'cursor-pointer'"
                     :photo="activePhoto"
                     :is-video-playing="isLivePhotoPlaying"
-                    :processing-state="getState(activePhoto?._id)"
+                    :processing-state="videoCanPlay"
                     @mouseenter="handleLivePhotoMouseEnter"
                     @mouseleave="handleLivePhotoMouseLeave"
                     @click="handleLivePhotoIndicatorClick"
@@ -596,6 +617,7 @@ onBeforeUnmount(() => {
                         delay: isLivePhotoPlaying ? 0.1 : 0,
                       }"
                       @ended="handleLivePhotoVideoEnded"
+                      @canplay="onVideoCanPlay"
                       @contextmenu.prevent=""
                     />
                     <!-- 缩放倍率提示 -->
@@ -623,7 +645,9 @@ onBeforeUnmount(() => {
                         :transition="{ duration: 0.2 }"
                         class="absolute bottom-6 left-0 right-0 z-20 flex justify-center"
                       >
-                        <div class="max-w-[90%] w-fit bg-black/50 rounded-lg border border-white/10 px-2 py-1 shadow-2xl text-white text-xs font-bold text-center">
+                        <div
+                          class="max-w-[90%] w-fit bg-black/50 rounded-lg border border-white/10 px-2 py-1 shadow-2xl text-white text-xs font-bold text-center"
+                        >
                           <span v-if="currentPhoto?.isLivePhoto && isMobile">
                             "长按播放实况照片 · 双击或捏合缩放"
                           </span>

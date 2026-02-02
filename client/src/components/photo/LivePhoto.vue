@@ -154,7 +154,6 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onUnmounted, computed, nextTick, watch, onMounted } from "vue";
 import LazyImage from "./LazyImage.vue";
 import { useLivePhotoCache } from "@/composables/useLivePhotoCache";
 
@@ -179,9 +178,8 @@ const emit = defineEmits<{
 }>();
 
 // LivePhoto 缓存
-const { loadLivePhoto, getState } = useLivePhotoCache();
+const { loadLivePhoto,  } = useLivePhotoCache();
 const cachedVideoUrl = ref<string | null>(null);
-const cacheState = props.photoId ? getState(props.photoId) : null;
 
 // Refs
 const videoRef = ref<HTMLVideoElement | null>(null);
