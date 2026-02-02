@@ -382,6 +382,15 @@ class UploadQueueManager extends EventEmitter {
         await fs.unlink(filePath).catch(() => {})
       }
 
+      // 保存原始文件（高分辨率版本）- 确保原始文件被保存到 photos 目录
+      // 如果还没有被保存过（HEIC转JPG的情况已处理），保存处理后的图片为原始版本
+      let originalStorageKey = finalStorageKey
+      const originalPath = path.join(this.uploadDir, originalStorageKey)
+      // 检查文件是否已存在（避免重复写入）
+      if (!await fs.promises.access(originalPath).then(() => true).catch(() => false)) {
+        await fs.writeFile(originalPath, processed.processedBuffer)
+      }
+
       // 生成 WebP 缩略图版本（600px宽，高质量压缩）
       const webpFileName = `${path.parse(finalStorageKey).name}.webp`
       const webpPath = path.join(this.webpDir, webpFileName)
@@ -524,6 +533,7 @@ class UploadQueueManager extends EventEmitter {
         originalFileName: task.originalFileName,
         baseName: derivedBaseName,
         storageKey: finalStorageKey,
+        originalKey: originalStorageKey,  // 原始文件的 storage key
         thumbnailKey: undefined,
         fileSize: task.fileSize,
         mimeType: finalMimeType,
@@ -532,7 +542,8 @@ class UploadQueueManager extends EventEmitter {
         height: processed.metadata.height,
         aspectRatio: processed.metadata.width / processed.metadata.height,
         
-        originalUrl: `${this.uploadBaseUrl}/photos-webp/${webpFileName}`,
+        originalUrl: `${this.uploadBaseUrl}/photos-webp/${webpFileName}`,  // WebP 缩略图
+        originalFileUrl: `${this.uploadBaseUrl}/photos/${originalStorageKey}`,  // 原始高分辨率文件
         thumbnailUrl: undefined,
         thumbnailHash: processed.thumbHash,
         

@@ -94,40 +94,44 @@
       </div>
 
       <!-- Messages List -->
-      <div class="messages-section">
-        <h2 class="section-title">留言列表</h2>
+      <div class="mt-12">
+        <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-6 pb-3 border-b border-gray-200 dark:border-gray-700">
+          留言列表
+        </h2>
 
         <!-- 优先显示 loading -->
-        <div v-if="isLoading" class="loading-state">
-          <div class="spinner"></div>
+        <div v-if="isLoading" class="flex flex-col items-center justify-center py-12 px-5 text-gray-500 dark:text-gray-400">
+          <div class="w-8 h-8 border-[3px] border-gray-200 dark:border-gray-700 border-t-blue-500 dark:border-t-blue-400 rounded-full animate-spin mb-4"></div>
           <p>加载中...</p>
         </div>
 
         <!-- 仅在非 loading 且无留言时显示空状态 -->
-        <div v-else-if="messages.length === 0" class="empty-state">
+        <div v-else-if="messages.length === 0" class="text-center py-10 px-5 text-gray-400 dark:text-gray-500 text-base">
           <p>还没有留言，成为第一个留言的人吧！</p>
         </div>
 
-        <div v-else class="messages-list" ref="messageListRef">
+        <div v-else class="flex flex-col gap-4" ref="messageListRef">
           <div
             v-for="(message, index) in displayedMessages"
             :key="message.id || index"
             :class="[
-              'bg-white/80 dark:bg-white/5 backdrop-blur-xl rounded-3xl p-6 border border-gray-200/60 dark:border-white/10 shadow-2xl hover:shadow-2xl hover:border-blue-400/50 dark:hover:border-blue-400/30 transition-all',
-              `note-color-${index % 5}`,
+              'bg-white/80 dark:bg-white/5 backdrop-blur-xl rounded-3xl p-6 border border-gray-200/60 dark:border-white/10 shadow-[0_20px_25px_-5px_rgba(0,0,0,0.1)] hover:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.15)] dark:hover:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.3)] hover:border-blue-400/70 dark:hover:border-blue-400/50 hover:-translate-y-0.5 transition-all',
+              getNoteClass(index),
             ]"
           >
-            <div class="message-header">
-              <div class="user-info">
-                <div class="flex items-end gap-20px">
+            <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-3 mb-3">
+              <div class="flex flex-col gap-1 flex-1">
+                <div class="flex items-end gap-5">
                   <div v-if="message.avatar" v-html="message.avatar"></div>
-                  <h3 class="user-name">{{ message.name }}</h3>
+                  <h3 class="text-base font-semibold text-gray-900 dark:text-white m-0">
+                    {{ message.name }}
+                  </h3>
                 </div>
-                <span class="message-time">{{
+                <span class="text-xs text-gray-400 dark:text-gray-500">{{
                   formatDate(message.createdAt)
                 }}</span>
               </div>
-              <div class="message-actions">
+              <div class="flex items-center gap-3 flex-shrink-0">
                 <EmojiReaction
                   :message-id="message.id || index"
                   :reactions="message.reactions"
@@ -136,60 +140,65 @@
                   v-if="message.website"
                   :href="message.website"
                   target="_blank"
-                  class="website-link"
+                  class="flex items-center justify-center w-8 h-8 rounded-md bg-white/50 text-gray-500 hover:bg-white/70 hover:text-gray-900 transition-all flex-shrink-0 dark:bg-white/10 dark:text-gray-400 dark:hover:bg-white/15 dark:hover:text-gray-300 self-start md:self-auto"
                   title="访问网站"
                 >
                   <ExternalLink class="w-4 h-4" />
                 </a>
               </div>
             </div>
-            <p class="message-content">{{ message.content }}</p>
-            <div class="message-meta">
+            <p class="text-gray-700 dark:text-gray-300 text-[15px] leading-6 m-0 break-words">
+              {{ message.content }}
+            </p>
+            <div class="flex flex-wrap gap-2 my-3">
               <span
                 v-if="message.os || message.browser || message.deviceType"
-                class="meta-chip"
+                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-white/60 text-gray-500 border border-black/5 dark:bg-white/10 dark:text-gray-400 dark:border-white/10"
               >
                 <component
                   v-if="getOsIcon(message.os)"
                   :is="getOsIcon(message.os)"
-                  class="meta-icon"
+                  class="w-3.5 h-3.5"
                 />
                 {{ message.os || "未知OS" }}
-                <span class="meta-sep">·</span>
+                <span class="opacity-60">·</span>
                 <component
                   v-if="getBrowserIcon(message.browser)"
                   :is="getBrowserIcon(message.browser)"
-                  class="meta-icon"
+                  class="w-3.5 h-3.5"
                 />
                 {{ message.browser || "未知浏览器" }}
                 <template v-if="message.deviceType">
-                  <span class="meta-sep">·</span>
+                  <span class="opacity-60">·</span>
                   <component
                     :is="getDeviceIcon(message.deviceType)"
-                    class="meta-icon"
+                    class="w-3.5 h-3.5"
                   />
                   {{ message.deviceType }}
                 </template>
               </span>
-              <span v-if="message.location" class="meta-chip">
+              <span
+                v-if="message.location"
+                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-white/60 text-gray-500 border border-black/5 dark:bg-white/10 dark:text-gray-400 dark:border-white/10"
+              >
                 来源：{{ formatLocation(message.location) }}
               </span>
             </div>
           </div>
 
           <!-- 加载更多提示 -->
-          <div v-if="isLoading" class="loading-state">
-            <div class="spinner"></div>
+          <div v-if="isLoading" class="flex flex-col items-center justify-center py-12 px-5 text-gray-500 dark:text-gray-400">
+            <div class="w-8 h-8 border-[3px] border-gray-200 dark:border-gray-700 border-t-blue-500 dark:border-t-blue-400 rounded-full animate-spin mb-4"></div>
             <p>加载中...</p>
           </div>
 
-          <div v-if="hasMoreMessages && !isLoading" class="load-more-hint">
+          <div v-if="hasMoreMessages && !isLoading" class="text-center py-6 text-gray-400 dark:text-gray-500 text-sm animate-fade-in-out">
             向下滑动加载更多
           </div>
 
           <div
             v-if="!hasMoreMessages && displayedMessages.length > 0"
-            class="no-more-state"
+            class="text-center py-6 text-gray-400 dark:text-gray-500 text-sm"
           >
             已加载全部留言
           </div>
@@ -524,295 +533,15 @@ const getDeviceIcon = (device?: string) => {
   const key = device.toLowerCase();
   return deviceIconMap[key] || Monitor;
 };
+
+const getNoteClass = (index: number) => {
+  const map: Record<number, string> = {
+    0: "bg-gradient-to-br from-[#fef3c7] to-[#fde68a] dark:from-[#92400e] dark:to-[#78350f]",
+    1: "bg-gradient-to-br from-[#fce7f3] to-[#fbcfe8] dark:from-[#831843] dark:to-[#500724]",
+    2: "bg-gradient-to-br from-[#cffafe] to-[#a5f3fc] dark:from-[#164e63] dark:to-[#0e3a47]",
+    3: "bg-gradient-to-br from-[#c7d2fe] to-[#a5b4fc] dark:from-[#312e81] dark:to-[#1e1b4b]",
+    4: "bg-gradient-to-br from-[#d1fae5] to-[#a7f3d0] dark:from-[#064e3b] dark:to-[#042f2e]",
+  };
+  return map[index % 5];
+};
 </script>
-
-<style scoped lang="scss">
-@use "sass:list";
-@use "@/style.scss" as *;
-
-
-
-.messages-section {
-  margin-top: $spacing-2xl;
-}
-
-.empty-state {
-  text-align: center;
-  padding: 40px $spacing-md;
-  color: $color-text-gray-light;
-  font-size: $font-lg;
-}
-
-.messages-list {
-  display: flex;
-  flex-direction: column;
-  gap: $spacing-sm;
-}
-
-.message-item {
-  background: rgba(255, 255, 255, 0.8);
-  border-radius: 24px;
-  padding: $spacing-lg;
-  transition: all 0.3s ease;
-  border: 1px solid rgba(209, 213, 219, 0.6);
-  backdrop-filter: blur(12px);
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-
-  @media (prefers-color-scheme: dark) {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-  }
-
-  &:hover {
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
-    border-color: rgba(59, 130, 246, 0.7);
-    transform: translateY(-2px);
-  }
-
-  @media (prefers-color-scheme: dark) {
-    &:hover {
-      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.3);
-      border-color: rgba(59, 130, 246, 0.5);
-    }
-  }
-
-  // 便签样式
-  @each $index, $colors in $note-colors {
-    &.note-color-#{$index} {
-      $light-start: list.nth($colors, 1);
-      $light-end: list.nth($colors, 2);
-      $dark-start: list.nth($colors, 3);
-      $dark-end: list.nth($colors, 4);
-
-      background: linear-gradient(135deg, $light-start 0%, $light-end 100%);
-    }
-  }
-}
-
-.message-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: $spacing-xs;
-  gap: $spacing-xs;
-}
-
-.message-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: $spacing-xs;
-  margin-top: $spacing-xs;
-}
-
-.meta-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 2px 8px;
-  border-radius: 999px;
-  font-size: $font-xs;
-  font-weight: 600;
-  background: rgba(16, 185, 129, 0.12);
-  color: #047857;
-}
-
-.meta-chip {
-  display: inline-flex;
-  align-items: center;
-  padding: 2px 8px;
-  border-radius: 999px;
-  font-size: $font-xs;
-  background: rgba(255, 255, 255, 0.6);
-  color: #6b7280;
-  border: 1px solid rgba(0, 0, 0, 0.05);
-  gap: 4px;
-}
-
-@media (prefers-color-scheme: dark) {
-  .meta-chip {
-    background: rgba(255, 255, 255, 0.08);
-    color: #a0aec0;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-  }
-}
-
-.meta-icon {
-  width: 14px;
-  height: 14px;
-}
-
-.meta-sep {
-  opacity: 0.6;
-}
-
-.user-info {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  flex: 1;
-}
-
-.message-actions {
-  display: flex;
-  align-items: center;
-  gap: $spacing-xs;
-  flex-shrink: 0;
-}
-
-.user-name {
-  font-size: $font-lg;
-  font-weight: 600;
-  color: #1f2937;
-  margin: 0;
-}
-
-@media (prefers-color-scheme: dark) {
-  .user-name {
-    color: white;
-  }
-}
-
-.message-time {
-  font-size: $font-xs;
-  color: #9ca3af;
-}
-
-@media (prefers-color-scheme: dark) {
-  .message-time {
-    color: #6b7280;
-  }
-}
-
-.website-link {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: $radius-sm;
-  background: rgba(255, 255, 255, 0.5);
-  color: #6b7280;
-  text-decoration: none;
-  transition: all 0.2s ease;
-  flex-shrink: 0;
-
-  &:hover {
-    background: rgba(255, 255, 255, 0.7);
-    color: #1f2937;
-  }
-}
-
-@media (prefers-color-scheme: dark) {
-  .website-link {
-    background: rgba(255, 255, 255, 0.1);
-    color: #a0aec0;
-  }
-
-  .website-link:hover {
-    background: rgba(255, 255, 255, 0.15);
-    color: #d1d5db;
-  }
-}
-
-.message-content {
-  color: #374151;
-  font-size: $font-base;
-  line-height: 1.6;
-  margin: 0;
-  word-break: break-word;
-}
-
-@media (prefers-color-scheme: dark) {
-  .message-content {
-    color: #d1d5db;
-  }
-}
-
-// 加载状态样式
-.loading-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: $spacing-2xl $spacing-md;
-  color: $color-text-gray;
-}
-
-.spinner {
-  width: 32px;
-  height: 32px;
-  border: 3px solid $color-border;
-  border-top-color: $color-primary;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-  margin-bottom: $spacing-md;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.load-more-hint {
-  text-align: center;
-  padding: $spacing-lg;
-  color: $color-text-gray-light;
-  font-size: $font-sm;
-  animation: fadeInOut 2s ease-in-out infinite;
-}
-
-@keyframes fadeInOut {
-  0%,
-  100% {
-    opacity: 0.5;
-  }
-  50% {
-    opacity: 1;
-  }
-}
-
-.no-more-state {
-  text-align: center;
-  padding: $spacing-lg;
-  color: $color-text-gray-light;
-  font-size: $font-sm;
-}
-
-@media (max-width: 768px) {
-  .title {
-    font-size: $font-3xl;
-  }
-
-  .message-form-section {
-    padding: $spacing-lg;
-  }
-
-  .message-header {
-    flex-direction: column;
-  }
-
-  .website-link {
-    align-self: flex-start;
-  }
-}
-
-@media (max-width: 480px) {
-  .header {
-    margin-bottom: $spacing-xl;
-  }
-
-  .message-form-section {
-    padding: $spacing-md;
-  }
-
-  .section-title {
-    font-size: $font-xl;
-  }
-
-  .form-input,
-  .form-textarea {
-    font-size: $font-lg;
-  }
-}
-</style>

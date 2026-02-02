@@ -53,12 +53,12 @@
       @error="onVideoError"
     />
 
-    <!-- Hover 遮罩层 - 参考 chronoframe -->
+    <!-- Hover 遮罩层 - -->
     <div
       class="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300 z-[3] pointer-events-none"
     />
 
-    <!-- 指示器 - 左上角，参考 chronoframe -->
+    <!-- 指示器 - 左上角 -->
     <div
       v-if="isLive"
       class="absolute top-2 left-2 md:top-3 md:left-3 z-20 backdrop-blur-md rounded-full pl-1 pr-1.5 py-1 text-[13px] font-bold flex items-center gap-0.5 leading-0 select-none transition-colors duration-300"
@@ -137,62 +137,19 @@
       <span>LIVE</span>
     </div>
 
-    <!-- 静音按钮 - 右上角，仅在播放时显示 -->
-    <button
+    <!-- 静音按钮  -->
+    <LivePhotoMute
       class="absolute top-2 right-2 md:top-3 md:right-3 z-20 backdrop-blur-md rounded-full p-1.5 transition-all duration-300 hover:bg-white/20 active:scale-95"
-      :class="isMuted ? 'text-gray-300 bg-black/30' : 'text-white bg-black/30'"
-      @click.stop="toggleMute"
-      title="静音"
-      type="button"
-    >
-      <!-- 有声音图标 -->
-      <svg
-        v-if="!isMuted"
-        xmlns="http://www.w3.org/2000/svg"
-        width="20"
-        height="20"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        class="icon icon-tabler icons-tabler-outline icon-tabler-volume"
-      >
-        <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-        <path d="M15 8a5 5 0 0 1 0 8" />
-        <path d="M17.7 5a9 9 0 0 1 0 14" />
-        <path
-          d="M6 15h-2a1 1 0 0 1 -1 -1v-4a1 1 0 0 1 1 -1h2l3.5 -4.5a.8 .8 0 0 1 1.5 .5v14a.8 .8 0 0 1 -1.5 .5l-3.5 -4.5"
-        />
-      </svg>
-      <!-- 静音图标 -->
-      <svg
-        v-else
-        xmlns="http://www.w3.org/2000/svg"
-        width="20"
-        height="20"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        class="icon icon-tabler icons-tabler-outline icon-tabler-volume-off"
-      >
-        <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-        <path
-          d="M15 8a5 5 0 0 1 1.912 4.934m-1.377 2.602a5 5 0 0 1 -.535 .464"
-        />
-        <path
-          d="M17.7 5a9 9 0 0 1 2.362 11.086m-1.676 2.299a9 9 0 0 1 -.686 .615"
-        />
-        <path
-          d="M9.069 5.054l.431 -.554a.8 .8 0 0 1 1.5 .5v2m0 4v8a.8 .8 0 0 1 -1.5 .5l-3.5 -4.5h-2a1 1 0 0 1 -1 -1v-4a1 1 0 0 1 1 -1h2l1.294 -1.664"
-        />
-        <path d="M3 3l18 18" />
-      </svg>
-    </button>
+      :modelValue="isMuted"
+      @update:modelValue="
+        (value) => {
+          isMuted = value;
+          if (videoRef && videoRef.muted !== value) {
+            videoRef.muted = value;
+          }
+        }
+      "
+    />
   </div>
 </template>
 
@@ -248,8 +205,6 @@ const isMobile = computed(() => {
 
 // 视频元数据加载完成
 const onVideoCanPlay = () => {
-  console.log("视频加载完了？");
-
   videoCanPlay.value = true;
 };
 

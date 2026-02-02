@@ -11,45 +11,56 @@
       </div>
 
       <!-- Websites Status List -->
-      <div class="status-section">
-        <h2 class="section-title">在线状态</h2>
+      <div class="mt-12 sm:mt-16">
+        <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-6 pb-3 border-b border-gray-200/80 dark:border-white/10">
+          在线状态
+        </h2>
 
-        <div v-if="websites.length === 0" class="empty-state">
+        <div v-if="websites.length === 0" class="text-center py-10 px-5 text-gray-400 dark:text-gray-500 text-base">
           <p>暂无网站监控记录</p>
         </div>
 
-        <div v-else class="websites-grid">
+        <div v-else class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
           <div
             v-for="(website, index) in websites"
             :key="index"
             class="bg-white/80 dark:bg-white/5 backdrop-blur-xl rounded-3xl p-8 border border-gray-200/60 dark:border-white/10  hover:shadow-2xl hover:border-blue-400/50 dark:hover:border-blue-400/30 transition-all flex flex-col"
           >
             <!-- Status Indicator -->
-            <div class="card-header">
-              <div class="status-badge" :class="website.status">
-                <div class="status-dot"></div>
+            <div class="flex items-center justify-between mb-4">
+              <div
+                class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold"
+                :class="getStatusBadgeClass(website.status)"
+              >
+                <div class="h-2 w-2 rounded-full bg-current"></div>
                 <span>{{ getStatusText(website.status) }}</span>
               </div>
             </div>
 
             <!-- Website Info -->
-            <div class="website-info">
-              <h3 class="website-name">{{ website.name }}</h3>
-              <p v-if="website.description" class="website-description">
+            <div class="mb-5 flex-1">
+              <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                {{ website.name }}
+              </h3>
+              <p v-if="website.description" class="text-sm text-gray-500 dark:text-gray-400 mb-2">
                 {{ website.description }}
               </p>
-              <a :href="website.url" target="_blank" class="website-url">
+              <a
+                :href="website.url"
+                target="_blank"
+                class="inline-flex items-center gap-1.5 text-sm text-blue-600 dark:text-blue-400 hover:underline break-all"
+              >
                 {{ website.url }}
                 <ExternalLink class="w-3 h-3" />
               </a>
             </div>
 
             <!-- Metrics -->
-            <div class="metrics">
-              <div class="metric">
-                <span class="metric-label">响应时间</span>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5 rounded-xl border border-gray-200/60 dark:border-white/10 bg-white/60 dark:bg-white/5 p-4">
+              <div class="flex flex-col items-center text-center">
+                <span class="text-xs text-gray-500 dark:text-gray-400 mb-1">响应时间</span>
                 <span
-                  class="metric-value"
+                  class="text-base font-semibold text-gray-900 dark:text-white"
                   :class="getLatencyClass(website.latency)"
                 >
                   {{
@@ -60,23 +71,23 @@
                 </span>
               </div>
 
-              <div class="metric">
-                <span class="metric-label">检查时间</span>
-                <span class="metric-value">{{
+              <div class="flex flex-col items-center text-center">
+                <span class="text-xs text-gray-500 dark:text-gray-400 mb-1">检查时间</span>
+                <span class="text-base font-semibold text-gray-900 dark:text-white">{{
                   formatCheckTime(website.lastCheck)
                 }}</span>
               </div>
 
-              <div class="metric">
-                <span class="metric-label">正常率</span>
-                <span class="metric-value"
+              <div class="flex flex-col items-center text-center">
+                <span class="text-xs text-gray-500 dark:text-gray-400 mb-1">正常率</span>
+                <span class="text-base font-semibold text-gray-900 dark:text-white"
                   >{{ formatUptime(website.uptime) }}%</span
                 >
               </div>
             </div>
 
             <!-- Status Details -->
-            <div class="status-details">
+            <div class="flex flex-col gap-2 rounded-lg border border-gray-200/60 dark:border-white/10 bg-white/60 dark:bg-white/5 p-3 mb-4 text-sm">
               <!-- <div v-if="website.statusCode" class="detail-item">
                     <span class="detail-label">HTTP 状态码：</span>
                     <span
@@ -90,18 +101,18 @@
                     <span class="detail-label">信息：</span>
                     <span class="detail-value">{{ formatMessage(website.message) }}</span>
                   </div> -->
-              <div v-if="website.ssl" class="detail-item">
-                <span class="detail-label">证书状态：</span>
+              <div v-if="website.ssl" class="flex items-center justify-between gap-3">
+                <span class="text-gray-500 dark:text-gray-400 font-medium">证书状态：</span>
                 <span
-                  class="detail-value"
+                  class="text-gray-900 dark:text-gray-200 font-mono font-medium"
                   :class="getCertStatusClass(website.ssl.status)"
                 >
                   {{ getCertStatusText(website.ssl.status) }}
                 </span>
               </div>
-              <div v-if="website.ssl?.validTo" class="detail-item">
-                <span class="detail-label">证书到期：</span>
-                <span class="detail-value">
+              <div v-if="website.ssl?.validTo" class="flex items-center justify-between gap-3">
+                <span class="text-gray-500 dark:text-gray-400 font-medium">证书到期：</span>
+                <span class="text-gray-900 dark:text-gray-200 font-mono font-medium">
                   {{ formatDate(website.ssl.validTo) }}
                   <span v-if="website.ssl?.daysRemaining !== null"
                     >（剩余 {{ website.ssl.daysRemaining }} 天）</span
@@ -128,22 +139,22 @@
       </div>
 
       <!-- Summary Stats -->
-      <div v-if="websites.length > 0" class="summary-stats">
-        <div class="stat-item">
-          <span class="stat-label">监控网站</span>
-          <span class="stat-value">{{ websites.length }}</span>
+      <div v-if="websites.length > 0" class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8 pt-8 border-t border-gray-200 dark:border-gray-700">
+        <div class="flex flex-col items-center text-center">
+          <span class="text-xs text-gray-400 dark:text-gray-500 font-medium mb-1.5">监控网站</span>
+          <span class="text-2xl font-bold text-gray-900 dark:text-white">{{ websites.length }}</span>
         </div>
-        <div class="stat-item">
-          <span class="stat-label">在线</span>
-          <span class="stat-value online">{{ onlineCount }}</span>
+        <div class="flex flex-col items-center text-center">
+          <span class="text-xs text-gray-400 dark:text-gray-500 font-medium mb-1.5">在线</span>
+          <span class="text-2xl font-bold text-emerald-500">{{ onlineCount }}</span>
         </div>
-        <div class="stat-item">
-          <span class="stat-label">离线</span>
-          <span class="stat-value offline">{{ offlineCount }}</span>
+        <div class="flex flex-col items-center text-center">
+          <span class="text-xs text-gray-400 dark:text-gray-500 font-medium mb-1.5">离线</span>
+          <span class="text-2xl font-bold text-rose-500">{{ offlineCount }}</span>
         </div>
-        <div class="stat-item">
-          <span class="stat-label">平均延迟</span>
-          <span class="stat-value">{{ averageLatency }}ms</span>
+        <div class="flex flex-col items-center text-center">
+          <span class="text-xs text-gray-400 dark:text-gray-500 font-medium mb-1.5">平均延迟</span>
+          <span class="text-2xl font-bold text-gray-900 dark:text-white">{{ averageLatency }}ms</span>
         </div>
       </div>
     </div>
@@ -351,19 +362,34 @@ const getStatusText = (status: string) => {
   return statusMap[status] || status;
 };
 
+const getStatusBadgeClass = (status: string) => {
+  const map: Record<string, string> = {
+    online:
+      "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300",
+    offline:
+      "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300",
+    checking:
+      "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300",
+  };
+  return (
+    map[status] ||
+    "bg-gray-100 text-gray-600 dark:bg-white/10 dark:text-gray-300"
+  );
+};
+
 const getLatencyClass = (latency: number | null) => {
-  if (latency === null) return "pending";
-  if (latency < 100) return "fast";
-  if (latency < 300) return "normal";
-  return "slow";
+  if (latency === null) return "text-gray-400 dark:text-gray-500";
+  if (latency < 100) return "text-emerald-500";
+  if (latency < 300) return "text-amber-500";
+  return "text-rose-500";
 };
 
 const getStatusCodeClass = (code: number) => {
-  if (code >= 200 && code < 300) return "success";
-  if (code >= 300 && code < 400) return "redirect";
-  if (code >= 400 && code < 500) return "error";
-  if (code >= 500) return "server-error";
-  return "unknown";
+  if (code >= 200 && code < 300) return "text-emerald-500";
+  if (code >= 300 && code < 400) return "text-blue-500";
+  if (code >= 400 && code < 500) return "text-amber-500";
+  if (code >= 500) return "text-rose-500";
+  return "text-gray-400 dark:text-gray-500";
 };
 
 const getCertStatusText = (status: string) => {
@@ -378,11 +404,11 @@ const getCertStatusText = (status: string) => {
 };
 
 const getCertStatusClass = (status: string) => {
-  if (status === "valid") return "success";
-  if (status === "expiring") return "redirect";
-  if (status === "expired") return "error";
-  if (status === "error") return "server-error";
-  return "unknown";
+  if (status === "valid") return "text-emerald-500";
+  if (status === "expiring") return "text-blue-500";
+  if (status === "expired") return "text-amber-500";
+  if (status === "error") return "text-rose-500";
+  return "text-gray-400 dark:text-gray-500";
 };
 
 const formatDate = (value: string) => {
@@ -417,508 +443,3 @@ const formatCheckTime = (date: Date | null) => {
   return `${days}天前`;
 };
 </script>
-
-<style scoped>
-.form-section {
-  margin-bottom: 48px;
-  padding: 32px;
-  background: #f9fafb;
-  border-radius: 12px;
-  border: 1px solid #e5e7eb;
-}
-
-.dark .form-section {
-  background: #1f2937;
-  border: 1px solid #374151;
-}
-
-.section-title {
-  font-size: 20px;
-  font-weight: 600;
-  color: #1f2937;
-  margin-bottom: 24px;
-  padding-bottom: 12px;
-  border-bottom: 2px solid #e5e7eb;
-}
-
-.dark .section-title {
-  color: white;
-  border-bottom-color: #374151;
-}
-
-.add-form {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.form-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
-}
-
-@media (max-width: 640px) {
-  .form-row {
-    grid-template-columns: 1fr;
-  }
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-}
-
-.form-label {
-  font-size: 14px;
-  font-weight: 500;
-  color: #374151;
-  margin-bottom: 8px;
-}
-
-.dark .form-label {
-  color: #d1d5db;
-}
-
-.form-input {
-  padding: 12px 16px;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  font-size: 14px;
-  background: white;
-  color: #1f2937;
-  font-family: inherit;
-  transition: all 0.2s ease;
-}
-
-.dark .form-input {
-  background: #111827;
-  border-color: #4b5563;
-  color: #f3f4f6;
-}
-
-.form-input:focus {
-  outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
-
-.dark .form-input:focus {
-  border-color: #60a5fa;
-}
-
-.submit-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 12px 24px;
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-  color: white;
-  font-weight: 600;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-size: 14px;
-}
-
-.submit-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
-}
-
-.submit-button:active {
-  transform: translateY(0);
-}
-
-.status-section {
-  margin-top: 48px;
-}
-
-.empty-state {
-  text-align: center;
-  padding: 40px 20px;
-  color: #9ca3af;
-  font-size: 16px;
-}
-
-.dark .empty-state {
-  color: #6b7280;
-}
-
-.websites-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 24px;
-}
-
-@media (max-width: 768px) {
-  .websites-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-.website-card {
-  background: rgba(255, 255, 255, 0.8);
-  border: 1px solid rgba(209, 213, 219, 0.6);
-  border-radius: 24px;
-  padding: 32px;
-  transition: all 0.3s ease;
-  display: flex;
-  flex-direction: column;
-  backdrop-filter: blur(12px);
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-}
-
-.dark .website-card {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.website-card:hover {
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
-  transform: translateY(-2px);
-  border-color: rgba(59, 130, 246, 0.7);
-}
-
-.dark .website-card:hover {
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.3);
-  border-color: rgba(59, 130, 246, 0.5);
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-}
-
-.status-badge {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.status-badge.online {
-  background: #d1fae5;
-  color: #047857;
-}
-
-.dark .status-badge.online {
-  background: rgba(16, 185, 129, 0.1);
-  color: #10b981;
-}
-
-.status-badge.offline {
-  background: #fee2e2;
-  color: #b91c1c;
-}
-
-.dark .status-badge.offline {
-  background: rgba(239, 68, 68, 0.1);
-  color: #f87171;
-}
-
-.status-badge.checking {
-  background: #fef3c7;
-  color: #92400e;
-}
-
-.dark .status-badge.checking {
-  background: rgba(251, 191, 36, 0.1);
-  color: #fbbf24;
-}
-
-.status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: currentColor;
-}
-
-.delete-btn {
-  background: none;
-  border: none;
-  color: #9ca3af;
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
-  transition: all 0.2s ease;
-}
-
-.dark .delete-btn {
-  color: #6b7280;
-}
-
-.delete-btn:hover {
-  background: #f3f4f6;
-  color: #ef4444;
-}
-
-.dark .delete-btn:hover {
-  background: #374151;
-  color: #f87171;
-}
-
-.website-info {
-  margin-bottom: 20px;
-  flex: 1;
-}
-
-.website-name {
-  font-size: 18px;
-  font-weight: 600;
-  color: #1f2937;
-  margin: 0 0 8px 0;
-}
-
-.dark .website-name {
-  color: white;
-}
-
-.website-description {
-  font-size: 13px;
-  color: #6b7280;
-  margin: 0 0 8px 0;
-}
-
-.dark .website-description {
-  color: #9ca3af;
-}
-
-.website-url {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  color: #3b82f6;
-  text-decoration: none;
-  word-break: break-all;
-}
-
-.dark .website-url {
-  color: #60a5fa;
-}
-
-.website-url:hover {
-  text-decoration: underline;
-}
-
-.metrics {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-  margin-bottom: 20px;
-  padding: 16px;
-  background: rgba(255, 255, 255, 0.4);
-  border-radius: 8px;
-  border: 1px solid rgba(209, 213, 219, 0.3);
-}
-
-.dark .metrics {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.metric {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-}
-
-.metric-label {
-  font-size: 12px;
-  color: #6b7280;
-  margin-bottom: 4px;
-}
-
-.dark .metric-label {
-  color: #a0aec0;
-}
-
-.metric-value {
-  font-size: 16px;
-  font-weight: 600;
-  color: #1f2937;
-}
-
-.dark .metric-value {
-  color: white;
-}
-
-.metric-value.fast {
-  color: #10b981;
-}
-
-.metric-value.normal {
-  color: #f59e0b;
-}
-
-.metric-value.slow {
-  color: #ef4444;
-}
-
-.metric-value.pending {
-  color: #6b7280;
-}
-
-.status-details {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 12px;
-  background: rgba(255, 255, 255, 0.4);
-  border-radius: 6px;
-  margin-bottom: 16px;
-  font-size: 13px;
-  border: 1px solid rgba(209, 213, 219, 0.3);
-}
-
-.dark .status-details {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.detail-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.detail-label {
-  color: #6b7280;
-  font-weight: 500;
-}
-
-.dark .detail-label {
-  color: #a0aec0;
-}
-
-.detail-value {
-  color: #1f2937;
-  font-family: monospace;
-  font-weight: 500;
-}
-
-.dark .detail-value {
-  color: #e5e7eb;
-}
-
-.detail-value.success {
-  color: #10b981;
-}
-
-.detail-value.redirect {
-  color: #3b82f6;
-}
-
-.detail-value.error {
-  color: #f59e0b;
-}
-
-.detail-value.server-error {
-  color: #ef4444;
-}
-
-.animate-spin {
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.summary-stats {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-  margin-top: 32px;
-  padding-top: 32px;
-  border-top: 2px solid #e5e7eb;
-}
-
-.dark .summary-stats {
-  border-top-color: #374151;
-}
-
-@media (max-width: 640px) {
-  .summary-stats {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-.stat-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-}
-
-.stat-label {
-  font-size: 12px;
-  color: #9ca3af;
-  margin-bottom: 6px;
-  font-weight: 500;
-}
-
-.dark .stat-label {
-  color: #6b7280;
-}
-
-.stat-value {
-  font-size: 24px;
-  font-weight: 700;
-  color: #1f2937;
-}
-
-.dark .stat-value {
-  color: white;
-}
-
-.stat-value.online {
-  color: #10b981;
-}
-
-.stat-value.offline {
-  color: #ef4444;
-}
-
-@media (max-width: 768px) {
-  .title {
-    font-size: 28px;
-  }
-
-  .form-section {
-    padding: 24px;
-  }
-}
-
-@media (max-width: 480px) {
-  .header {
-    margin-bottom: 32px;
-  }
-
-  .form-section {
-    padding: 20px;
-  }
-
-  .section-title {
-    font-size: 18px;
-  }
-
-  .metrics {
-    grid-template-columns: 1fr;
-  }
-}
-</style>

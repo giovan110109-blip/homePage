@@ -10,6 +10,7 @@ export interface Photo {
   title: string
   description?: string
   originalUrl: string
+  originalFileUrl?: string  // 原始高分辨率文件URL
   thumbnailUrl?: string
   thumbnailHash?: string
   thumbHash?: string

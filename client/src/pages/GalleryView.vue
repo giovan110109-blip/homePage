@@ -67,7 +67,10 @@
       :modelValue="photoDialogVisible"
       :photos="photos"
       :currentPhoto="currentPhoto"
+      :hasMore="hasMore"
+      :loadingMore="loadingMore"
       @update:modelValue="photoDialogVisible = $event"
+      @loadMore="loadPhotos(false)"
     />
   </div>
 </template>
@@ -77,16 +80,12 @@ import { MapPin } from "lucide-vue-next";
 import MasonryWall from "@yeger/vue-masonry-wall";
 import request from "@/api/request";
 import { getAssetURL } from "@/utils";
-import LazyImage from "@/components/LazyImage.vue";
-import LivePhoto from "@/components/LivePhoto.vue";
-import PhotoViewer from "@/components/PhotoViewer.vue";
+import { useLivePhotoCache } from "@/composables/useLivePhotoCache";
 import type { Photo } from "@/types/api";
 
 interface PhotoWithLoaded extends Photo {
   loaded?: boolean;
 }
-
-import { useImageLoader } from "@/composables/useImageLoader";
 
 const photos = ref<PhotoWithLoaded[]>([]);
 const loading = ref(false);
@@ -94,50 +93,62 @@ const loadingMore = ref(false);
 const photoDialogVisible = ref(false);
 const currentPhoto = ref<PhotoWithLoaded | null>(null);
 
+// LivePhoto 预加载
+const { preloadVideosInViewport } = useLivePhotoCache();
+
 const windowWidth = ref(window.innerWidth);
+
+// ✅ 性能优化：合并响应式计算
+const gridConfig = computed(() => {
+  const width = windowWidth.value;
+  
+  if (width < 640) {
+    return { columnWidth: 160, minColumns: 2, maxColumns: 2, gap: 6 };
+  }
+  if (width < 1024) {
+    return { columnWidth: 240, minColumns: 3, maxColumns: 4, gap: 8 };
+  }
+  if (width < 1536) {
+    return { columnWidth: 300, minColumns: 4, maxColumns: 5, gap: 10 };
+  }
+  return { columnWidth: 360, minColumns: 5, maxColumns: 6, gap: 10 };
+});
+
+const columnWidth = computed(() => gridConfig.value.columnWidth);
+const minColumns = computed(() => gridConfig.value.minColumns);
+const maxColumns = computed(() => gridConfig.value.maxColumns);
+const gridGap = computed(() => gridConfig.value.gap);
 
 // 检测是否是移动端
 const isMobile = computed(() => {
   return windowWidth.value < 768;
 });
 
-// 响应式列宽
-const columnWidth = computed(() => {
-  const width = windowWidth.value;
-  if (width < 640) return 160; // 手机：2列
-  if (width < 1024) return 240; // 平板：3-4列
-  if (width < 1536) return 300; // 小屏PC：4-5列
-  return 360; // 大屏PC：5-6列
-});
+// ✅ 性能优化：缓存格式化日期结果
+const formattedDateCache = new Map<string, string>();
 
-const minColumns = computed(() => {
-  const width = windowWidth.value;
-  if (width < 640) return 2;
-  if (width < 1024) return 3;
-  if (width < 1536) return 4;
-  return 5;
-});
-
-const maxColumns = computed(() => {
-  const width = windowWidth.value;
-  if (width < 640) return 2;
-  if (width < 1024) return 4;
-  if (width < 1536) return 5;
-  return 6;
-});
-
-const gridGap = computed(() => {
-  const width = windowWidth.value;
-  if (width < 640) return 6;
-  if (width < 1024) return 8;
-  return 10;
-});
+const formatDate = (date: string): string => {
+  if (formattedDateCache.has(date)) {
+    return formattedDateCache.get(date)!;
+  }
+  
+  const formatted = new Date(date).toLocaleString("zh-CN", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  
+  formattedDateCache.set(date, formatted);
+  return formatted;
+};
 
 const keyMapper = (item: PhotoWithLoaded) => item._id;
 
 const pagination = reactive({
   page: 1,
-  limit: 9999, // 全量加载
+  limit: 50, // ✅ 优化：改为分页加载，首页50张
   total: 0,
   pages: 1,
 });
@@ -148,6 +159,7 @@ const loadPhotos = async (reset = true) => {
   if (reset) {
     pagination.page = 1;
     photos.value = [];
+    formattedDateCache.clear(); // ✅ 清空日期缓存
   }
 
   loading.value = reset;
@@ -155,8 +167,8 @@ const loadPhotos = async (reset = true) => {
 
   try {
     const params: any = {
-      page: 1, // 始终加载第一页
-      limit: 9999, // 获取所有照片
+      page: pagination.page,
+      limit: pagination.limit, // ✅ 分页加载
     };
 
     const res: any = await request.get("/photos", { params });
@@ -173,27 +185,44 @@ const loadPhotos = async (reset = true) => {
         return photo;
       });
 
-      photos.value = newPhotos;
+      if (reset) {
+        photos.value = newPhotos;
+      } else {
+        photos.value.push(...newPhotos);
+      }
 
       Object.assign(pagination, res.data.pagination);
-      hasMore.value = false; // 全量加载不需要加载更多
+      hasMore.value = pagination.page < pagination.pages;
+
+      // ✅ 优化：只预加载当前页的 LivePhoto，不预加载所有页
+      const livePhotos = newPhotos
+        .filter((p: PhotoWithLoaded) => p.isLive && p.videoUrl)
+        .map((p: PhotoWithLoaded) => ({
+          id: p._id,
+          videoUrl: p.videoUrl,
+          isVisible: false,
+        }))
+
+      if (livePhotos.length > 0) {
+        console.log(
+          `📷 预加载第 ${pagination.page} 页的 ${livePhotos.length} 个 LivePhoto 视频...`
+        )
+        // ✅ 优化：使用更保守的并发数
+        preloadVideosInViewport(livePhotos, {
+          maxConcurrent: 1, // 瀑布流场景用 1，避免占用过多网络
+          prioritizeVisible: false, // 瀑布流都在视口外，不需要优先
+          prefetchDistance: 2,
+        }).catch((err) => {
+          console.warn("⚠️ LivePhoto 预加载出错:", err)
+        })
+      }
     }
   } catch (error: any) {
-    // 加载失败
+    console.error("加载照片失败:", error)
   } finally {
     loading.value = false;
     loadingMore.value = false;
   }
-};
-
-const formatDate = (date: string) => {
-  return new Date(date).toLocaleString("zh-CN", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
 };
 
 const viewPhoto = async (photo: Photo) => {
@@ -215,13 +244,30 @@ const handleResize = () => {
   windowWidth.value = window.innerWidth;
 };
 
+// ✅ 优化：实现无限滚动加载
+const handleScroll = async () => {
+  if (loading.value || loadingMore.value || !hasMore.value) return;
+
+  const scrollTop = window.scrollY;
+  const windowHeight = window.innerHeight;
+  const docHeight = document.documentElement.scrollHeight;
+
+  // 距离底部 300px 时触发加载
+  if (docHeight - scrollTop - windowHeight < 300) {
+    pagination.page++;
+    await loadPhotos(false);
+  }
+};
+
 onMounted(() => {
   loadPhotos();
   window.addEventListener("resize", handleResize, { passive: true });
+  window.addEventListener("scroll", handleScroll, { passive: true });
 });
 
 onBeforeUnmount(() => {
   window.removeEventListener("resize", handleResize);
+  window.removeEventListener("scroll", handleScroll);
 });
 </script>
 

@@ -13,12 +13,6 @@
     <section class="py-20 relative">
       <div class="absolute inset-0 backdrop-blur-sm"></div>
       <div class="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <!-- <h1 class="text-3xl font-medium text-gray-900 dark:text-white mb-4 animate-fade-in drop-shadow-lg">
-          关于我
-        </h1>
-        <p class="text-gray-700 dark:text-gray-200 animate-fade-in-delay drop-shadow-sm">
-          一个喜欢折腾代码的人
-        </p> -->
       </div>
     </section>
 
@@ -199,7 +193,6 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
 import { MapPin, Mail, Briefcase, GraduationCap, Github, Linkedin, Twitter, MessageCircle, Code, Camera, Music, Gamepad2 ,Bike} from 'lucide-vue-next'
 import { useSiteInfoStore } from '@/stores/siteInfo'
 import Card from '@/components/ui/Card.vue'

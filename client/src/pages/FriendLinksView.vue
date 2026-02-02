@@ -77,7 +77,7 @@
                   {{ link.name }}
                 </h3>
                 <p
-                  class="text-sm text-gray-600/90 dark:text-gray-400 line-clamp-2 mb-2"
+                  class="text-sm text-gray-600/90 dark:text-gray-400 mb-2 overflow-hidden [display:-webkit-box] [-webkit-line-clamp:2] [-webkit-box-orient:vertical]"
                 >
                   {{ link.description }}
                 </p>
@@ -426,12 +426,3 @@ onMounted(() => {
   loadFriendLinks();
 });
 </script>
-
-<style scoped>
-.line-clamp-2 {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-</style>

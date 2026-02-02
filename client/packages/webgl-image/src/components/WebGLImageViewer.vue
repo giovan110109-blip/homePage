@@ -12,7 +12,7 @@ import type {
   EngineConfig,
   LoadingState,
   WebGLImageViewerRef,
-} from '@/types'
+} from '../types'
 
 // Props & Emits
 const props = withDefaults(defineProps<WebGLImageViewerProps>(), {

@@ -11,7 +11,7 @@ import 'element-plus/theme-chalk/display.css'
 import 'maplibre-gl/dist/maplibre-gl.css' // 引入MapLibre GL样式
 import { useSiteInfoStore } from './stores/siteInfo'
 
-const { VITE_SITE_TITLE } = import.meta.env
+const { VITE_SITE_TITLE, VITE_SITE_DESCRIPTION } = import.meta.env
 
 if (import.meta.env.PROD) {
   console.clear()
@@ -37,6 +37,16 @@ app.use(ElementPlus)
 
 if (VITE_SITE_TITLE) {
   document.title = VITE_SITE_TITLE
+}
+
+if (VITE_SITE_DESCRIPTION) {
+  let metaDescription = document.querySelector('meta[name="description"]')
+  if (!metaDescription) {
+    metaDescription = document.createElement('meta')
+    metaDescription.setAttribute('name', 'description')
+    document.head.appendChild(metaDescription)
+  }
+  metaDescription.setAttribute('content', VITE_SITE_DESCRIPTION)
 }
 
 // 处理404页面重定向，并在路由就绪后再挂载应用，避免刷新闪烁

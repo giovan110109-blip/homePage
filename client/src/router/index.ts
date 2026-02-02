@@ -1,6 +1,7 @@
 import { createRouter, createWebHashHistory, type RouteRecordRaw } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import request from '@/api/request'
+const { VITE_SITE_TITLE, VITE_SITE_DESCRIPTION } = import.meta.env
 // 定义路由配置
 const routes: RouteRecordRaw[] = [
   {
@@ -40,7 +41,7 @@ const routes: RouteRecordRaw[] = [
     name: 'friends',
     component: () => import('@/pages/FriendLinksView.vue'),
     meta: {
-      title: '友情链接'
+      title: '朋友圈'
     }
   },
   {
@@ -126,6 +127,22 @@ router.beforeEach((to, _from, next) => {
 })
 
 router.afterEach((to) => {
+  const pageTitle = to.meta?.title ? `${to.meta.title} - ${VITE_SITE_TITLE ?? ''}`.replace(/\s-\s$/, '') : VITE_SITE_TITLE
+  if (pageTitle) {
+    document.title = pageTitle
+  }
+
+  const description = (to.meta?.description as string | undefined) ?? VITE_SITE_DESCRIPTION
+  if (description) {
+    let metaDescription = document.querySelector('meta[name="description"]')
+    if (!metaDescription) {
+      metaDescription = document.createElement('meta')
+      metaDescription.setAttribute('name', 'description')
+      document.head.appendChild(metaDescription)
+    }
+    metaDescription.setAttribute('content', description)
+  }
+
   if (to.path.startsWith('/admin')) return
   if (import.meta.env.DEV) return
   const key = `access-log:${to.path}`

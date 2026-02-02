@@ -10,11 +10,11 @@
         <p class="text-gray-600 dark:text-gray-400">您的每一份支持都是我们前进的动力，让我们共同创造更多可能 ✨。</p>
       </div>
 
-      <div class="qr-codes">
+      <div class="flex flex-col md:flex-row md:justify-between items-center gap-6 my-8">
         <div
           v-for="(method, index) in displayMethods"
           :key="method._id || method.name || index"
-          class="bg-white/80 dark:bg-white/5 backdrop-blur-xl rounded-3xl p-8 border border-gray-200/60 dark:border-white/10 text-center flex-1 relative overflow-hidden hover:shadow-2xl hover:border-blue-400/50 dark:hover:border-blue-400/30 transition-all"
+          class="bg-white/80 dark:bg-white/5 backdrop-blur-xl rounded-3xl px-5 py-6 md:p-8 border border-gray-200/60 dark:border-white/10 text-center flex-1 relative overflow-hidden shadow-[0_20px_25px_-5px_rgba(0,0,0,0.1)] hover:shadow-2xl hover:border-blue-400/50 dark:hover:border-blue-400/30 dark:hover:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.3)] hover:-translate-y-0.5 transition-all duration-300"
           :ref="(el) => (qrCardRefs[index] = el as HTMLElement)"
           @mousemove="(event) => handleQrCardMouseMove(event, index)"
           @mouseleave="() => handleQrCardMouseLeave(index)"
@@ -28,15 +28,20 @@
               top: qrCardEffects[index]?.y - 80 + 'px',
             }"
           ></div>
-          <div class="qr-icon" v-if="method.icon">
-            <img class="w-32px h-32px" :src="method.icon" :alt="method.name" />
+          <div class="flex items-center justify-center mb-4" v-if="method.icon">
+            <img class="w-8 h-8" :src="method.icon" :alt="method.name" />
           </div>
-          <h3>{{ method.name }}</h3>
-          <div class="qr-placeholder">
-            <img v-if="method.qrCode" :src="method.qrCode" :alt="method.name" />
-            <span v-else>暂无二维码</span>
+          <h3 class="text-lg font-semibold text-gray-800 mt-4 mb-6">{{ method.name }}</h3>
+          <div class="w-40 h-40 bg-gray-50 rounded-lg mx-auto mb-5 flex items-center justify-center border border-gray-200">
+            <img
+              v-if="method.qrCode"
+              :src="method.qrCode"
+              :alt="method.name"
+              class="w-40 h-40 md:w-[140px] md:h-[140px] rounded-lg"
+            />
+            <span v-else class="text-sm text-gray-400">暂无二维码</span>
           </div>
-          <p class="qr-description">
+          <p class="text-sm text-gray-500 mb-4">
             {{ method.description || "扫一扫，请我喝杯咖啡" }}
           </p>
         </div>
@@ -62,43 +67,46 @@
         </div>
       </div>
 
-      <div class="sponsors-table">
-        <h2>赞助名单</h2>
+      <div class="mt-12">
+        <h2 class="text-2xl font-semibold text-gray-900 text-center mb-6">赞助名单</h2>
         <el-empty
           v-if="!sponsors.length"
           description="暂无赞助记录"
-          class="empty-state"
+          class="pt-6 pb-3"
         />
-        <table v-else>
-          <thead>
-            <tr>
-              <th>赞助者</th>
-              <th>日期</th>
-              <th>寄语</th>
-              <th>金额</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="(sponsor, index) in sponsors"
-              :key="sponsor._id || index"
-            >
-              <td>{{ sponsor.name }}</td>
-              <td>{{ formatDate(sponsor.date || sponsor.createdAt) }}</td>
-              <td>{{ sponsor.message || "-" }}</td>
-              <td>{{ formatAmount(sponsor.amount) }}</td>
-            </tr>
-          </tbody>
-        </table>
+        <div v-else class="overflow-x-auto">
+          <table class="w-full min-w-[500px] md:min-w-0 border border-gray-200 rounded-lg overflow-hidden bg-white">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="px-4 py-4 text-left border-b border-gray-100 text-gray-700 font-semibold text-sm tracking-wide">赞助者</th>
+                <th class="px-4 py-4 text-left border-b border-gray-100 text-gray-700 font-semibold text-sm tracking-wide">日期</th>
+                <th class="px-4 py-4 text-left border-b border-gray-100 text-gray-700 font-semibold text-sm tracking-wide">寄语</th>
+                <th class="px-4 py-4 text-left border-b border-gray-100 text-gray-700 font-semibold text-sm tracking-wide">金额</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="(sponsor, index) in sponsors"
+                :key="sponsor._id || index"
+                class="hover:bg-gray-50"
+              >
+                <td class="px-4 py-4 text-left border-b border-gray-100 text-gray-500 text-sm last:border-b-0">{{ sponsor.name }}</td>
+                <td class="px-4 py-4 text-left border-b border-gray-100 text-gray-500 text-sm last:border-b-0">{{ formatDate(sponsor.date || sponsor.createdAt) }}</td>
+                <td class="px-4 py-4 text-left border-b border-gray-100 text-gray-500 text-sm last:border-b-0">{{ sponsor.message || "-" }}</td>
+                <td class="px-4 py-4 text-left border-b border-gray-100 text-gray-500 text-sm last:border-b-0">{{ formatAmount(sponsor.amount) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
         <div v-if="sponsors.length" class="mt-8">
-          <div v-if="loadingSponsors" class="loading-state">
-            <div class="spinner"></div>
+          <div v-if="loadingSponsors" class="flex flex-col items-center justify-center py-12 text-gray-500">
+            <div class="w-8 h-8 border-[3px] border-gray-200 border-t-blue-500 rounded-full animate-spin mb-4"></div>
             <p>加载中...</p>
           </div>
-          <div v-else-if="!hasMoreSponsors" class="no-more-state">
+          <div v-else-if="!hasMoreSponsors" class="text-center py-8 text-gray-300 text-sm">
             没有更多了
           </div>
-          <div v-else class="load-more-hint">下滑加载更多</div>
+          <div v-else class="text-center py-8 text-gray-400 text-sm animate-fade-in-out">下滑加载更多</div>
         </div>
       </div>
     </div>
@@ -107,7 +115,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted, onBeforeUnmount, computed } from "vue";
-import { Heart, Mail, ExternalLink } from "lucide-vue-next";
+import { Heart } from "lucide-vue-next";
 import request from "@/api/request";
 import wechatIcon from "@/assets/微信.png";
 import wechatQr from "@/assets/wx.jpg";
@@ -255,292 +263,3 @@ onBeforeUnmount(() => {
   window.removeEventListener("scroll", handleScroll);
 });
 </script>
-
-<style scoped>
-.qr-codes {
-  display: flex;
-  justify-content: space-between;
-  gap: 24px;
-  margin: 32px 0;
-}
-
-@media (max-width: 768px) {
-  .qr-codes {
-    flex-direction: column;
-    align-items: center;
-  }
-}
-
-.qr-card {
-  background: rgba(255, 255, 255, 0.8);
-  border: 1px solid rgba(209, 213, 219, 0.6);
-  border-radius: 24px;
-  padding: 32px;
-  text-align: center;
-  flex: 1;
-  position: relative;
-  overflow: hidden;
-  backdrop-filter: blur(12px);
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s ease;
-}
-
-.dark .qr-card {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.qr-card:hover {
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
-  border-color: rgba(59, 130, 246, 0.7);
-  transform: translateY(-2px);
-}
-
-.dark .qr-card:hover {
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.3);
-  border-color: rgba(59, 130, 246, 0.5);
-}
-
-.qr-icon {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  margin-bottom: 16px;
-}
-
-.qr-icon .lucide-heart {
-  color: #ff6b6b;
-}
-
-.qr-card h3 {
-  color: #1f2937;
-  font-size: 18px;
-  font-weight: 600;
-  margin: 16px 0 24px 0;
-}
-
-.qr-placeholder {
-  width: 160px;
-  height: 160px;
-  background: #f9fafb;
-  border-radius: 8px;
-  margin: 0 auto 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid #e5e7eb;
-}
-
-.qr-placeholder img {
-  width: 140px;
-  height: 140px;
-  border-radius: 8px;
-}
-
-.qr-description {
-  color: #6b7280;
-  font-size: 14px;
-  margin-bottom: 16px;
-}
-
-.afdian-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  background: #f9fafb;
-  color: #374151;
-  text-decoration: none;
-  padding: 12px 24px;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
-  margin-top: 16px;
-  border: 1px solid #e5e7eb;
-}
-
-.afdian-link:hover {
-  background: #f3f4f6;
-}
-
-.notice {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  padding: 16px;
-  margin-top: 24px;
-  text-align: center;
-  color: #475569;
-  font-size: 14px;
-  line-height: 1.5;
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-}
-
-.notice-text {
-  color: #1e40af;
-  font-size: 15px;
-  line-height: 1.6;
-  margin: 0;
-  flex: 1;
-  text-align: left;
-}
-
-.notice-text strong {
-  color: #dc2626;
-  font-weight: 600;
-}
-
-.email {
-  color: #2563eb;
-  text-decoration: none;
-  font-size: 14px;
-  background: #f1f5f9;
-  padding: 6px 10px;
-  border-radius: 4px;
-  font-family: monospace;
-}
-
-.email:hover {
-  background: #e2e8f0;
-}
-
-.sponsors-table h2 {
-  color: #1f2937;
-  font-size: 24px;
-  font-weight: 600;
-  margin-bottom: 24px;
-  text-align: center;
-}
-
-.sponsors-table table {
-  width: 100%;
-  border-collapse: collapse;
-  background: white;
-  border-radius: 8px;
-  overflow: hidden;
-  border: 1px solid #e5e7eb;
-}
-
-.sponsors-table th,
-.sponsors-table td {
-  padding: 16px;
-  text-align: left;
-  border-bottom: 1px solid #f3f4f6;
-}
-
-.sponsors-table th {
-  background: #f9fafb;
-  color: #374151;
-  font-weight: 600;
-  font-size: 14px;
-  letter-spacing: 0.025em;
-}
-
-.sponsors-table td {
-  color: #6b7280;
-  font-size: 14px;
-}
-
-.sponsors-table tbody tr:hover {
-  background: #f9fafb;
-}
-
-.sponsors-table tbody tr:last-child td {
-  border-bottom: none;
-}
-
-.empty-state {
-  padding: 24px 0 12px;
-}
-
-.loading-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 48px 16px;
-  color: #6b7280;
-}
-
-.spinner {
-  width: 32px;
-  height: 32px;
-  border: 3px solid #e5e7eb;
-  border-top-color: #3b82f6;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-  margin-bottom: 16px;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.load-more-hint {
-  text-align: center;
-  padding: 32px 16px;
-  color: #9ca3af;
-  font-size: 14px;
-  animation: fadeInOut 2s ease-in-out infinite;
-}
-
-@keyframes fadeInOut {
-  0%,
-  100% {
-    opacity: 0.5;
-  }
-  50% {
-    opacity: 1;
-  }
-}
-
-.no-more-state {
-  text-align: center;
-  padding: 32px 16px;
-  color: #d1d5db;
-  font-size: 14px;
-}
-
-@media (max-width: 768px) {
-  .title {
-    font-size: 28px;
-  }
-
-  .qr-codes {
-    flex-direction: column;
-    align-items: center;
-  }
-
-  .sponsors-table {
-    overflow-x: auto;
-  }
-
-  .sponsors-table table {
-    min-width: 500px;
-  }
-
-  .qr-card {
-    padding: 24px 20px;
-  }
-
-  .qr-card img {
-    width: 160px;
-    height: 160px;
-  }
-  .qr-icon img {
-    width: 32px;
-    height: 32px;
-  }
-}
-
-@media (max-width: 480px) {
-  .notice {
-    padding: 20px;
-    flex-direction: column;
-    text-align: center;
-  }
-}
-</style>

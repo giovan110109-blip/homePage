@@ -20,7 +20,9 @@ const photoSchema = new mongoose.Schema(
     aspectRatio: Number,
     
     // URL
-    originalUrl: String,
+    originalUrl: String,  // WebP 缩略图或原始文件访问地址
+    originalFileUrl: String,  // 原始文件访问地址（高分辨率）
+    originalKey: String,  // 原始文件存储 key
     thumbnailUrl: String,
     thumbnailHash: String, // ThumbHash 用于模糊占位图
     

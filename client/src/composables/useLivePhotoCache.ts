@@ -205,7 +205,7 @@ export const useLivePhotoCache = () => {
         const { done, value } = await reader.read()
         if (done) break
         
-        chunks.push(value)
+        chunks.push(value as Uint8Array)
         receivedLength += value.length
         
         if (contentLength > 0) {
@@ -215,7 +215,7 @@ export const useLivePhotoCache = () => {
       }
 
       onProgress(90)
-      const blob = new Blob(chunks, { type: 'video/mp4' })
+      const blob = new Blob(chunks as any, { type: 'video/mp4' })
       console.log(`✅ 下载完成: ${(blob.size / 1024 / 1024).toFixed(2)}MB`)
       return blob
     } finally {
@@ -298,7 +298,7 @@ export const useLivePhotoCache = () => {
   }
 
   /**
-   * 批量预加载
+   * 批量预加载（简化版，保持向后兼容）
    */
   const preloadVideos = async (
     videos: Array<{ id: string; videoUrl: string }>,
@@ -310,6 +310,60 @@ export const useLivePhotoCache = () => {
         batch.map(video => loadLivePhoto(video.videoUrl, video.id))
       )
       
+      if (i + maxConcurrent < videos.length) {
+        await new Promise(resolve => setTimeout(resolve, 100))
+      }
+    }
+  }
+
+  /**
+   * 智能预加载：基于视口和用户行为预测
+   */
+  const preloadVideosInViewport = async (
+    videos: Array<{ id: string; videoUrl: string; isVisible?: boolean }>,
+    options: {
+      maxConcurrent?: number
+      prioritizeVisible?: boolean
+      prefetchDistance?: number
+    } = {}
+  ) => {
+    const { maxConcurrent = 2, prioritizeVisible = true, prefetchDistance = 3 } = options
+    
+    const liveVideos = videos.filter(video => video.videoUrl)
+    
+    if (prioritizeVisible) {
+      // 优先处理可见的视频
+      const visibleVideos = liveVideos.filter(video => video.isVisible)
+      const nearbyVideos = liveVideos.filter(video => !video.isVisible).slice(0, prefetchDistance)
+      
+      // 先处理可见的
+      if (visibleVideos.length > 0) {
+        await processBatch(visibleVideos, maxConcurrent)
+      }
+      
+      // 然后预加载附近的（降低并发数）
+      if (nearbyVideos.length > 0) {
+        processBatch(nearbyVideos, Math.min(maxConcurrent, 1))
+      }
+    } else {
+      await processBatch(liveVideos, maxConcurrent)
+    }
+  }
+
+  /**
+   * 处理批次的辅助函数
+   */
+  const processBatch = async (
+    videos: Array<{ id: string; videoUrl: string }>,
+    maxConcurrent: number
+  ) => {
+    for (let i = 0; i < videos.length; i += maxConcurrent) {
+      const batch = videos.slice(i, i + maxConcurrent)
+      await Promise.allSettled(
+        batch.map(video => loadLivePhoto(video.videoUrl, video.id))
+      )
+      
+      // 添加小延迟避免过度占用资源
       if (i + maxConcurrent < videos.length) {
         await new Promise(resolve => setTimeout(resolve, 100))
       }
@@ -368,6 +422,7 @@ export const useLivePhotoCache = () => {
   return {
     loadLivePhoto,
     preloadVideos,
+    preloadVideosInViewport,
     getState,
     getStats,
     clearCache,
