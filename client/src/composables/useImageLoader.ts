@@ -1,7 +1,12 @@
 import { ref, readonly } from 'vue'
-import { imageLoaderManager, type ImageLoaderState, type ImageLoaderCallbacks } from '@/utils/image-loader'
+import {
+  ImageLoaderManager,
+  type ImageLoaderState,
+  type ImageLoaderCallbacks,
+} from '@/utils/image-loader'
 
 export const useImageLoader = () => {
+  const imageLoaderManager = new ImageLoaderManager()
   const loadingState = ref<ImageLoaderState>({
     isVisible: false,
   })

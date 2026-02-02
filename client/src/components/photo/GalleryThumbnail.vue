@@ -172,17 +172,18 @@ watch(isMobile, scrollToActiveThumbnail)
         }"
         @click="onThumbnailClick(photo.index)"
       >
-        <ThumbHash
-          v-if="photo.thumbnailHash"
-          :thumbhash="photo.thumbnailHash"
-          class="absolute inset-0 w-full h-full"
-        />
-        <img
+        <LazyImage
           v-if="photo.originalUrl"
           :src="photo.originalUrl"
-          :alt="photo.title || 'Photo thumbnail'"
-          class="absolute inset-0 w-full h-full object-cover"
-          loading="lazy"
+          :thumb-hash="photo.thumbnailHash"
+          :width="1"
+          :height="1"
+          class="w-full h-full"
+        />
+        <ThumbHash
+          v-else-if="photo.thumbnailHash"
+          :thumbhash="photo.thumbnailHash"
+          class="absolute inset-0 w-full h-full"
         />
         <div
           v-else-if="!photo.thumbnailHash"
