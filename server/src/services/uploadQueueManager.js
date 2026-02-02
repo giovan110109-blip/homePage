@@ -387,7 +387,7 @@ class UploadQueueManager extends EventEmitter {
       let originalStorageKey = finalStorageKey
       const originalPath = path.join(this.uploadDir, originalStorageKey)
       // 检查文件是否已存在（避免重复写入）
-      if (!await fs.promises.access(originalPath).then(() => true).catch(() => false)) {
+      if (!await fs.access(originalPath).then(() => true).catch(() => false)) {
         await fs.writeFile(originalPath, processed.processedBuffer)
       }
 

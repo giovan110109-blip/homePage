@@ -24,12 +24,12 @@ watch(() => props.modelValue, (newVal) => {
 <template>
   <button
     type="button"
-    class="pointer-events-auto backdrop-blur-md bg-black/40 hover:bg-black/50 text-white rounded-full p-2 transition-all duration-200 select-none flex items-center justify-center"
+    class="pointer-events-auto backdrop-blur-md bg-black/40 hover:bg-black/50 text-white rounded-full h-9 w-9 transition-all duration-200 select-none flex items-center justify-center"
     :class="isMuted ? 'text-gray-300' : 'text-white'"
     :title="isMuted ? '点击取消静音' : '点击静音'"
     @click.stop="handleToggle"
   >
-    <Volume2 v-if="!isMuted" :size="20" class="transition-opacity duration-200" />
-    <VolumeX v-else :size="20" class="transition-opacity duration-200" />
+    <Volume2 v-if="!isMuted" :size="18" class="transition-opacity duration-200" />
+    <VolumeX v-else :size="18" class="transition-opacity duration-200" />
   </button>
 </template>

@@ -5,7 +5,7 @@ import { Keyboard, Virtual } from "swiper/modules";
 import "swiper/css";
 import "swiper/css/virtual";
 import ThumbHash from "@/components/ui/ThumbHash.vue";
-import { ChevronLeft, ChevronRight, Share2, X } from "lucide-vue-next";
+import { ChevronLeft, ChevronRight, Info, Share2, X } from "lucide-vue-next";
 import { useLivePhotoCache } from "@/composables/useLivePhotoCache";
 const emit = defineEmits<{
   (e: "update:modelValue", value: boolean): void;
@@ -195,6 +195,22 @@ const handleLivePhotoMouseLeave = () => {
   }
 };
 
+const handleLivePhotoIndicatorClick = () => {
+  if (
+    !activePhoto.value?.videoUrl ||
+    !(activePhoto.value?.isLive || activePhoto.value?.isLivePhoto)
+  ) {
+    return;
+  }
+
+  if (isLivePhotoPlaying.value) {
+    stopLivePhotoVideo();
+    return;
+  }
+
+  playLivePhotoVideo();
+};
+
 const playLivePhotoVideo = () => {
   if (!livePhotoVideoRef.value || !activePhoto.value?.videoUrl) return;
 
@@ -229,7 +245,7 @@ const stopLivePhotoVideo = () => {
 const handleLivePhotoTouchStart = (event: TouchEvent) => {
   if (
     isMobile.value &&
-    activePhoto.value?.isLivePhoto &&
+    (activePhoto.value?.isLive || activePhoto.value?.isLivePhoto) &&
     activePhoto.value?.videoUrl
   ) {
     touchCount.value = event.touches.length;
@@ -331,6 +347,9 @@ watch(
         window.removeEventListener("keydown", handleEscClose);
       }
     }
+    if (!newVal) {
+      showExifPanel.value = false;
+    }
     if (newVal) {
       activeIndex.value = propsPhotoIndex.value;
       await nextTick();
@@ -397,10 +416,15 @@ onBeforeUnmount(() => {
         :animate="{ opacity: 1 }"
         :exit="{ opacity: 0 }"
         :transition="{ duration: 0.3 }"
-        class="fixed inset-0 z-50 flex items-center justify-center overflow-hidden"
+        class="fixed inset-0 z-50 flex overflow-hidden"
+        :class="isMobile ? 'items-stretch justify-start' : 'items-center justify-center'"
         @click="emit('update:modelValue', false)"
       >
-        <div class="flex w-full h-full" @click.stop>
+        <div
+          class="flex w-full h-full"
+          :class="isMobile ? 'flex-col' : ''"
+          @click.stop
+        >
           <!-- 图片显示区域 -->
           <div class="z-10 flex min-h-0 min-w-0 flex-1 flex-col">
             <div class="group relative flex min-h-0 min-w-0 flex-1">
@@ -412,11 +436,13 @@ onBeforeUnmount(() => {
                 :transition="{ duration: 0.3 }"
                 class="absolute z-30 flex items-center justify-between"
                 :class="
-                  isMobile ? 'top-2 right-2 left-2' : 'top-4 right-4 left-4'
+                  isMobile
+                    ? 'top-[calc(env(safe-area-inset-top)+0.5rem)] right-2 left-2'
+                    : 'top-4 right-4 left-4'
                 "
               >
                 <!-- 左侧工具按钮 -->
-                <div class="flex items-center gap-1">
+                <div class="flex items-center gap-2">
                   <!-- LivePhoto 标志 -->
                   <LivePhotoIndicator
                     v-if="activePhoto?.isLive"
@@ -426,6 +452,7 @@ onBeforeUnmount(() => {
                     :processing-state="getState(activePhoto?._id)"
                     @mouseenter="handleLivePhotoMouseEnter"
                     @mouseleave="handleLivePhotoMouseLeave"
+                    @click="handleLivePhotoIndicatorClick"
                   />
                   <!-- 静音图标 -->
                   <LivePhotoMute
@@ -443,12 +470,20 @@ onBeforeUnmount(() => {
                   >
                     <Share2 ></Share2>
                   </button> -->
+                  <!-- 信息按钮 (移动端) -->
+                  <button
+                    v-if="isMobile"
+                    class="pointer-events-auto backdrop-blur-md bg-black/40 text-white rounded-full h-9 w-9 flex items-center justify-center hover:bg-black/60 transition"
+                    @click="showExifPanel = !showExifPanel"
+                  >
+                    <Info :size="18" />
+                  </button>
                   <!-- 关闭按钮 -->
                   <button
-                    class="pointer-events-auto backdrop-blur-md bg-black/40 text-white rounded-full p-2 flex items-center justify-center hover:bg-black/60 transition"
+                    class="pointer-events-auto backdrop-blur-md bg-black/40 text-white rounded-full h-9 w-9 flex items-center justify-center hover:bg-black/60 transition"
                     @click="emit('update:modelValue', false)"
                   >
-                    <X :size="24" />
+                    <X :size="18" />
                   </button>
                 </div>
               </motion.div>
@@ -461,7 +496,12 @@ onBeforeUnmount(() => {
                 :slides-per-view="1"
                 :initial-slide="propsPhotoIndex"
                 v-bind="swiperExtraProps"
-                class="h-full w-full pb-24"
+                :class="[
+                  'h-full w-full',
+                  isMobile
+                    ? 'pt-[calc(env(safe-area-inset-top)+2.25rem)] pb-[env(safe-area-inset-bottom)]'
+                    : '',
+                ]"
                 :style="{ touchAction: isMobile ? 'pan-x' : 'pan-y' }"
                 @swiper="handleSwiperInit"
                 @slide-change="handleSlideChange"
@@ -581,21 +621,25 @@ onBeforeUnmount(() => {
                         :animate="{ opacity: 0.6, scale: 1 }"
                         :exit="{ opacity: 0, scale: 0.95 }"
                         :transition="{ duration: 0.2 }"
-                        class="absolute bottom-6 left-1/2 z-20 -translate-x-1/2 bg-black/50 rounded-lg border border-white/10 px-2 py-1 shadow-2xl text-white text-xs font-bold"
+                        class="absolute bottom-6 left-0 right-0 z-20 flex justify-center"
                       >
-                        <span v-if="currentPhoto?.isLivePhoto && isMobile">
-                          "长按播放实况照片 · 双击或捏合缩放"
-                        </span>
-                        <span
-                          v-else-if="currentPhoto?.isLivePhoto && !isMobile"
-                        >
-                          "悬停左上播放 · 双击/滚轮缩放"
-                        </span>
-                        <span v-else>
-                          {{
-                            isMobile ? "双击或捏合缩放" : "双击或用鼠标滚轮缩放"
-                          }}
-                        </span>
+                        <div class="max-w-[90%] w-fit bg-black/50 rounded-lg border border-white/10 px-2 py-1 shadow-2xl text-white text-xs font-bold text-center">
+                          <span v-if="currentPhoto?.isLivePhoto && isMobile">
+                            "长按播放实况照片 · 双击或捏合缩放"
+                          </span>
+                          <span
+                            v-else-if="currentPhoto?.isLivePhoto && !isMobile"
+                          >
+                            "悬停左上播放 · 双击/滚轮缩放"
+                          </span>
+                          <span v-else>
+                            {{
+                              isMobile
+                                ? "双击或捏合缩放"
+                                : "双击或用鼠标滚轮缩放"
+                            }}
+                          </span>
+                        </div>
                       </motion.div>
                     </AnimatePresence>
                   </motion.div>
@@ -624,26 +668,35 @@ onBeforeUnmount(() => {
               </template>
             </div>
             <!-- 缩略图导航 -->
-            <GalleryThumbnail
-              :current-index="activeIndex"
-              :photos="photos"
-              @index-change="handleThumbnailIndexChange"
-            />
+            <div
+              :class="
+                isMobile
+                  ? 'sticky bottom-0 z-20 bg-black/30 backdrop-blur-2xl pb-[env(safe-area-inset-bottom)]'
+                  : ''
+              "
+            >
+              <GalleryThumbnail
+                :current-index="activeIndex"
+                :photos="photos"
+                @index-change="handleThumbnailIndexChange"
+              />
+            </div>
           </div>
 
-          <!-- EXIF 面板 - 在桌面端始终显示，在移动端根据状态显示 -->
+          <!-- EXIF 面板 - 桌面端常驻，移动端可切换 -->
           <InfoPanel
-            v-if="activePhoto && activePhoto._id"
+            v-if="!isMobile && activePhoto && activePhoto._id"
             :current-photo="activePhoto"
             :exif-data="activePhoto?.exif"
           />
-          <!-- <AnimatePresence v-if="isMobile">
+          <AnimatePresence v-if="isMobile">
             <InfoPanel
-              v-if="currentPhoto"
-              :current-photo="currentPhoto"
-              :exif-data="currentPhoto?.exif"
+              v-if="showExifPanel && activePhoto && activePhoto._id"
+              :current-photo="activePhoto"
+              :exif-data="activePhoto?.exif"
+              :on-close="() => (showExifPanel = false)"
             />
-          </AnimatePresence> -->
+          </AnimatePresence>
         </div>
       </motion.div>
     </AnimatePresence>
