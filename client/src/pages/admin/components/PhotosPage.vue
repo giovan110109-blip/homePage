@@ -114,10 +114,27 @@
           <div>
             <div class="flex items-center justify-between mb-4">
               <span class="font-semibold text-gray-900 dark:text-white">图片列表</span>
-              <AppButton variant="reset" size="sm" @click="loadPhotos">刷新</AppButton>
+              <div class="flex items-center gap-2">
+                <AppButton 
+                  v-if="selectedPhotos.length > 0" 
+                  variant="danger" 
+                  size="sm" 
+                  @click="batchDeletePhotos"
+                >
+                  批量删除 ({{ selectedPhotos.length }})
+                </AppButton>
+                <AppButton variant="reset" size="sm" @click="loadPhotos">刷新</AppButton>
+              </div>
             </div>
 
-            <el-table :data="photoTableData" stripe v-loading="photoLoading" style="width: 100%">
+            <el-table 
+              :data="photoTableData" 
+              stripe 
+              v-loading="photoLoading" 
+              style="width: 100%"
+              @selection-change="handleSelectionChange"
+            >
+              <el-table-column type="selection" width="50" />
               <el-table-column label="缩略图" width="90">
                 <template #default="scope">
                   <img
@@ -162,6 +179,9 @@
                       </AppButton>
                       <template #dropdown>
                         <el-dropdown-menu>
+                          <el-dropdown-item command="rotate-clockwise">⟳ 顺时针 90°</el-dropdown-item>
+                          <el-dropdown-item command="rotate-counterclockwise">⟲ 逆时针 90°</el-dropdown-item>
+                          <li class="el-dropdown-menu__item" style="height: 1px; padding: 0; margin: 5px 0; background: #e4e7eb; cursor: default;"></li>
                           <el-dropdown-item command="refresh-exif">🔄 重新获取EXIF</el-dropdown-item>
                           <el-dropdown-item command="refresh-geoinfo" :disabled="!scope.row.location">📍 重新获取位置</el-dropdown-item>
                           <el-dropdown-item command="set-location">🗺️ 设置位置</el-dropdown-item>
@@ -435,7 +455,7 @@ import { useUploadQueueStore } from '@/stores/uploadQueue'
 import { storeToRefs } from 'pinia'
 import request from '@/api/request'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getAssetURL } from '@/utils'
+import { getPhotoOriginalUrl } from '@/utils'
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 
@@ -474,6 +494,7 @@ const availablePhotos = ref<any[]>([])
 const photoImageCache = ref<Map<string, string>>(new Map())
 const dragFromIndex = ref(-1)
 const dragOverIndex = ref(-1)
+const selectedPhotos = ref<any[]>([])
 
 const photoDialogVisible = ref(false)
 const savingPhoto = ref(false)
@@ -619,6 +640,48 @@ const deletePhoto = async (row: any) => {
     }
   }
 }
+
+const handleSelectionChange = (selection: any[]) => {
+  selectedPhotos.value = selection
+}
+
+const batchDeletePhotos = async () => {
+  if (selectedPhotos.value.length === 0) {
+    ElMessage.warning('请先选择要删除的图片')
+    return
+  }
+  
+  try {
+    await ElMessageBox.confirm(
+      `确认删除选中的 ${selectedPhotos.value.length} 张图片吗？此操作不可恢复。`,
+      '批量删除图片',
+      {
+        confirmButtonText: '删除',
+        cancelButtonText: '取消',
+        type: 'warning',
+      }
+    )
+    
+    const loading = ElMessage.info({ message: `正在删除 ${selectedPhotos.value.length} 张图片...`, duration: 0 })
+    
+    try {
+      // 批量删除 - 发送 ID 数组到后端
+      const ids = selectedPhotos.value.map(photo => photo._id)
+      await request.post('/photos/batch-delete', { ids })
+      
+      loading.close()
+      ElMessage.success(`成功删除 ${selectedPhotos.value.length} 张图片`)
+      selectedPhotos.value = []
+      await loadPhotos()
+    } catch (error: any) {
+      loading.close()
+      ElMessage.error(error?.message || '批量删除失败')
+    }
+  } catch (error) {
+    // 用户取消
+  }
+}
+
 const openPhotoDialog = (row?: any) => {
   if (row) {
     photoForm.value = {
@@ -651,12 +714,41 @@ const savePhoto = async () => {
 }
 
 const handlePhotoAction = async (command: string, row: any) => {
-  if (command === 'refresh-exif') {
+  if (command === 'rotate-clockwise') {
+    await rotatePhotoImage(row, 90)
+  } else if (command === 'rotate-counterclockwise') {
+    await rotatePhotoImage(row, -90)
+  } else if (command === 'refresh-exif') {
     await refreshPhotoExif(row)
   } else if (command === 'refresh-geoinfo') {
     await refreshPhotoGeoinfo(row)
   } else if (command === 'set-location') {
     openLocationDialog(row)
+  }
+}
+
+const rotatePhotoImage = async (row: any, degree: number) => {
+  const degreeText = degree > 0 ? '顺时针 90°' : '逆时针 90°'
+  try {
+    ElMessage.info(`正在旋转图片 (${degreeText})...`)
+    
+    // 直接调用后端 API 旋转
+    const res: any = await request.post(`/photos/${row._id}/rotate`, {
+      degree,
+    })
+    
+    ElMessage.success('图片旋转成功')
+    
+    // 等待一秒再刷新，确保文件写入完成
+    await new Promise(resolve => setTimeout(resolve, 500))
+    
+    // 清除图片 URL 缓存，添加时间戳强制刷新
+    photoImageCache.value.clear()
+    
+    await loadPhotos()
+  } catch (error: any) {
+    console.error('旋转图片失败:', error)
+    ElMessage.error(error?.message || '旋转失败，请重试')
   }
 }
 
@@ -944,12 +1036,12 @@ const removePhotoFromSelection = (photoId: string) => {
 }
 
 const getPhotoImageUrl = (photo: any) => {
-  return photo.originalUrl
+  return getPhotoOriginalUrl(photo)
 }
 
 const getPhotoImageUrlById = (photoId: string) => {
   const photo = availablePhotos.value.find((p: any) => p._id === photoId)
-  return photo ? getPhotoImageUrl(photo) : ''
+  return photo ? getPhotoOriginalUrl(photo) : ''
 }
 
 const getPhotoById = (photoId: string) => {

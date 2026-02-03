@@ -23,9 +23,11 @@ router.get('/map/data', photoController.getMapData.bind(photoController))
 // 照片管理（需要管理员权限）
 router.put('/:id', photoController.updatePhoto.bind(photoController))
 router.delete('/:id', photoController.deletePhoto.bind(photoController))
+router.post('/batch-delete', photoController.batchDeletePhotos.bind(photoController))
 
 // 照片元数据管理
 router.post('/:id/location', photoController.updatePhotoLocation.bind(photoController))
+router.post('/:id/rotate', photoController.rotatePhoto.bind(photoController))
 router.post('/:id/refresh-geoinfo', photoController.refreshPhotoGeoinfo.bind(photoController))
 router.post('/:id/refresh-exif', photoController.refreshPhotoExif.bind(photoController))
 

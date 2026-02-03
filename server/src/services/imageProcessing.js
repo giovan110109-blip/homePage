@@ -584,30 +584,11 @@ class ImageProcessingService {
       }
       result.location = this.parseGPSCoordinates(result.exif)
 
-      // 3.1 根据 EXIF Orientation 旋转图片到正常方向
-      let orientation = result.exif?.Orientation || 1
-      
-      // 如果没有EXIF Orientation，尝试自动检测
-      if (!result.exif?.Orientation) {
-        const autoOrientation = await this.autoDetectOrientation(result.processedBuffer)
-        if (autoOrientation) {
-          console.log(`⚠️ 没有找到EXIF Orientation，使用自动检测结果: ${autoOrientation}`)
-          orientation = autoOrientation
-        }
-      }
-      
+      // 3.1 不自动旋转图片，保留原始方向
+      // 用户可以在后续使用旋转功能手动调整
+      const orientation = result.exif?.Orientation || 1
       const orientDesc = this.getOrientationDescription(orientation)
-      console.log(`📐 EXIF Orientation: ${orientation} (${orientDesc})`)
-      
-      if (orientation && orientation !== 1) {
-        console.log(`🔄 开始纠正图片方向: ${orientation} → 1`)
-        const beforeRotateSize = result.processedBuffer.length
-        result.processedBuffer = await this.rotateByOrientation(result.processedBuffer, orientation)
-        const afterRotateSize = result.processedBuffer.length
-        console.log(`✅ 图片方向已纠正 | 大小: ${beforeRotateSize} → ${afterRotateSize} bytes`)
-      } else {
-        console.log(`✅ 图片方向已正常，无需纠正`)
-      }
+      console.log(`📐 EXIF Orientation: ${orientation} (${orientDesc}) - 保留原始方向`)
 
       // 4. 提取元数据
       result.metadata = await this.getImageMetadata(result.processedBuffer)

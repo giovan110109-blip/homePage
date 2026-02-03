@@ -19,7 +19,7 @@
             >
               <LivePhoto
                 v-if="photo.isLive"
-                :image-url="photo.originalUrl"
+                :image-url="getPhotoOriginalUrl(photo)"
                 :video-url="photo.videoUrl"
                 :is-live="photo.isLive"
                 :thumb-hash="photo.thumbHash || photo.thumbnailHash"
@@ -29,7 +29,7 @@
               />
               <LazyImage
                 v-else
-                :src="photo.originalUrl"
+                :src="getPhotoOriginalUrl(photo)"
                 :thumb-hash="photo.thumbHash || photo.thumbnailHash"
                 :width="photo.width"
                 :height="photo.height"
@@ -79,7 +79,7 @@
 import { MapPin } from "lucide-vue-next";
 import MasonryWall from "@yeger/vue-masonry-wall";
 import request from "@/api/request";
-import { getAssetURL } from "@/utils";
+import { getPhotoOriginalUrl } from "@/utils";
 import { useLivePhotoCache } from "@/composables/useLivePhotoCache";
 import type { Photo } from "@/types/api";
 

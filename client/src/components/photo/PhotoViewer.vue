@@ -7,6 +7,8 @@ import "swiper/css/virtual";
 import ThumbHash from "@/components/ui/ThumbHash.vue";
 import { ChevronLeft, ChevronRight, Info, Share2, X } from "lucide-vue-next";
 import { useLivePhotoCache } from "@/composables/useLivePhotoCache";
+import { getPhotoOriginalUrl } from '@/utils';
+
 const emit = defineEmits<{
   (e: "update:modelValue", value: boolean): void;
   (e: "indexChange", value: number): void;
@@ -560,7 +562,7 @@ onBeforeUnmount(() => {
                       }"
                       :loading-indicator-ref="loadingIndicatorRef || null"
                       :is-current-image="index === activeIndex"
-                      :src="photo.originalUrl!"
+                      :src="getPhotoOriginalUrl(photo)"
                       :high-res-src="photo.originalFileUrl"
                       :thumbhash="photo.thumbnailHash"
                       :alt="photo.title || ''"

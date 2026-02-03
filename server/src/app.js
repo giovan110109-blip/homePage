@@ -82,15 +82,37 @@ const videoCache = (ctx, next) => {
   return next();
 };
 
+// 为图片文件添加缓存控制（支持查询参数区分版本）
+const photoCache = async (ctx, next) => {
+  await next();
+  
+  // 匹配图片路径
+  if (ctx.path.startsWith('/uploads/photos/') || ctx.path.startsWith('/uploads/photos-webp/')) {
+    const isImage = /\.(jpg|jpeg|png|webp|gif|heic)$/i.test(ctx.path);
+    
+    if (isImage) {
+      // 如果URL中有时间戳参数（如 ?t=xxx），说明是更新后的版本，可以长期缓存
+      if (ctx.query.t) {
+        // 带时间戳的图片：1年缓存（因为URL变了就是新版本）
+        ctx.set('Cache-Control', 'public, max-age=31536000, immutable');
+      } else {
+        // 没有时间戳：短期缓存，允许重新验证
+        ctx.set('Cache-Control', 'public, max-age=300, must-revalidate');
+      }
+    }
+  }
+};
+
 app.use(videoCache);
+app.use(photoCache);
 app.use(mount(uploadBaseUrl, koaStatic(uploadDir, {
-  maxage: 86400000, // 24小时
+  maxage: 0, // 禁用默认缓存，由中间件控制
 })));
 
 // 对外暴露 WebP 目录
 const webpDir = process.env.UPLOAD_WEBP_DIR || path.join(uploadDir, 'photos-webp');
 app.use(mount('/uploads/photos-webp', koaStatic(webpDir, {
-  maxage: 86400000, // 24小时
+  maxage: 0, // 禁用默认缓存，由中间件控制
 })));
 
 // 全局中间件：日志、请求信息、错误处理

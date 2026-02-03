@@ -59,9 +59,9 @@ class UploadQueueManager extends EventEmitter {
   constructor() {
     super()
     this.isRunning = false
-    // 并发数：可根据服务器性能调整，默认2（安全）
-    // CPU密集型任务（Sharp、EXIF提取）占用较多，建议2-4
-    this.concurrency = parseInt(process.env.UPLOAD_CONCURRENCY || '2')
+    // 并发数：可根据服务器性能调整，默认4（适合M系列芯片）
+    // CPU密集型任务（Sharp、EXIF提取）占用较多，M4芯片建议4-6
+    this.concurrency = parseInt(process.env.UPLOAD_CONCURRENCY || '4')
     this.activeWorkers = 0
     this.pollInterval = null
     const baseUploadDir = process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads')

@@ -30,11 +30,11 @@ export interface ImageLoaderCacheResult {
   blob: Blob
 }
 
-// 图片缓存 (LRU，20 个图片 - 增加缓存容量避免频繁加载)
+// 图片缓存 (LRU，50 个图片 - 支持更多缓存避免频繁加载)
 const normalImageCache: LRUCache<string, ImageLoaderCacheResult> = new LRUCache<
   string,
   ImageLoaderCacheResult
->(20, (cacheItem, cacheKey, reason) => {
+>(50, (cacheItem, cacheKey, reason) => {
   try {
     URL.revokeObjectURL(cacheItem.blobSrc)
     console.log(

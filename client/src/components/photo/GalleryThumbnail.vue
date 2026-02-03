@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { motion } from 'motion-v'
 import { useMediaQuery } from "@vueuse/core"
+import { getPhotoOriginalUrl } from '@/utils'
 
 interface Props {
   photos: any[]
@@ -173,8 +174,8 @@ watch(isMobile, scrollToActiveThumbnail)
         @click="onThumbnailClick(photo.index)"
       >
         <LazyImage
-          v-if="photo.originalUrl"
-          :src="photo.originalUrl"
+          v-if="getPhotoOriginalUrl(photo)"
+          :src="getPhotoOriginalUrl(photo)"
           :thumb-hash="photo.thumbnailHash"
           :width="1"
           :height="1"

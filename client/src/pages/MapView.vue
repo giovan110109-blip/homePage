@@ -37,7 +37,7 @@
           class="aspect-square rounded-lg overflow-hidden"
         >
           <LazyImage
-            :src="photo.originalUrl"
+            :src="getPhotoOriginalUrl(photo)"
             :alt="photo.title"
             :thumb-hash="photo.thumbnailHash"
             :width="photo.width || 1"
@@ -56,7 +56,7 @@
     >
       <div v-if="currentPhoto">
         <img
-          :src="currentPhoto.originalUrl"
+          :src="getPhotoOriginalUrl(currentPhoto)"
           :alt="currentPhoto.title"
           class="w-full rounded-lg mb-4"
         />

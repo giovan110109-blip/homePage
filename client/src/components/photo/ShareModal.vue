@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { motion, AnimatePresence } from 'motion-v'
+import { getPhotoOriginalUrl } from '@/utils'
 
 interface Props {
   isOpen: boolean
@@ -188,12 +189,13 @@ const downloadOgImage = async () => {
 
 const downloadOriginalImage = async () => {
   try {
-    const response = await fetch(props.photo.originalUrl!)
+    const url = getPhotoOriginalUrl(props.photo)
+    const response = await fetch(url)
     const blob = await response.blob()
-    const url = window.URL.createObjectURL(blob)
+    const downloadUrl = window.URL.createObjectURL(blob)
     const link = document.createElement('a')
-    link.href = url
-    const extension = props.photo.originalUrl!.split('.').pop() || 'jpg'
+    link.href = downloadUrl
+    const extension = url.split('.').pop()?.split('?')[0] || 'jpg'
     link.download = `${props.photo.title || 'photo'}.${extension}`
     document.body.appendChild(link)
     link.click()
