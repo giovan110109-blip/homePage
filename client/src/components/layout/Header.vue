@@ -6,17 +6,10 @@
         <div class="flex items-center">
           <router-link to="/" class="flex items-center ">
             <div class="w-8 h-8 rounded-full overflow-hidden">
-              <!-- <img 
-                src="/public/img/logo.png" 
-                alt="fishcpy logo" 
-                class="w-full h-full object-cover" 
-              /> -->
             </div>
-            <!-- <span class="font-medium text-gray-900 dark:text-white text-lg">
-              {{ personalStore.fullName }}
-            </span> -->
-            <img src='../../assets/logo.png'></img>
-
+            <span class="font-medium text-gray-900 dark:text-white text-3xl custom-font">
+              {{ siteInfoStore.info.name }}
+            </span>
           </router-link>
 
         </div>
@@ -107,3 +100,14 @@ const closeMobileMenu = () => {
   mobileMenuOpen.value = false
 }
 </script>
+
+<style scoped>
+@font-face {
+  font-family: 'CustomFont';
+  src: url('../../../public/font/ZQKfreefont-2.ttf') format('truetype');
+}
+
+.custom-font {
+  font-family: 'CustomFont', sans-serif;
+}
+</style>
