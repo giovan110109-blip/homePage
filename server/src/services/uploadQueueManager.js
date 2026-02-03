@@ -382,14 +382,12 @@ class UploadQueueManager extends EventEmitter {
         await fs.unlink(filePath).catch(() => {})
       }
 
-      // 保存原始文件（高分辨率版本）- 确保原始文件被保存到 photos 目录
-      // 如果还没有被保存过（HEIC转JPG的情况已处理），保存处理后的图片为原始版本
+      // 保存原始文件（完整的原始上传文件，无任何处理）
+      // 如果上传的是HEIC，原始文件转为JPG后存储
       let originalStorageKey = finalStorageKey
       const originalPath = path.join(this.uploadDir, originalStorageKey)
-      // 检查文件是否已存在（避免重复写入）
-      if (!await fs.access(originalPath).then(() => true).catch(() => false)) {
-        await fs.writeFile(originalPath, processed.processedBuffer)
-      }
+      // 保存原始上传的文件内容（HEIC已转JPG，其他格式保持原样）
+      await fs.writeFile(originalPath, fileBuffer)
 
       // 生成 WebP 缩略图版本（600px宽，高质量压缩）
       const webpFileName = `${path.parse(finalStorageKey).name}.webp`

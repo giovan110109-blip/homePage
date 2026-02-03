@@ -60,7 +60,7 @@ class ImageProcessingService {
       const outputBuffer = await heicConvert({
         buffer,
         format: 'JPEG',
-        quality: 0.95
+        quality: 1.0
       })
       const jpegBuffer = Buffer.from(outputBuffer)
       
@@ -78,7 +78,7 @@ class ImageProcessingService {
           limitInputPixels: false,
           autoRotate: false
         })
-          .jpeg({ quality: 95 })
+          .jpeg({ quality: 100 })
           .toBuffer()
         console.log('✅ Sharp 处理 HEIC 成功')
         return jpegBuffer
