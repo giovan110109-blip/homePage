@@ -169,7 +169,7 @@ const loadMapData = async () => {
         ...location,
         photos: location.photos.map((photo: any) => ({
           ...photo,
-          originalUrl: getAssetURL(photo.originalUrl)
+          originalUrl: photo.originalUrl
         }))
       }))
       totalPhotos.value = res.data.reduce((sum: number, loc: MapLocation) => sum + loc.count, 0)

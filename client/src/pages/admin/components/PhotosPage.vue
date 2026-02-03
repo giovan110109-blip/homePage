@@ -580,8 +580,7 @@ const getLiveTagType = (value?: boolean | number) => {
 }
 
 const getPhotoThumb = (photo: any) => {
-  const url = photo.thumbnailUrl || photo.originalUrl
-  return url ? getAssetURL(url) : ''
+  return photo.originalUrl
 }
 
 const loadPhotos = async () => {
@@ -945,8 +944,7 @@ const removePhotoFromSelection = (photoId: string) => {
 }
 
 const getPhotoImageUrl = (photo: any) => {
-  const url = photo.originalUrl
-  return url ? getAssetURL(url) : ''
+  return photo.originalUrl
 }
 
 const getPhotoImageUrlById = (photoId: string) => {

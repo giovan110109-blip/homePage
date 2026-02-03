@@ -101,7 +101,7 @@ const windowWidth = ref(window.innerWidth);
 // ✅ 性能优化：合并响应式计算
 const gridConfig = computed(() => {
   const width = windowWidth.value;
-  
+
   if (width < 640) {
     return { columnWidth: 160, minColumns: 2, maxColumns: 2, gap: 6 };
   }
@@ -131,7 +131,7 @@ const formatDate = (date: string): string => {
   if (formattedDateCache.has(date)) {
     return formattedDateCache.get(date)!;
   }
-  
+
   const formatted = new Date(date).toLocaleString("zh-CN", {
     year: "numeric",
     month: "long",
@@ -139,7 +139,7 @@ const formatDate = (date: string): string => {
     hour: "2-digit",
     minute: "2-digit",
   });
-  
+
   formattedDateCache.set(date, formatted);
   return formatted;
 };
@@ -179,8 +179,8 @@ const loadPhotos = async (reset = true) => {
           ...p,
           loaded: false,
           thumbHash: p.thumbHash || p.thumbnailHash,
-          originalUrl: getAssetURL(p.originalUrl),
-          videoUrl: p.videoUrl ? getAssetURL(p.videoUrl) : undefined,
+          originalUrl: p.originalUrl,
+          videoUrl: p.videoUrl ? p.videoUrl : undefined,
         };
         return photo;
       });
@@ -201,24 +201,24 @@ const loadPhotos = async (reset = true) => {
           id: p._id,
           videoUrl: p.videoUrl,
           isVisible: false,
-        }))
+        }));
 
       if (livePhotos.length > 0) {
         console.log(
-          `📷 预加载第 ${pagination.page} 页的 ${livePhotos.length} 个 LivePhoto 视频...`
-        )
+          `📷 预加载第 ${pagination.page} 页的 ${livePhotos.length} 个 LivePhoto 视频...`,
+        );
         // ✅ 优化：使用更保守的并发数
         preloadVideosInViewport(livePhotos, {
           maxConcurrent: 1, // 瀑布流场景用 1，避免占用过多网络
           prioritizeVisible: false, // 瀑布流都在视口外，不需要优先
           prefetchDistance: 2,
         }).catch((err) => {
-          console.warn("⚠️ LivePhoto 预加载出错:", err)
-        })
+          console.warn("⚠️ LivePhoto 预加载出错:", err);
+        });
       }
     }
   } catch (error: any) {
-    console.error("加载照片失败:", error)
+    console.error("加载照片失败:", error);
   } finally {
     loading.value = false;
     loadingMore.value = false;

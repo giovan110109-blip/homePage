@@ -58,20 +58,21 @@ export const getUploadURL = (path: string): string => {
  */
 export const getAssetURL = (path: string): string => {
   if (!path) return ''
+  return `https://serve.giovan.cn${path}`
   
   // 如果已经是完整URL，直接返回
-  if (path.startsWith('http://') || path.startsWith('https://')) {
-    return path
-  }
+  // if (path.startsWith('http://') || path.startsWith('https://')) {
+  //   return path
+  // }
   
   // 如果是uploads路径，使用getUploadURL
-  if (path.startsWith('/uploads')) {
-    return getUploadURL(path)
-  }
+  // if (path.startsWith('/uploads')) {
+  //   return getUploadURL(path)
+  // }
   
   // 拼接baseURL
-  const baseURL = getBaseURL()
-  const normalizedPath = path.startsWith('/') ? path : `/${path}`
+  // const baseURL = getBaseURL()
+  // const normalizedPath = path.startsWith('/') ? path : `/${path}`
   
-  return `${baseURL}${normalizedPath}`
+  // return `${baseURL}${normalizedPath}`
 }

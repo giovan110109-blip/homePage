@@ -63,10 +63,8 @@
       </div>
 
       <!-- 文章列表 -->
-      <div v-if="loading" class="text-center py-12">
-        <div
-          class="inline-block w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"
-        ></div>
+      <div v-if="loading" class="text-center py-12 flex flex-col items-center justify-center">
+        <Loading />
         <p class="text-gray-500 dark:text-gray-400 mt-4">加载中...</p>
       </div>
 
@@ -284,7 +282,7 @@ import {
   Share2,
 } from "lucide-vue-next";
 import AppButton from "@/components/ui/AppButton.vue";
-import EmojiReaction from "@/components/EmojiReaction.vue";
+import Loading from "@/components/ui/Loading.vue";
 import { ElMessage } from "element-plus";
 import request from "@/api/request";
 

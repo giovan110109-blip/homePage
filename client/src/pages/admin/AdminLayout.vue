@@ -236,7 +236,6 @@ import ProfileDialog from "./components/ProfileDialog.vue";
 import UploadQueueFloat from "@/components/admin/UploadQueueFloat.vue";
 import { useAuthStore } from "@/stores/auth";
 import { useRouter } from "vue-router";
-import { getAssetURL } from "@/utils";
 import { ElMessage } from "element-plus";
 
 const sidebarCollapsed = ref(false);

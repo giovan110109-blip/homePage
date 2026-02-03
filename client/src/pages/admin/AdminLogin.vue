@@ -91,7 +91,7 @@ const authStore = useAuthStore()
 const loading = ref(false)
 const formRef = ref<FormInstance>()
 const form = ref({
-  username: 'admin',
+  username: '',
   password: '',
 })
 

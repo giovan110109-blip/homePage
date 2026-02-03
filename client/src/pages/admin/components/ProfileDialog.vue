@@ -254,6 +254,7 @@ const handleAvatarSuccess = (response: any) => {
   if (data?.url) {
     let url = getAssetURL(data.url)
     form.avatar = url
+    
     ElMessage.success('头像上传成功')
   } else {
     ElMessage.error(response?.message || '上传失败')

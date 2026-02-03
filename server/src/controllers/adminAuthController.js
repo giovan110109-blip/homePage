@@ -18,14 +18,10 @@ class AdminAuthController extends BaseController {
         this.throwHttpError('请输入账号和密码', HttpStatus.BAD_REQUEST);
       }
 
-      if (username !== adminUser) {
-        this.throwHttpError('账号或密码错误', HttpStatus.UNAUTHORIZED);
-      }
-
-      // 确保管理员用户存在（首次启动自动创建）
-      let admin = await User.findOne({ username: adminUser, role: 'admin' });
-      if (!admin) {
-        admin = await User.create({
+      // 确保默认管理员用户存在（首次启动自动创建）
+      let defaultAdmin = await User.findOne({ username: adminUser, role: 'admin' });
+      if (!defaultAdmin) {
+        defaultAdmin = await User.create({
           username: adminUser,
           passwordHash: hashPassword(adminPass),
           role: 'admin',
@@ -34,24 +30,31 @@ class AdminAuthController extends BaseController {
         });
       }
 
-      if (admin.status !== 'active') {
+      // 从数据库查询用户（支持任何 role=admin 的用户）
+      let user = await User.findOne({ username, role: 'admin' });
+      
+      if (!user) {
+        this.throwHttpError('账号或密码错误', HttpStatus.UNAUTHORIZED);
+      }
+
+      if (user.status !== 'active') {
         this.throwHttpError('账号已禁用', HttpStatus.FORBIDDEN);
       }
 
-      const passOk = hashPassword(password) === admin.passwordHash;
+      const passOk = hashPassword(password) === user.passwordHash;
       if (!passOk) {
         this.throwHttpError('账号或密码错误', HttpStatus.UNAUTHORIZED);
       }
 
-      admin.lastLoginAt = new Date();
-      await admin.save();
+      user.lastLoginAt = new Date();
+      await user.save();
 
       const userInfo = { 
-        _id: admin._id,
-        username: admin.username, 
-        nickname: admin.nickname,
-        avatar: admin.avatar,
-        role: admin.role 
+        _id: user._id,
+        username: user.username, 
+        nickname: user.nickname,
+        avatar: user.avatar,
+        role: user.role 
       };
       const token = issueToken(userInfo);
       this.ok(ctx, { token, user: userInfo }, '登录成功');

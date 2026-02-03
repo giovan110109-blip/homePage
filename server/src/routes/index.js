@@ -22,6 +22,7 @@ function registerRoutes(app) {
         'upload.js',
         'monitor.js',
         'adminAuth.js',
+        'adminUsers.js',
         'adminMessages.js',
         'siteInfo.js',
         'adminSiteInfo.js',

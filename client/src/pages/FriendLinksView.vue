@@ -21,10 +21,8 @@
 
       <!-- 友情链接展示区域 -->
       <div class="mb-14 sm:mb-20">
-        <div v-if="loading" class="text-center py-12">
-          <div
-            class="inline-block w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"
-          ></div>
+        <div v-if="loading" class="flex flex-col items-center justify-center py-12">
+          <Loading />
           <p class="text-gray-500 dark:text-gray-400 mt-4">加载中...</p>
         </div>
 
@@ -39,10 +37,9 @@
           <a
             v-for="link in friendLinks"
             :key="link._id"
-            :href="link.url"
-            target="_blank"
+            :href="getExternalLinkRedirectUrl(link.url)"
             rel="noopener noreferrer"
-            @click="handleLinkClick(link)"
+            @click="handleLinkClick(link, $event)"
             class="group relative overflow-hidden rounded-2xl border border-gray-200/60 dark:border-white/10 bg-white/80 dark:bg-white/5 backdrop-blur-xl p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl hover:border-blue-400/70 dark:hover:border-blue-400/50"
           >
             <div
@@ -111,9 +108,27 @@
       </div>
 
       <!-- 友链申请说明 -->
-      <div class="max-w-4xl mx-auto mb-12">
+      <div
+        class="max-w-4xl mx-auto mb-12 relative"
+        :ref="(el) => (cardRef = el as HTMLElement)"
+        @mousemove="handleCardMouseMove"
+        @mouseleave="handleCardMouseLeave"
+      >
+        <!-- 鼠标跟随效果 -->
         <div
-          class="bg-white/80 dark:bg-white/5 backdrop-blur-xl rounded-3xl p-8 sm:p-10 border border-gray-200/60 dark:border-white/10 shadow-2xl"
+          v-if="cardEffect.show"
+          class="absolute w-40 h-40 rounded-full blur-2xl transition-all duration-75 ease-out pointer-events-none z-0 top-0 left-0"
+          :style="{
+            left: cardEffect.x - 80 + 'px',
+            top: cardEffect.y - 80 + 'px',
+            background:
+              'radial-gradient(circle, rgba(34, 197, 94, 0.6) 0%, rgba(34, 197, 94, 0.3) 30%, rgba(34, 197, 94, 0.15) 60%, transparent 90%)',
+            boxShadow:
+              '0 0 80px rgba(34, 197, 94, 0.5), 0 0 160px rgba(34, 197, 94, 0.3)',
+          }"
+        ></div>
+        <div
+          class="relative bg-white/80 dark:bg-white/5 backdrop-blur-xl rounded-3xl p-8 sm:p-10 border border-gray-200/60 dark:border-white/10 shadow-2xl"
         >
           <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">
             友情连接申请
@@ -155,8 +170,12 @@
               <li>名称：Giovan</li>
               <li>描述：万事顺意</li>
               <li>地址：www.giovan.cn</li>
-              <li>头像：https://serve.giovan.cn/uploads/1769860396165-143ef0bb240aa25d.jpeg</li>
-              <li>站点图片：https://serve.giovan.cn/uploads/1769860396165-143ef0bb240aa25d.jpeg</li>
+              <li>
+                头像：https://serve.giovan.cn/uploads/1769860396165-143ef0bb240aa25d.jpeg
+              </li>
+              <li>
+                站点图片：https://serve.giovan.cn/uploads/1769860396165-143ef0bb240aa25d.jpeg
+              </li>
               <!-- <li>订阅：https://example.com/rss.xml</li> -->
             </ul>
           </div>
@@ -191,9 +210,27 @@ rss: https://example.com/rss.xml
       </div>
 
       <!-- 申请友情链接表单 -->
-      <div class="max-w-2xl mx-auto">
+      <div
+        class="max-w-2xl mx-auto relative"
+        :ref="(el) => (formCardRef = el as HTMLElement)"
+        @mousemove="handleFormCardMouseMove"
+        @mouseleave="handleFormCardMouseLeave"
+      >
+        <!-- 鼠标跟随效果 -->
         <div
-          class="bg-white/80 dark:bg-white/5 backdrop-blur-xl rounded-3xl p-8 sm:p-10 border border-gray-200/60 dark:border-white/10 shadow-2xl"
+          v-if="formCardEffect.show"
+          class="absolute w-40 h-40 rounded-full blur-2xl transition-all duration-75 ease-out pointer-events-none z-0"
+          :style="{
+            left: formCardEffect.x - 80 + 'px',
+            top: formCardEffect.y - 80 + 'px',
+            background:
+              'radial-gradient(circle, rgba(34, 197, 94, 0.6) 0%, rgba(34, 197, 94, 0.3) 30%, rgba(34, 197, 94, 0.15) 60%, transparent 90%)',
+            boxShadow:
+              '0 0 80px rgba(34, 197, 94, 0.5), 0 0 160px rgba(34, 197, 94, 0.3)',
+          }"
+        ></div>
+        <div
+          class="relative bg-white/80 dark:bg-white/5 backdrop-blur-xl rounded-3xl p-8 sm:p-10 border border-gray-200/60 dark:border-white/10 shadow-2xl"
         >
           <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">
             申请友情链接
@@ -327,16 +364,17 @@ rss: https://example.com/rss.xml
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
 import { ElMessage } from "element-plus";
 import { Eye, ExternalLink } from "lucide-vue-next";
 import AppButton from "@/components/ui/AppButton.vue";
+import Loading from "@/components/ui/Loading.vue";
 import {
   getFriendLinks,
   applyFriendLink,
   recordFriendLinkClick,
 } from "@/api/friendLink";
 import type { FriendLink, FriendLinkFormData } from "@/types/api";
+import { getExternalLinkRedirectUrl } from "@/utils/external-link";
 
 const loading = ref(false);
 const submitting = ref(false);
@@ -377,7 +415,11 @@ const loadFriendLinks = async () => {
 };
 
 // 记录点击
-const handleLinkClick = async (link: FriendLink) => {
+const handleLinkClick = async (link: FriendLink, event: MouseEvent) => {
+  // 阻止默认跳转
+  event.preventDefault();
+
+  // 记录点击数
   const index = friendLinks.value.findIndex((item) => item._id === link._id);
   if (index > -1) {
     const current = friendLinks.value[index].clicks || 0;
@@ -390,6 +432,11 @@ const handleLinkClick = async (link: FriendLink) => {
       const current = friendLinks.value[index].clicks || 1;
       friendLinks.value[index].clicks = Math.max(0, current - 1);
     }
+  }
+
+  // 跳转到外链确认页面
+  if (link.url) {
+    window.location.href = getExternalLinkRedirectUrl(link.url);
   }
 };
 
@@ -420,6 +467,42 @@ const resetForm = () => {
     rss: "",
     category: "tech",
   };
+};
+
+const cardRef = ref<HTMLElement | null>(null);
+const cardEffect = reactive<{ x: number; y: number; show: boolean }>({
+  x: 0,
+  y: 0,
+  show: false,
+});
+const handleCardMouseMove = (event: MouseEvent) => {
+  if (!cardRef.value) return;
+  const rect = cardRef.value.getBoundingClientRect();
+  cardEffect.x = event.clientX - rect.left;
+  cardEffect.y = event.clientY - rect.top;
+  cardEffect.show = true;
+};
+
+const handleCardMouseLeave = () => {
+  cardEffect.show = false;
+};
+
+const formCardRef = ref<HTMLElement | null>(null);
+const formCardEffect = reactive<{ x: number; y: number; show: boolean }>({
+  x: 0,
+  y: 0,
+  show: false,
+});
+const handleFormCardMouseMove = (event: MouseEvent) => {
+  if (!formCardRef.value) return;
+  const rect = formCardRef.value.getBoundingClientRect();
+  formCardEffect.x = event.clientX - rect.left;
+  formCardEffect.y = event.clientY - rect.top;
+  formCardEffect.show = true;
+};
+
+const handleFormCardMouseLeave = () => {
+  formCardEffect.show = false;
 };
 
 onMounted(() => {

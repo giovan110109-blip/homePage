@@ -76,6 +76,14 @@ const routes: RouteRecordRaw[] = [
       title: '地图'
     }
   },
+  {
+    path: '/go',
+    name: 'external-link',
+    component: () => import('@/pages/ExternalLinkView.vue'),
+    meta: {
+      title: '跳转提示'
+    }
+  },
     {
     path: '/admin',
     name: 'admin',

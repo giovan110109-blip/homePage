@@ -20,7 +20,7 @@
               v-model="filter.form.keyword"
               placeholder="搜索留言内容..."
               clearable
-              style="width: 220px"
+              style="width: 220px; height: 32px"
               @change="handleFetch"
             />
             <el-select
