@@ -65,7 +65,6 @@
       <!-- 文章列表 -->
       <div v-if="loading" class="text-center py-12 flex flex-col items-center justify-center">
         <Loading />
-        <p class="text-gray-500 dark:text-gray-400 mt-4">加载中...</p>
       </div>
 
       <div v-else-if="articles.length === 0" class="text-center py-12">

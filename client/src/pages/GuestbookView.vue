@@ -134,7 +134,6 @@
           class="flex flex-col items-center justify-center py-12 px-5"
         >
           <Loading />
-          <p class="text-gray-500 dark:text-gray-400 mt-4">加载中...</p>
         </div>
 
         <!-- 仅在非 loading 且无留言时显示空状态 -->
@@ -233,7 +232,6 @@
             class="flex flex-col items-center justify-center py-12 px-5"
           >
             <Loading />
-            <p class="text-gray-500 dark:text-gray-400 mt-4">加载中...</p>
           </div>
 
           <div

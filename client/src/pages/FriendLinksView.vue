@@ -23,7 +23,6 @@
       <div class="mb-14 sm:mb-20">
         <div v-if="loading" class="flex flex-col items-center justify-center py-12">
           <Loading />
-          <p class="text-gray-500 dark:text-gray-400 mt-4">加载中...</p>
         </div>
 
         <div v-else-if="friendLinks.length === 0" class="text-center py-12">
