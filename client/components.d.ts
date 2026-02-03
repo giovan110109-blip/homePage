@@ -17,6 +17,7 @@ declare module 'vue' {
     Card: typeof import('./src/components/ui/Card.vue')['default']
     DotGrid: typeof import('./src/components/DotGrid.vue')['default']
     ElAside: typeof import('element-plus/es')['ElAside']
+    ElAutocomplete: typeof import('element-plus/es')['ElAutocomplete']
     ElAvatar: typeof import('element-plus/es')['ElAvatar']
     ElButton: typeof import('element-plus/es')['ElButton']
     ElCard: typeof import('element-plus/es')['ElCard']

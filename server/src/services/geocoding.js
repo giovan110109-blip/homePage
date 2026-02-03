@@ -1,22 +1,18 @@
-const axios = require('axios')
-
 /**
- * 地理编码服务
- * 支持反向地理编码（经纬度转地址）
+ * 地理编码缓存服务
+ * 调用高德 API 进行反向地理编码，并提供缓存
  */
 class GeocodingService {
   constructor() {
-    // 使用 Nominatim (OpenStreetMap) 免费API
-    // 生产环境建议使用 Mapbox 或 Google Maps
-    this.nominatimUrl = 'https://nominatim.openstreetmap.org'
-    this.userAgent = 'HomePage-Gallery/1.0'
+    this.amapUrl = 'https://restapi.amap.com/v3'
+    this.amapKey = process.env.AMAP_KEY
     
     // 缓存，避免重复请求
     this.cache = new Map()
   }
 
   /**
-   * 反向地理编码
+   * 反向地理编码 - 调用高德 API
    * @param {number} latitude 纬度
    * @param {number} longitude 经度
    * @returns {Promise<Object|null>} 地理信息对象
@@ -33,29 +29,31 @@ class GeocodingService {
     }
 
     try {
-      const response = await axios.get(`${this.nominatimUrl}/reverse`, {
-        params: {
-          lat: latitude,
-          lon: longitude,
-          format: 'json',
-          addressdetails: 1,
-          'accept-language': 'zh-CN,en'
-        },
-        headers: {
-          'User-Agent': this.userAgent
-        },
-        timeout: 30000 // 增加到 30 秒
-      })
+      const url = new URL(`${this.amapUrl}/geocode/regeo`)
+      url.searchParams.append('key', this.amapKey)
+      url.searchParams.append('location', `${longitude},${latitude}`) // 高德是 lon,lat 格式
+      url.searchParams.append('output', 'json')
 
-      const { address, display_name } = response.data
+      const response = await fetch(url.toString())
+      const data = await response.json()
+
+      if (data.status !== '1') {
+        console.warn('高德反向地理编码失败:', data.info)
+        return null
+      }
+
+      const regeocode = data.regeocode
+      if (!regeocode) {
+        return null
+      }
 
       const geoinfo = {
-        country: address.country || null,
-        countryCode: address.country_code ? address.country_code.toUpperCase() : null,
-        region: address.state || address.province || address.region || null,
-        city: address.city || address.town || address.village || address.county || null,
-        locationName: display_name || null,
-        formatted: display_name || null
+        displayName: regeocode.formatted_address,
+        province: regeocode.addressComponent?.province,
+        city: regeocode.addressComponent?.city,
+        district: regeocode.addressComponent?.district,
+        street: regeocode.addressComponent?.streetNumber?.street,
+        streetNumber: regeocode.addressComponent?.streetNumber?.number
       }
 
       // 缓存结果
@@ -69,7 +67,7 @@ class GeocodingService {
 
       return geoinfo
     } catch (error) {
-      console.error('反向地理编码失败:', error.message)
+      console.error('高德反向地理编码失败:', error.message)
       return null
     }
   }

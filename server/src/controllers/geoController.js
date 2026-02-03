@@ -50,26 +50,26 @@ class GeoController {
       if (!data.geocodes || data.geocodes.length === 0) {
         console.log(`⚠️  [GEO] 未找到地址: ${address}`)
         ctx.status = HttpStatus.OK
-        ctx.body = Response.success(null, '未找到该地址')
+        ctx.body = Response.success([], '未找到该地址')
         return
       }
 
-      const result = data.geocodes[0]
-      const [lng, lat] = result.location.split(',').map(Number)
-
-      console.log(`✅ [GEO] 找到位置: ${result.formatted_address} (${lat}, ${lng})`)
-
-      ctx.status = HttpStatus.OK
-      ctx.body = Response.success(
-        {
+      // 返回所有搜索结果（最多10个）
+      const results = data.geocodes.slice(0, 10).map(result => {
+        const [lng, lat] = result.location.split(',').map(Number)
+        return {
           latitude: lat,
           longitude: lng,
           displayName: result.formatted_address,
           citycode: result.citycode,
           adcode: result.adcode
-        },
-        '查询成功'
-      )
+        }
+      })
+
+      console.log(`✅ [GEO] 找到 ${results.length} 个地址匹配`)
+
+      ctx.status = HttpStatus.OK
+      ctx.body = Response.success(results, '查询成功')
     } catch (error) {
       console.error('[GEO] ❌ 地址搜索失败:', error.message)
       ctx.status = HttpStatus.INTERNAL_ERROR

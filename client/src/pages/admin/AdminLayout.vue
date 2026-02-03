@@ -197,8 +197,10 @@
       @updated="handleProfileUpdated"
     />
 
-    <!-- 上传任务队列浮窗（全局） -->
-    <UploadQueueFloat />
+    <!-- 上传任务队列浮窗（全局） - 移动端隐藏 -->
+    <div class="hidden md:block">
+      <UploadQueueFloat />
+    </div>
   </el-container>
 </template>
 
