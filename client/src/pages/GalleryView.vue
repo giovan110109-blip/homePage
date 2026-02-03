@@ -148,18 +148,18 @@ const keyMapper = (item: PhotoWithLoaded) => item._id;
 
 const pagination = reactive({
   page: 1,
-  limit: 50, // ✅ 优化：改为分页加载，首页50张
+  limit: 10000, // 一次性加载所有
   total: 0,
   pages: 1,
 });
 
-const hasMore = ref(false);
+const hasMore = ref(true);
 
 const loadPhotos = async (reset = true) => {
   if (reset) {
     pagination.page = 1;
     photos.value = [];
-    formattedDateCache.clear(); // ✅ 清空日期缓存
+    formattedDateCache.clear();
   }
 
   loading.value = reset;
@@ -168,12 +168,12 @@ const loadPhotos = async (reset = true) => {
   try {
     const params: any = {
       page: pagination.page,
-      limit: pagination.limit, // ✅ 分页加载
+      limit: pagination.limit,
     };
 
     const res: any = await request.get("/photos", { params });
 
-    if (res?.success) {
+    if (res?.data) {
       const newPhotos = res.data.photos.map((p: Photo) => {
         const photo = {
           ...p,
@@ -185,16 +185,11 @@ const loadPhotos = async (reset = true) => {
         return photo;
       });
 
-      if (reset) {
-        photos.value = newPhotos;
-      } else {
-        photos.value.push(...newPhotos);
-      }
-
+      photos.value = newPhotos;
       Object.assign(pagination, res.data.pagination);
-      hasMore.value = pagination.page < pagination.pages;
+      hasMore.value = false;
 
-      // ✅ 优化：只预加载当前页的 LivePhoto，不预加载所有页
+      // 预加载 LivePhoto
       const livePhotos = newPhotos
         .filter((p: PhotoWithLoaded) => p.isLive && p.videoUrl)
         .map((p: PhotoWithLoaded) => ({
@@ -205,12 +200,11 @@ const loadPhotos = async (reset = true) => {
 
       if (livePhotos.length > 0) {
         console.log(
-          `📷 预加载第 ${pagination.page} 页的 ${livePhotos.length} 个 LivePhoto 视频...`,
+          `📷 预加载 ${livePhotos.length} 个 LivePhoto 视频...`,
         );
-        // ✅ 优化：使用更保守的并发数
         preloadVideosInViewport(livePhotos, {
-          maxConcurrent: 1, // 瀑布流场景用 1，避免占用过多网络
-          prioritizeVisible: false, // 瀑布流都在视口外，不需要优先
+          maxConcurrent: 1,
+          prioritizeVisible: false,
           prefetchDistance: 2,
         }).catch((err) => {
           console.warn("⚠️ LivePhoto 预加载出错:", err);
@@ -244,30 +238,13 @@ const handleResize = () => {
   windowWidth.value = window.innerWidth;
 };
 
-// ✅ 优化：实现无限滚动加载
-const handleScroll = async () => {
-  if (loading.value || loadingMore.value || !hasMore.value) return;
-
-  const scrollTop = window.scrollY;
-  const windowHeight = window.innerHeight;
-  const docHeight = document.documentElement.scrollHeight;
-
-  // 距离底部 300px 时触发加载
-  if (docHeight - scrollTop - windowHeight < 300) {
-    pagination.page++;
-    await loadPhotos(false);
-  }
-};
-
 onMounted(() => {
   loadPhotos();
   window.addEventListener("resize", handleResize, { passive: true });
-  window.addEventListener("scroll", handleScroll, { passive: true });
 });
 
 onBeforeUnmount(() => {
   window.removeEventListener("resize", handleResize);
-  window.removeEventListener("scroll", handleScroll);
 });
 </script>
 
