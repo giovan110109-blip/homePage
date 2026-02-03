@@ -32,6 +32,7 @@ function registerRoutes(app) {
         'accessLogs.js',
         'friendLink.js',
         'adminFriendLinks.js',
+        'adminAlbums.js',
         'articles.js',
         'adminArticles.js',
         'profile.js',

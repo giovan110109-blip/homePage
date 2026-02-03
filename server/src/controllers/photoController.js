@@ -433,14 +433,31 @@ class PhotoController {
       const baseUploadDir = process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads')
       const uploadDir = path.join(baseUploadDir, 'photos')
       const thumbnailDir = process.env.THUMBNAIL_DIR || path.join(baseUploadDir, 'thumbnails')
+      const webpDir = process.env.UPLOAD_WEBP_DIR || path.join(baseUploadDir, 'photos-webp')
       
-      await Promise.all([
+      // 推导 WebP 文件名（基于 storageKey）
+      const webpFileName = `${path.parse(photo.storageKey).name}.webp`
+      
+      const fileDeletions = [
+        // 删除原始文件
         fsp.unlink(path.join(uploadDir, photo.storageKey)).catch(() => {}),
+        // 删除缩略图
         photo.thumbnailKey
           ? fsp.unlink(path.join(thumbnailDir, photo.thumbnailKey)).catch(() => {})
+          : Promise.resolve(),
+        // 删除 WebP 文件（根据命名规则推导）
+        fsp.unlink(path.join(webpDir, webpFileName)).catch(() => {}),
+        // 删除原始高分辨率文件（如果与 storageKey 不同）
+        photo.originalKey && photo.originalKey !== photo.storageKey
+          ? fsp.unlink(path.join(uploadDir, photo.originalKey)).catch(() => {})
+          : Promise.resolve(),
+        // 删除 Live Photo 视频文件（如果存在）
+        photo.videoKey
+          ? fsp.unlink(path.join(uploadDir, photo.videoKey)).catch(() => {})
           : Promise.resolve()
-      ])
-
+      ]
+      
+      await Promise.all(fileDeletions)
       await photo.deleteOne()
 
       ctx.body = Response.success(null, '删除成功')
@@ -478,6 +495,157 @@ class PhotoController {
       }
 
       ctx.body = Response.success(photo, '更新成功')
+    } catch (error) {
+      ctx.body = Response.error(error.message, HttpStatus.INTERNAL_ERROR)
+    }
+  }
+
+  /**
+   * 手动设置照片位置信息
+   */
+  async updatePhotoLocation(ctx) {
+    try {
+      const { id } = ctx.params
+      const { latitude, longitude } = ctx.request.body
+
+      if (typeof latitude !== 'number' || typeof longitude !== 'number') {
+        ctx.body = Response.error('经纬度必须是数字', HttpStatus.BAD_REQUEST)
+        return
+      }
+
+      const photo = await Photo.findById(id)
+      if (!photo) {
+        ctx.body = Response.error('照片不存在', HttpStatus.NOT_FOUND)
+        return
+      }
+
+      // 更新位置信息
+      photo.location = {
+        latitude,
+        longitude,
+        coordinates: [longitude, latitude]
+      }
+
+      // 先保存位置信息
+      await photo.save()
+
+      // 异步执行反向地理编码（不阻塞响应）
+      const geocoding = require('../services/geocoding')
+      geocoding.reverseGeocode(latitude, longitude)
+        .then(async (geoinfo) => {
+          if (geoinfo) {
+            photo.geoinfo = geoinfo
+            await photo.save()
+            console.log(`✅ 照片 ${photo._id} 地理信息已更新:`, geoinfo.formatted)
+          }
+        })
+        .catch((geoError) => {
+          console.warn(`⚠️  照片 ${photo._id} 反向地理编码失败:`, geoError.message)
+        })
+
+      ctx.body = Response.success(photo, '位置信息更新成功，地理信息正在后台获取')
+    } catch (error) {
+      ctx.body = Response.error(error.message, HttpStatus.INTERNAL_ERROR)
+    }
+  }
+
+  /**
+   * 重新获取照片的地理位置信息（基于现有的经纬度）
+   */
+  async refreshPhotoGeoinfo(ctx) {
+    try {
+      const { id } = ctx.params
+      const photo = await Photo.findById(id)
+
+      if (!photo) {
+        ctx.body = Response.error('照片不存在', HttpStatus.NOT_FOUND)
+        return
+      }
+
+      if (!photo.location?.latitude || !photo.location?.longitude) {
+        ctx.body = Response.error('照片没有位置信息', HttpStatus.BAD_REQUEST)
+        return
+      }
+
+      const geocoding = require('../services/geocoding')
+      const geoinfo = await geocoding.reverseGeocode(
+        photo.location.latitude,
+        photo.location.longitude
+      )
+
+      photo.geoinfo = geoinfo
+      await photo.save()
+
+      ctx.body = Response.success(photo, '地理位置信息更新成功')
+    } catch (error) {
+      ctx.body = Response.error(error.message, HttpStatus.INTERNAL_ERROR)
+    }
+  }
+
+  /**
+   * 重新提取照片的 EXIF 信息
+   */
+  async refreshPhotoExif(ctx) {
+    try {
+      const { id } = ctx.params
+      const photo = await Photo.findById(id)
+
+      if (!photo) {
+        ctx.body = Response.error('照片不存在', HttpStatus.NOT_FOUND)
+        return
+      }
+
+      // 获取原始文件路径（优先使用 originalKey，因为它保留了完整的 EXIF）
+      const baseUploadDir = process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads')
+      const uploadDir = path.join(baseUploadDir, 'photos')
+      const fileKey = photo.originalKey || photo.storageKey
+      const filePath = path.join(uploadDir, fileKey)
+
+      // 检查文件是否存在
+      if (!await fsp.access(filePath).then(() => true).catch(() => false)) {
+        ctx.body = Response.error('原始文件不存在', HttpStatus.NOT_FOUND)
+        return
+      }
+
+      // 重新提取 EXIF
+      const imageProcessing = require('../services/imageProcessing')
+      const exifData = await imageProcessing.extractExif({
+        filePath,
+        originalFileName: photo.originalFileName
+      })
+
+      // 更新照片信息
+      photo.exif = exifData.exif
+      if (exifData.dateTaken) {
+        photo.dateTaken = exifData.dateTaken
+      }
+      if (exifData.location) {
+        photo.location = {
+          latitude: exifData.location.latitude,
+          longitude: exifData.location.longitude,
+          altitude: exifData.location.altitude,
+          coordinates: [exifData.location.longitude, exifData.location.latitude]
+        }
+
+        // 如果有新的位置信息，也更新地理信息
+        const geocoding = require('../services/geocoding')
+        try {
+          const geoinfo = await geocoding.reverseGeocode(
+            exifData.location.latitude,
+            exifData.location.longitude
+          )
+          photo.geoinfo = geoinfo
+        } catch (geoError) {
+          console.warn('反向地理编码失败:', geoError.message)
+        }
+      }
+      if (exifData.camera) {
+        photo.camera = exifData.camera
+      }
+
+      await photo.save()
+
+      ctx.body = Response.success(photo, 'EXIF 信息更新成功')
     } catch (error) {
       ctx.body = Response.error(error.message, HttpStatus.INTERNAL_ERROR)
     }

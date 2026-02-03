@@ -478,6 +478,7 @@ onBeforeUnmount(() => {
                   <!-- 静音图标 -->
                   <LivePhotoMute
                     v-if="activePhoto?.isLive"
+                    class="h-7 w-7"
                     :modelValue="isLivePhotoMuted"
                     @update:modelValue="handleLivePhotoMuteChange"
                   ></LivePhotoMute>

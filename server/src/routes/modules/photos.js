@@ -24,4 +24,9 @@ router.get('/map/data', photoController.getMapData.bind(photoController))
 router.put('/:id', photoController.updatePhoto.bind(photoController))
 router.delete('/:id', photoController.deletePhoto.bind(photoController))
 
+// 照片元数据管理
+router.post('/:id/location', photoController.updatePhotoLocation.bind(photoController))
+router.post('/:id/refresh-geoinfo', photoController.refreshPhotoGeoinfo.bind(photoController))
+router.post('/:id/refresh-exif', photoController.refreshPhotoExif.bind(photoController))
+
 module.exports = router

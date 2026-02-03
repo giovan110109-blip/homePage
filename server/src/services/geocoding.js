@@ -44,7 +44,7 @@ class GeocodingService {
         headers: {
           'User-Agent': this.userAgent
         },
-        timeout: 10000
+        timeout: 30000 // 增加到 30 秒
       })
 
       const { address, display_name } = response.data
