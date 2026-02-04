@@ -90,12 +90,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted } from 'vue'
 import { Mail, MapPin, Github, Linkedin, Twitter, MessageCircle,MessageSquareQuote } from 'lucide-vue-next'
 import { useSiteInfoStore } from '@/stores/siteInfo'
 import MagicCard from '@/components/ui/MagicCard.vue'
 
-const footerRef = ref<HTMLElement>()
+// const footerRef = ref<HTMLElement>()
 
 const siteInfoStore = useSiteInfoStore()
 
@@ -110,16 +109,16 @@ const navigation = [
   { name: '赞助支持', href: '/sponsor' }
 ]
 
-const iconMap = {
-  github: Github,
-  linkedin: Linkedin,
-  twitter: Twitter,
-  'message-circle': MessageCircle,
-  mail: Mail,
-  'map-pin': MapPin
-}
+// const iconMap = {
+//   github: Github,
+//   linkedin: Linkedin,
+//   twitter: Twitter,
+//   'message-circle': MessageCircle,
+//   mail: Mail,
+//   'map-pin': MapPin
+// }
 
-const getIcon = (iconName: string) => {
-  return iconMap[iconName as keyof typeof iconMap] || MessageCircle
-}
+// const getIcon = (iconName: string) => {
+//   return iconMap[iconName as keyof typeof iconMap] || MessageCircle
+// }
 </script>

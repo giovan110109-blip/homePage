@@ -1,4 +1,4 @@
-import { createRouter, createWebHashHistory, type RouteRecordRaw } from 'vue-router'
+import { createRouter, createWebHashHistory, type RouteRecordRaw, START_LOCATION } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import request from '@/api/request'
 const { VITE_SITE_TITLE, VITE_SITE_DESCRIPTION } = import.meta.env
@@ -134,7 +134,7 @@ router.beforeEach((to, _from, next) => {
   next()
 })
 
-router.afterEach((to) => {
+router.afterEach((to, from) => {
   const pageTitle = to.meta?.title ? `${to.meta.title} - ${VITE_SITE_TITLE ?? ''}`.replace(/\s-\s$/, '') : VITE_SITE_TITLE
   if (pageTitle) {
     document.title = pageTitle
@@ -153,7 +153,10 @@ router.afterEach((to) => {
 
   if (to.path.startsWith('/admin')) return
   if (import.meta.env.DEV) return
-  const key = `access-log:${to.path}`
+  const isInitialNavigation = from === START_LOCATION
+  if (!isInitialNavigation) return
+  if (to.path !== '/') return
+  const key = 'access-log:home'
   if (sessionStorage.getItem(key)) return
   sessionStorage.setItem(key, '1')
   request.post('/access-logs/ping', { path: to.fullPath, title: to.meta?.title }).catch(() => undefined)

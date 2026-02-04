@@ -69,8 +69,8 @@ const routeOrder = {
   '/articles': 3,
   '/sites': 4,
   '/friends': 5,
-  '/sponsor': 6,
-  '/gallery': 7,
+  // '/sponsor': 6,
+  '/gallery': 6,
 }
 
 // 监听路由变化，动态设置过渡动画
