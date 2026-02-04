@@ -84,7 +84,7 @@ class AdminArticleController extends BaseController {
             articleData.author = {
                 name: user.nickname || user.username,
                 avatar: user.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username}`,
-                bio: '楼主'
+                bio: 'Giovan'
             };
 
             const article = await Article.create(articleData);
