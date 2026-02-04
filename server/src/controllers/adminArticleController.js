@@ -83,8 +83,8 @@ class AdminArticleController extends BaseController {
             const user = ctx.state.user;
             articleData.author = {
                 name: user.nickname || user.username,
-                avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username}`,
-                bio: '网站管理员'
+                avatar: user.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username}`,
+                bio: '楼主'
             };
 
             const article = await Article.create(articleData);
