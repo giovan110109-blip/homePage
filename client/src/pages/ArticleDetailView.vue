@@ -91,7 +91,7 @@
           <!-- 文章正文 -->
           <div
             class="prose prose-lg dark:prose-invert max-w-none mb-8"
-            v-html="article.content"
+            v-html="renderedContent"
           ></div>
 
           <!-- 分割线 -->
@@ -241,12 +241,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, nextTick, watch, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Eye, Heart, Calendar, Share2, FileText, ArrowLeft, Link, Image } from 'lucide-vue-next'
 import { ElMessage } from 'element-plus'
 import request from '@/api/request'
 import html2canvas from 'html2canvas'
+import hljs from 'highlight.js'
+import markdownit from 'markdown-it'
 
 const route = useRoute()
 const router = useRouter()
@@ -276,6 +278,92 @@ const hasLiked = ref(false)
 const showShareModal = ref(false)
 const showCardPreview = ref(false)
 
+const md = markdownit({
+  html: false,
+  highlight: function (str, lang) {
+    if (lang && hljs.getLanguage(lang)) {
+      try {
+        return '<pre><code class="hljs">' +
+               hljs.highlight(str, { language: lang, ignoreIllegals: true }).value +
+               '</code></pre>'
+      } catch (_) {
+        return ''
+      }
+    }
+    return '<pre><code class="hljs">' + md.utils.escapeHtml(str) + '</code></pre>'
+  }
+})
+
+const isLikelyHtml = (input: string) => /<\/?[a-z][\s\S]*>/i.test(input)
+
+const renderedContent = computed(() => {
+  const content = article.value?.content || ''
+  if (!content) return ''
+  if (isLikelyHtml(content)) return content
+  return md.render(content)
+})
+
+const applyHighlight = async () => {
+  await nextTick()
+  const blocks = document.querySelectorAll('.prose pre code')
+  blocks.forEach((block) => {
+    hljs.highlightElement(block as HTMLElement)
+  })
+  addCopyButtons()
+}
+
+const addCopyButtons = () => {
+  const pres = document.querySelectorAll('.prose pre')
+  pres.forEach((pre) => {
+    const container = pre as HTMLElement
+    if (container.dataset.copyReady === '1') return
+    container.dataset.copyReady = '1'
+    container.classList.add('code-block')
+
+    const btn = document.createElement('button')
+    btn.type = 'button'
+    btn.className = 'code-copy-btn'
+    btn.innerHTML = `
+      <svg class="code-copy-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M16 1H6a2 2 0 0 0-2 2v12h2V3h10V1zm3 4H10a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm0 16H10V7h9v14z"/>
+      </svg>
+    `
+    btn.addEventListener('click', async () => {
+      const code = container.querySelector('code')?.textContent ?? ''
+      try {
+        await navigator.clipboard.writeText(code)
+        btn.innerHTML = `
+          <svg class="code-copy-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/>
+          </svg>
+        `
+        setTimeout(() => {
+          btn.innerHTML = `
+            <svg class="code-copy-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M16 1H6a2 2 0 0 0-2 2v12h2V3h10V1zm3 4H10a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm0 16H10V7h9v14z"/>
+            </svg>
+          `
+        }, 1500)
+      } catch (_) {
+        btn.innerHTML = `
+          <svg class="code-copy-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 10.6 7.8 6.4 6.4 7.8 10.6 12l-4.2 4.2 1.4 1.4 4.2-4.2 4.2 4.2 1.4-1.4L13.4 12l4.2-4.2-1.4-1.4z"/>
+          </svg>
+        `
+        setTimeout(() => {
+          btn.innerHTML = `
+            <svg class="code-copy-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M16 1H6a2 2 0 0 0-2 2v12h2V3h10V1zm3 4H10a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm0 16H10V7h9v14z"/>
+            </svg>
+          `
+        }, 1500)
+      }
+    })
+
+    container.appendChild(btn)
+  })
+}
+
 const fetchArticle = async () => {
   try {
     loading.value = true
@@ -290,6 +378,7 @@ const fetchArticle = async () => {
     ElMessage.error(error.response?.data?.message || '获取文章失败')
   } finally {
     loading.value = false
+    await applyHighlight()
   }
 }
 
@@ -359,6 +448,15 @@ const formatDate = (dateString: string) => {
   })
 }
 
+watch(
+  () => article.value?.content,
+  () => {
+    if (!loading.value) {
+      applyHighlight()
+    }
+  }
+)
+
 onMounted(() => {
   fetchArticle()
 })
@@ -399,11 +497,59 @@ onMounted(() => {
 }
 
 .prose :deep(pre) {
-  background: #1f2937;
-  color: #f3f4f6;
-  padding: 1rem;
-  border-radius: 0.5rem;
+  background: #0f172a;
+  color: #e2e8f0;
+  padding: 1.25rem 1.25rem 1.5rem;
+  border-radius: 0.75rem;
   overflow-x: auto;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.35);
+}
+
+.prose :deep(pre.code-block) {
+  position: relative;
+}
+
+.prose :deep(.code-copy-btn) {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  padding: 0.4rem;
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.65rem;
+  background: rgba(255, 255, 255, 0.92);
+  color: #0f172a;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.25);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.prose :deep(.code-copy-btn:hover) {
+  background: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.3);
+}
+
+.dark .prose :deep(.code-copy-btn) {
+  background: rgba(15, 23, 42, 0.85);
+  color: #e2e8f0;
+  border-color: rgba(148, 163, 184, 0.2);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.55);
+}
+
+.dark .prose :deep(.code-copy-btn:hover) {
+  background: rgba(30, 41, 59, 0.9);
+}
+
+.prose :deep(.code-copy-icon) {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
 }
 
 .prose :deep(code) {

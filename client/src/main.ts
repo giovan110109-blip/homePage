@@ -9,6 +9,9 @@ import 'element-plus/dist/index.css' // 引入Element Plus样式
 import 'element-plus/theme-chalk/dark/css-vars.css' // 引入 Element Plus 暗黑模式变量
 import 'element-plus/theme-chalk/display.css'
 import 'maplibre-gl/dist/maplibre-gl.css' // 引入MapLibre GL样式
+import 'highlight.js/styles/github.css'
+import mavonEditor from 'mavon-editor'
+import 'mavon-editor/dist/css/index.css'
 import { useSiteInfoStore } from './stores/siteInfo'
 
 const { VITE_SITE_TITLE, VITE_SITE_DESCRIPTION } = import.meta.env
@@ -34,6 +37,7 @@ pinia.use(piniaPluginPersistedstate)
 app.use(pinia)
 app.use(router)
 app.use(ElementPlus)
+app.use(mavonEditor)
 
 if (VITE_SITE_TITLE) {
   document.title = VITE_SITE_TITLE
