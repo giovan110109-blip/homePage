@@ -47,10 +47,13 @@ class GeocodingService {
         return null
       }
 
+      const rawCity = regeocode.addressComponent?.city
+      const city = Array.isArray(rawCity) ? rawCity[0] || null : rawCity || null
+
       const geoinfo = {
         displayName: regeocode.formatted_address,
         province: regeocode.addressComponent?.province,
-        city: regeocode.addressComponent?.city,
+        city,
         district: regeocode.addressComponent?.district,
         street: regeocode.addressComponent?.streetNumber?.street,
         streetNumber: regeocode.addressComponent?.streetNumber?.number
