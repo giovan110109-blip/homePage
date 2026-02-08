@@ -1,4 +1,16 @@
 /**
+ * 格式化文件大小
+ * @param size 字节数
+ * @param digits 保留小数位
+ */
+export function formatFileSize(size: number, digits = 2): string {
+  if (isNaN(size) || size === 0) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
+  const idx = Math.floor(Math.log(size) / Math.log(1024));
+  const val = size / Math.pow(1024, idx);
+  return `${val.toFixed(digits)} ${units[idx]}`;
+}
+/**
  * Format Utilities
  * Contains formatting and transformation utilities
  */

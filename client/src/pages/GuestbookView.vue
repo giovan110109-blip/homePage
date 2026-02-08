@@ -158,7 +158,15 @@
             >
               <div class="flex flex-col gap-1 flex-1">
                 <div class="flex items-end gap-5">
-                  <div v-if="message.avatar" v-html="message.avatar"></div>
+                  <div v-if="message.avatar">
+                    <img
+                      v-if="isHttpAvatar(message.avatar)"
+                      :src="message.avatar"
+                      alt="avatar"
+                      class="w-11 h-11 rounded-full object-cover"
+                    />
+                    <div v-else v-html="message.avatar"></div>
+                  </div>
                   <h3
                     class="text-base font-semibold text-gray-900 dark:text-white m-0"
                   >
@@ -619,5 +627,9 @@ const handleCardMouseMove = (event: MouseEvent) => {
 
 const handleCardMouseLeave = () => {
   cardEffect.show = false;
+};
+
+const isHttpAvatar = (avatar: string) => {
+  return typeof avatar === "string" && avatar.startsWith("http");
 };
 </script>

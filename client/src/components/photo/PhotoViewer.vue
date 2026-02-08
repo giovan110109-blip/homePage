@@ -695,7 +695,7 @@ onBeforeUnmount(() => {
               </template>
             </div>
             <!-- 缩略图导航 -->
-            <div
+            <!-- <div
               :class="
                 isMobile
                   ? 'sticky bottom-0 z-20 bg-black/30 backdrop-blur-2xl pb-[env(safe-area-inset-bottom)]'
@@ -707,7 +707,7 @@ onBeforeUnmount(() => {
                 :photos="photos"
                 @index-change="handleThumbnailIndexChange"
               />
-            </div>
+            </div> -->
           </div>
 
           <!-- EXIF 面板 - 桌面端常驻，移动端可切换 -->

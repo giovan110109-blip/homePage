@@ -20,6 +20,7 @@
     "koa-bodyparser": "^4.4.1",
     "koa-mount": "^4.2.0",
     "koa-static": "^5.0.0",
+    "md5": "^2.3.0",
     "mongoose": "^8.1.1",
     "sharp": "^0.33.2",
     "thumbhash": "^0.1.1"

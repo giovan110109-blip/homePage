@@ -3,6 +3,7 @@ import { computed, ref, onMounted, watch } from "vue";
 import { motion } from "motion-v";
 import { MapPin, Settings, X } from "lucide-vue-next";
 import service from "@/api/request";
+import { formatFileSize } from "@/utils/format";
 
 interface Props {
   currentPhoto: any;
@@ -58,6 +59,7 @@ watch(
 
 // 使用 photoData 或 currentPhoto
 const displayPhoto = computed(() => photoData.value || props.currentPhoto);
+console.log(displayPhoto.value);
 
 const isMobile = computed(
   () => typeof window !== "undefined" && window.innerWidth < 768,
@@ -478,14 +480,6 @@ const formatExifValue = (value: any): string => {
     <!-- 内容区域 -->
     <div class="flex-1 min-h-0 overflow-y-auto">
       <div class="p-5 space-y-5">
-        <!-- 加载状态 -->
-        <div v-if="isLoadingExif" class="text-center py-6">
-          <div
-            class="inline-block animate-spin rounded-full h-5 w-5 border-2 border-slate-600 border-t-white"
-          ></div>
-          <p class="text-slate-300 text-xs mt-2">加载中...</p>
-        </div>
-
         <!-- 照片描述 -->
         <div
           v-if="displayPhoto.description"
@@ -495,30 +489,15 @@ const formatExifValue = (value: any): string => {
         </div>
         <!-- 位置信息 Section -->
         <div v-if="displayPhoto.location" class="space-y-3">
-          <h4
-            class="text-xs font-bold text-white uppercase tracking-widest px-1 flex items-center gap-2 whitespace-nowrap"
-          >
-            <MapPin :size="13" />
-            位置信息
-          </h4>
+          <!-- 地图 -->
           <div
-            class="rounded-xl bg-slate-800/30 border border-slate-700/40 p-4 space-y-3 min-h-[200px]"
+            class="h-40 rounded-lg overflow-hidden bg-slate-900/50 border border-slate-700/40 shadow-inner"
           >
-            <div v-if="displayPhoto.geoinfo?.formatted">
-              <p class="text-xs text-slate-200 leading-relaxed">
-                {{ displayPhoto.geoinfo.formatted }}
-              </p>
-            </div>
-            <!-- 地图 -->
-            <div
-              class="h-40 rounded-lg overflow-hidden bg-slate-900/50 border border-slate-700/40 shadow-inner"
-            >
-              <PhotoLocationMap
-                :latitude="displayPhoto.location.latitude"
-                :longitude="displayPhoto.location.longitude"
-                :zoom="14"
-              />
-            </div>
+            <PhotoLocationMap
+              :latitude="displayPhoto.location.latitude"
+              :longitude="displayPhoto.location.longitude"
+              :zoom="14"
+            />
           </div>
         </div>
 
@@ -527,11 +506,27 @@ const formatExifValue = (value: any): string => {
           <h4
             class="text-xs font-bold text-white uppercase tracking-widest px-1 whitespace-nowrap"
           >
-            📐 基本信息
+            基本信息
           </h4>
           <div
             class="rounded-xl bg-slate-800/30 border border-slate-700/40 overflow-hidden"
           >
+            <div
+              class="flex items-center justify-between text-xs px-4 py-3 hover:bg-slate-700/30 transition-all duration-150 border-b border-slate-700/20 last:border-0"
+            >
+              <span class="text-slate-300 whitespace-nowrap">文件名</span>
+              <span class="text-white font-mono font-semibold">{{
+                displayPhoto.baseName
+              }}</span>
+            </div>
+            <div
+              class="flex items-center justify-between text-xs px-4 py-3 hover:bg-slate-700/30 transition-all duration-150 border-b border-slate-700/20 last:border-0"
+            >
+              <span class="text-slate-300 whitespace-nowrap">文件大小</span>
+              <span class="text-white font-mono font-semibold">{{
+                formatFileSize(Number(displayPhoto.fileSize))
+              }}</span>
+            </div>
             <div
               class="flex items-center justify-between text-xs px-4 py-3 hover:bg-slate-700/30 transition-all duration-150 border-b border-slate-700/20 last:border-0"
             >
@@ -547,6 +542,15 @@ const formatExifValue = (value: any): string => {
               <span class="text-white font-mono text-right text-xs">{{
                 formatDate(displayPhoto.dateTaken)
               }}</span>
+            </div>
+            <div
+              v-if="displayPhoto.exif?.Megapixels"
+              class="flex items-center justify-between text-xs px-4 py-3 hover:bg-slate-700/30 transition-all duration-150 border-b border-slate-700/20 last:border-0"
+            >
+              <span class="text-slate-300 whitespace-nowrap">像素</span>
+              <span class="text-white font-mono font-semibold"
+                >{{ displayPhoto.exif?.Megapixels }}
+              </span>
             </div>
             <div
               v-if="displayPhoto.tags?.length"
@@ -570,7 +574,7 @@ const formatExifValue = (value: any): string => {
           <h4
             class="text-xs font-bold text-white uppercase tracking-widest px-1 whitespace-nowrap"
           >
-            📷 相机信息
+            设备信息
           </h4>
           <div
             class="rounded-xl bg-slate-800/30 border border-slate-700/40 overflow-hidden min-h-[80px]"
@@ -593,42 +597,14 @@ const formatExifValue = (value: any): string => {
                 displayPhoto.exif.Model
               }}</span>
             </div>
-          </div>
-        </div>
-        <!-- 镜头信息 Section -->
-        <div
-          v-if="
-            displayPhoto.exif?.LensModel ||
-            displayPhoto.exif?.LensMake ||
-            displayPhoto.camera?.lens
-          "
-          class="space-y-3"
-        >
-          <h4
-            class="text-xs font-bold text-white uppercase tracking-widest px-1 whitespace-nowrap"
-          >
-            🔍 镜头信息
-          </h4>
-          <div
-            class="rounded-xl bg-slate-800/30 border border-slate-700/40 overflow-hidden min-h-[80px]"
-          >
             <div
               v-if="displayPhoto.exif?.LensModel || displayPhoto.camera?.lens"
-              class="flex items-center justify-between text-xs px-4 py-2.5 hover:bg-slate-700/30 transition-all duration-150 border-b border-slate-700/20 last:border-0"
+              class="flex items-start justify-between gap-1 text-xs px-4 py-2.5 hover:bg-slate-700/30 transition-all duration-150 border-b border-slate-700/20 last:border-0"
             >
-              <span class="text-slate-300 whitespace-nowrap">型号</span>
-              <span class="text-white font-semibold">{{
+              <div class="text-slate-300 whitespace-nowrap ">镜头</div>
+              <div class="text-white font-semibold ">{{
                 displayPhoto.exif?.LensModel || displayPhoto.camera?.lens
-              }}</span>
-            </div>
-            <div
-              v-if="displayPhoto.exif?.LensMake"
-              class="flex items-center justify-between text-xs px-4 py-2.5 hover:bg-slate-700/30 transition-all duration-150 border-b border-slate-700/20 last:border-0"
-            >
-              <span class="text-slate-300 whitespace-nowrap">品牌</span>
-              <span class="text-white font-semibold">{{
-                displayPhoto.exif.LensMake
-              }}</span>
+              }}</div>
             </div>
             <div
               v-if="displayPhoto.exif?.LensInfo"
@@ -716,6 +692,7 @@ const formatExifValue = (value: any): string => {
             </div>
           </details>
         </div>
+      
       </div>
     </div>
   </motion.div>

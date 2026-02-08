@@ -5,7 +5,7 @@ const { getClientInfo } = require('../utils/requestInfo');
 const { getLocationByIp } = require('../utils/ipLocator');
 const reactionService = require('../services/reactionService');
 const ReactionLog = require('../models/reactionLog');
-
+const {getAvatarByEmail} = require('../utils/emailAvatar');
 class MessageController extends BaseController {
     // POST /api/messages  创建留言
     async create(ctx) {
@@ -18,12 +18,15 @@ class MessageController extends BaseController {
             // 获取客户端信息和地理位置
             const client = ctx.state.clientInfo || getClientInfo(ctx);
             const location = await getLocationByIp(client.ip);
-
+            // 使用邮箱生成头像
+            const emailAvatar = getAvatarByEmail(payload.email);
+            
+            const avatar = emailAvatar ?emailAvatar: payload.avatar
             const doc = await messageService.create({
                 name: payload.name,
                 email: payload.email,
                 website: payload.website,
-                avatar: payload.avatar,
+                avatar,
                 content: payload.content,
                 // 暂时取消人工审核，直接标记为通过
                 status: 'approved',

@@ -1,5 +1,9 @@
 <template>
   <div class="min-h-screen bg-black">
+    <!-- 居中 loading -->
+    <div v-if="loading" class="min-h-screen w-full py-24 flex flex-col items-center justify-start">
+      <Loading />
+    </div>
     <div class="w-full h-full">
       <!-- 瀑布流照片墙 -->
       <MasonryWall
@@ -78,6 +82,7 @@
 <script setup lang="ts">
 import { MapPin } from "lucide-vue-next";
 import MasonryWall from "@yeger/vue-masonry-wall";
+import Loading from '@/components/ui/Loading.vue';
 import request from "@/api/request";
 import { getPhotoOriginalUrl } from "@/utils";
 import { useLivePhotoCache } from "@/composables/useLivePhotoCache";

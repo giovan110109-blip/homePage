@@ -46,11 +46,16 @@
       <el-table :data="filteredMessages" stripe v-loading="loading">
         <el-table-column label="头像" width="70">
           <template #default="scope">
-            <div
-              v-if="scope.row.avatar"
-              class="avatar-html"
-              v-html="scope.row.avatar"
-            ></div>
+            <div v-if="scope.row.avatar" class="avatar-html">
+              <img
+                v-if="isHttpAvatar(scope.row.avatar)"
+                :src="scope.row.avatar"
+                alt="avatar"
+                class="w-11 h-11 rounded-full object-cover"
+              />
+              <div v-else v-html="scope.row.avatar"></div>
+            </div>
+
             <el-avatar :size="36" v-else>{{
               scope.row.name?.slice(0, 1) || "访"
             }}</el-avatar>
@@ -171,8 +176,15 @@
             <div
               v-if="currentRow.avatar"
               class="avatar-html flex-shrink-0 w-14 h-14 rounded-full overflow-hidden border-2 border-indigo-200 dark:border-slate-500"
-              v-html="currentRow.avatar"
-            ></div>
+            >
+              <img
+                v-if="isHttpAvatar(currentRow.avatar)"
+                :src="currentRow.avatar"
+                alt="avatar"
+                class="w-11 h-11 rounded-full object-cover"
+              />
+              <div v-else v-html="currentRow.avatar"></div>
+            </div>
             <el-avatar
               v-else
               :size="56"
@@ -182,7 +194,7 @@
             </el-avatar>
             <div class="flex-1 min-w-0">
               <h3
-                class="text-lg font-bold text-slate-900 dark:text-white truncate"
+                class="text-lg font-bold text-slate-600 dark:text-slate-300 truncate"
               >
                 {{ currentRow.name }}
               </h3>
@@ -503,7 +515,9 @@ const getDeviceIcon = (device?: string) => {
   if (value.includes("desktop") || value.includes("pc")) return Monitor;
   return Monitor;
 };
-
+const isHttpAvatar = (avatar: string) => {
+  return typeof avatar === "string" && avatar.startsWith("http");
+};
 onMounted(() => {
   handleFetch();
 });

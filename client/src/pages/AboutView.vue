@@ -222,12 +222,17 @@ const siteInfoStore = useSiteInfoStore()
 
 const experiences = [
   {
+    position: '自家服务器硬盘坏掉了',
+    company: '导致所有数据丢失😭😭',
+    period: '2026.2',
+    description: '😭😭'
+  },
+  {
     position: '重构个人主页开发中',
     company: '工作较忙 重构较慢',
     period: '2025.1',
     description: '努力重构中'
   },
-
 ]
 
 const interests = [
