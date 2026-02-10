@@ -70,7 +70,6 @@ declare module 'vue' {
     Loading: typeof import('./src/components/ui/Loading.vue')['default']
     LoadingIndicator: typeof import('./src/components/photo/LoadingIndicator.vue')['default']
     MagicCard: typeof import('./src/components/ui/MagicCard.vue')['default']
-    Meteors: typeof import('./src/components/ui/Meteors.vue')['default']
     Modal: typeof import('./src/components/ui/Modal.vue')['default']
     PhotoLocationMap: typeof import('./src/components/photo/PhotoLocationMap.vue')['default']
     PhotoViewer: typeof import('./src/components/photo/PhotoViewer.vue')['default']
@@ -79,7 +78,6 @@ declare module 'vue' {
     ProgressiveImage: typeof import('./src/components/photo/ProgressiveImage.vue')['default']
     ProjectMagicCard: typeof import('./src/components/ui/ProjectMagicCard.vue')['default']
     QuillEditor: typeof import('./src/components/ui/QuillEditor.vue')['default']
-    RadiantText: typeof import('./src/components/ui/RadiantText.vue')['default']
     ReactionConfetti: typeof import('./src/components/reaction/ReactionConfetti.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
@@ -87,11 +85,9 @@ declare module 'vue' {
     SparklesText: typeof import('./src/components/ui/SparklesText.vue')['default']
     SplitText: typeof import('./src/components/SplitText.vue')['default']
     TenYearPromise: typeof import('./src/components/ui/TenYearPromise.vue')['default']
-    TextHighlight: typeof import('./src/components/ui/TextHighlight.vue')['default']
     ThemeToggle: typeof import('./src/components/ui/ThemeToggle.vue')['default']
     ThumbHash: typeof import('./src/components/ui/ThumbHash.vue')['default']
     Timeline: typeof import('./src/components/ui/Timeline.vue')['default']
-    TracingBeam: typeof import('./src/components/ui/TracingBeam.vue')['default']
     UploadQueueFloat: typeof import('./src/components/admin/UploadQueueFloat.vue')['default']
   }
   export interface GlobalDirectives {
