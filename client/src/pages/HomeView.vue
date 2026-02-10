@@ -47,7 +47,6 @@
             <div
               class="absolute inset-0 rounded-full bg-gradient-to-r from-blue-500/20 to-blue-500/20 blur-xl -z-10 group-hover:from-blue-500/40 group-hover:to-blue-500/40 transition-all duration-300"
             ></div>
-
           </div>
         </div>
 

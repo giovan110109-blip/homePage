@@ -1,21 +1,36 @@
 <template>
-  <header class="fixed top-0 left-0 right-0 z-50 bg-white/30 dark:bg-gray-900/30 backdrop-blur-md border-b border-gray-300/20 dark:border-gray-700/20">
+  <header
+    class="fixed top-0 left-0 right-0 z-50 bg-white/30 dark:bg-gray-900/30 backdrop-blur-md border-b border-gray-300/20 dark:border-gray-700/20"
+  >
     <nav class="max-w-7xl mx-auto px-6">
       <div class="flex justify-between items-center h-16">
         <!-- Logo区域 -->
         <div class="flex items-center">
-          <router-link to="/" class="flex items-center ">
-            <div class="w-8 h-8 rounded-full overflow-hidden">
+          <router-link to="/" class="flex items-center">
+            <div class="h-[30px] w-[110px]">
+              <!-- 暗黑模式显示 -->
+              <img
+                src="/img/logo-light.png"
+                alt="Dark Logo"
+                class="w-full h-full hidden dark:block"
+              />
+              <!-- 明亮模式显示 -->
+              <img
+                src="/img/logo-dark.png"
+                alt="Light Logo"
+                class="w-full h-full dark:hidden"
+              />
             </div>
-            <span class="font-medium text-gray-900 dark:text-white text-3xl custom-font">
+            <!-- <span class="font-medium text-gray-900 dark:text-white text-3xl custom-font">
               {{ siteInfoStore.info.name }}
-            </span>
+            </span> -->
           </router-link>
-
         </div>
-        
+
         <!-- 中央导航菜单 -->
-        <div class="hidden md:flex items-center bg-gray-200/50 dark:bg-gray-800/50 backdrop-blur-sm rounded-full px-1 py-1 border border-gray-400/30 dark:border-gray-600/30">
+        <div
+          class="hidden md:flex items-center bg-gray-200/50 dark:bg-gray-800/50 backdrop-blur-sm rounded-full px-1 py-1 border border-gray-400/30 dark:border-gray-600/30"
+        >
           <router-link
             v-for="item in navigation"
             :key="item.name"
@@ -24,31 +39,44 @@
             :class="[
               $route.path === item.href
                 ? 'text-white bg-blue-500/80 backdrop-blur-sm'
-                : 'text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-300/50 dark:hover:bg-gray-800'
+                : 'text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-300/50 dark:hover:bg-gray-800',
             ]"
           >
             {{ item.name }}
           </router-link>
         </div>
-        
+
         <!-- 右侧操作区 -->
         <div class="flex items-center space-x-3">
           <ThemeToggle />
-          
+
           <!-- 移动端菜单按钮 -->
           <button
             @click="toggleMobileMenu"
             class="md:hidden p-2 rounded-lg text-gray-700 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors"
           >
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+            <svg
+              class="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M4 6h16M4 12h16M4 18h16"
+              />
             </svg>
           </button>
         </div>
       </div>
-      
+
       <!-- 移动端菜单 -->
-      <div v-if="mobileMenuOpen" class="md:hidden py-4 border-t border-gray-300 dark:border-gray-700">
+      <div
+        v-if="mobileMenuOpen"
+        class="md:hidden py-4 border-t border-gray-300 dark:border-gray-700"
+      >
         <div class="space-y-2">
           <router-link
             v-for="item in navigation"
@@ -58,7 +86,7 @@
             :class="[
               $route.path === item.href
                 ? 'text-white bg-blue-500/80 backdrop-blur-sm'
-                : 'text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-300/50 dark:hover:bg-gray-800'
+                : 'text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-300/50 dark:hover:bg-gray-800',
             ]"
             @click="closeMobileMenu"
           >
@@ -71,43 +99,42 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import { useSiteInfoStore } from '@/stores/siteInfo'
-import ThemeToggle from '@/components/ui/ThemeToggle.vue'
+import { ref } from "vue";
+import { useSiteInfoStore } from "@/stores/siteInfo";
+import ThemeToggle from "@/components/ui/ThemeToggle.vue";
 
-const siteInfoStore = useSiteInfoStore()
+const siteInfoStore = useSiteInfoStore();
 
-const mobileMenuOpen = ref(false)
+const mobileMenuOpen = ref(false);
 
 const navigation = [
-  { name: '首页', href: '/' },
-   { name: '关于我', href: '/about' },
-   { name: '留言板', href: '/note' },
-   { name: '朋友圈', href: '/friends' },
+  { name: "首页", href: "/" },
+  { name: "关于我", href: "/about" },
+  { name: "留言板", href: "/note" },
+  { name: "朋友圈", href: "/friends" },
   // { name: '文章列表', href: '/articles' },
-   { name: '我的网站', href: '/sites' },
+  { name: "我的网站", href: "/sites" },
   // { name: '赞助支持', href: '/sponsor' },
-  { name: '画廊', href: '/gallery' }
-  
-]
+  { name: "画廊", href: "/gallery" },
+];
 
 // 移动端菜单控制
 const toggleMobileMenu = () => {
-  mobileMenuOpen.value = !mobileMenuOpen.value
-}
+  mobileMenuOpen.value = !mobileMenuOpen.value;
+};
 
 const closeMobileMenu = () => {
-  mobileMenuOpen.value = false
-}
+  mobileMenuOpen.value = false;
+};
 </script>
 
 <style scoped>
 @font-face {
-  font-family: 'CustomFont';
-  src: url('../../../public/font/ZQKfreefont-2.ttf') format('truetype');
+  font-family: "CustomFont";
+  src: url("../../../public/font/ZQKfreefont-2.ttf") format("truetype");
 }
 
 .custom-font {
-  font-family: 'CustomFont', sans-serif;
+  font-family: "CustomFont", sans-serif;
 }
 </style>

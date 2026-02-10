@@ -6,8 +6,8 @@
 
 :root {
   font-family:
-    -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica,
-    Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
+    -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica,
+    Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
   line-height: 1.5;
   font-weight: 400;
 
@@ -60,12 +60,14 @@ body {
 .light .from-gray-50 {
   --tw-gradient-from: #f9fafb !important;
   --tw-gradient-to: rgb(249 250 251 / 0) !important;
-  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+  --tw-gradient-stops:
+    var(--tw-gradient-from), var(--tw-gradient-to) !important;
 }
 
 .light .via-blue-50 {
   --tw-gradient-to: rgb(239 246 255 / 0) !important;
-  --tw-gradient-stops: var(--tw-gradient-from), #eff6ff, var(--tw-gradient-to) !important;
+  --tw-gradient-stops:
+    var(--tw-gradient-from), #eff6ff, var(--tw-gradient-to) !important;
 }
 
 .light .to-purple-50 {
@@ -146,7 +148,12 @@ body {
 
 /* 浅色模式下的特定优化 */
 :root:not(.dark) .bg-gradient-to-br.from-gray-50.via-blue-50.to-purple-50 {
-  background: linear-gradient(to bottom right, #f8fafc, #f1f5f9, #e2e8f0) !important;
+  background: linear-gradient(
+    to bottom right,
+    #f8fafc,
+    #f1f5f9,
+    #e2e8f0
+  ) !important;
 }
 
 /* 确保文字在浅色背景下有足够对比度 */
@@ -183,21 +190,34 @@ body {
 
 /* 首页背景在浅色模式下使用浅色渐变 */
 :root:not(.dark) .bg-gradient-to-br.from-gray-100.via-gray-200.to-gray-300 {
-  background: linear-gradient(to bottom right, #f7fafc, #edf2f7, #e2e8f0) !important;
+  background: linear-gradient(
+    to bottom right,
+    #f7fafc,
+    #edf2f7,
+    #e2e8f0
+  ) !important;
 }
 
 /* 十年之约组件在浅色模式下的完整样式重写 */
 :root:not(.dark) .bg-gradient-to-r.from-slate-600\/80.to-stone-700\/80 {
-  background: linear-gradient(to right, rgba(248, 250, 252, 0.95), rgba(241, 245, 249, 0.95)) !important;
+  background: linear-gradient(
+    to right,
+    rgba(248, 250, 252, 0.95),
+    rgba(241, 245, 249, 0.95)
+  ) !important;
   border: 1px solid rgba(203, 213, 225, 0.6) !important;
 }
 
 /* 十年之约组件内的文字颜色调整 */
-:root:not(.dark) .bg-gradient-to-r.from-slate-600\/80.to-stone-700\/80 .text-white {
+:root:not(.dark)
+  .bg-gradient-to-r.from-slate-600\/80.to-stone-700\/80
+  .text-white {
   color: #1e293b !important;
 }
 
-:root:not(.dark) .bg-gradient-to-r.from-slate-600\/80.to-stone-700\/80 .text-slate-100 {
+:root:not(.dark)
+  .bg-gradient-to-r.from-slate-600\/80.to-stone-700\/80
+  .text-slate-100 {
   color: #475569 !important;
 }
 
@@ -243,36 +263,52 @@ body {
   }
 }
 
-:root:not(.dark) .bg-gradient-to-r.from-slate-600\/80.to-stone-700\/80 .text-slate-200 {
+:root:not(.dark)
+  .bg-gradient-to-r.from-slate-600\/80.to-stone-700\/80
+  .text-slate-200 {
   color: #64748b !important;
 }
 
-:root:not(.dark) .bg-gradient-to-r.from-slate-600\/80.to-stone-700\/80 .text-slate-300 {
+:root:not(.dark)
+  .bg-gradient-to-r.from-slate-600\/80.to-stone-700\/80
+  .text-slate-300 {
   color: #64748b !important;
 }
 
-:root:not(.dark) .bg-gradient-to-r.from-slate-600\/80.to-stone-700\/80 .text-white\/90 {
+:root:not(.dark)
+  .bg-gradient-to-r.from-slate-600\/80.to-stone-700\/80
+  .text-white\/90 {
   color: #334155 !important;
 }
 
-:root:not(.dark) .bg-gradient-to-r.from-slate-600\/80.to-stone-700\/80 .text-amber-200 {
+:root:not(.dark)
+  .bg-gradient-to-r.from-slate-600\/80.to-stone-700\/80
+  .text-amber-200 {
   color: #d97706 !important;
 }
 
 /* 十年之约组件内的背景元素调整 */
-:root:not(.dark) .bg-gradient-to-r.from-slate-600\/80.to-stone-700\/80 .bg-white\/30 {
+:root:not(.dark)
+  .bg-gradient-to-r.from-slate-600\/80.to-stone-700\/80
+  .bg-white\/30 {
   background-color: rgba(148, 163, 184, 0.3) !important;
 }
 
-:root:not(.dark) .bg-gradient-to-r.from-slate-600\/80.to-stone-700\/80 .bg-white\/20 {
+:root:not(.dark)
+  .bg-gradient-to-r.from-slate-600\/80.to-stone-700\/80
+  .bg-white\/20 {
   background-color: rgba(148, 163, 184, 0.2) !important;
 }
 
-:root:not(.dark) .bg-gradient-to-r.from-slate-600\/80.to-stone-700\/80 .border-white\/50 {
+:root:not(.dark)
+  .bg-gradient-to-r.from-slate-600\/80.to-stone-700\/80
+  .border-white\/50 {
   border-color: rgba(148, 163, 184, 0.5) !important;
 }
 
-:root:not(.dark) .bg-gradient-to-r.from-slate-600\/80.to-stone-700\/80 .border-white\/30 {
+:root:not(.dark)
+  .bg-gradient-to-r.from-slate-600\/80.to-stone-700\/80
+  .border-white\/30 {
   border-color: rgba(148, 163, 184, 0.3) !important;
 }
 
@@ -283,7 +319,10 @@ body {
 
 /* 修复浅色模式下页面背景 */
 :root:not(.dark) .bg-gradient-to-br {
-  background: linear-gradient(to bottom right, var(--tw-gradient-stops)) !important;
+  background: linear-gradient(
+    to bottom right,
+    var(--tw-gradient-stops)
+  ) !important;
 }
 
 /* 通用卡片组件浅色模式优化 */
@@ -352,13 +391,15 @@ body {
 }
 
 /* 修复首页顶部GitHub和Blog按钮在浅色模式下过黑的问题 */
-:root:not(.dark) .inline-flex.items-center.px-4.py-2.text-sm.font-medium.text-gray-900 {
+:root:not(.dark)
+  .inline-flex.items-center.px-4.py-2.text-sm.font-medium.text-gray-900 {
   color: #374151 !important;
   background-color: rgba(255, 255, 255, 0.7) !important;
   border-color: rgba(209, 213, 219, 0.5) !important;
 }
 
-:root:not(.dark) .inline-flex.items-center.px-4.py-2.text-sm.font-medium.text-gray-900:hover {
+:root:not(.dark)
+  .inline-flex.items-center.px-4.py-2.text-sm.font-medium.text-gray-900:hover {
   color: #1f2937 !important;
   background-color: rgba(255, 255, 255, 0.9) !important;
   border-color: rgba(156, 163, 175, 0.6) !important;
@@ -421,36 +462,36 @@ $color-dark-text-lighter: #f3f4f6;
 
 // 便签颜色
 $note-colors: (
-	0: (
-		#fef3c7,
-		#fde68a,
-		#92400e,
-		#78350f,
-	),
-	1: (
-		#fce7f3,
-		#fbcfe8,
-		#831843,
-		#500724,
-	),
-	2: (
-		#cffafe,
-		#a5f3fc,
-		#164e63,
-		#0e3a47,
-	),
-	3: (
-		#c7d2fe,
-		#a5b4fc,
-		#312e81,
-		#1e1b4b,
-	),
-	4: (
-		#d1fae5,
-		#a7f3d0,
-		#064e3b,
-		#042f2e,
-	),
+  0: (
+    #fef3c7,
+    #fde68a,
+    #92400e,
+    #78350f,
+  ),
+  1: (
+    #fce7f3,
+    #fbcfe8,
+    #831843,
+    #500724,
+  ),
+  2: (
+    #cffafe,
+    #a5f3fc,
+    #164e63,
+    #0e3a47,
+  ),
+  3: (
+    #c7d2fe,
+    #a5b4fc,
+    #312e81,
+    #1e1b4b,
+  ),
+  4: (
+    #d1fae5,
+    #a7f3d0,
+    #064e3b,
+    #042f2e,
+  ),
 );
 
 // 间距变量
