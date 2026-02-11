@@ -1,4 +1,4 @@
-export function getEmailTemplate(data) {
+function getEmailTemplate(data) {
   const { type, name, content } = data;
   let template = "";
   switch (type) {
@@ -143,3 +143,7 @@ export function getEmailTemplate(data) {
 
   return template;
 }
+
+module.exports = {
+  getEmailTemplate,
+};
