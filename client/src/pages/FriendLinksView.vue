@@ -21,7 +21,10 @@
 
       <!-- 友情链接展示区域 -->
       <div class="mb-14 sm:mb-20">
-        <div v-if="loading" class="flex flex-col items-center justify-center py-12">
+        <div
+          v-if="loading"
+          class="flex flex-col items-center justify-center py-12"
+        >
           <Loading />
         </div>
 

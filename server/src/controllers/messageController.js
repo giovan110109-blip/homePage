@@ -13,10 +13,7 @@ class MessageController extends BaseController {
     try {
       const payload = ctx.request.body || {};
       if (!payload.name || !payload.email || !payload.content) {
-        this.throwHttpError(
-          "name, email, content are required",
-          HttpStatus.BAD_REQUEST,
-        );
+        this.throwHttpError("名称、邮箱和内容为必填项", HttpStatus.BAD_REQUEST);
       }
 
       // 获取客户端信息和地理位置
@@ -58,7 +55,7 @@ class MessageController extends BaseController {
         content: payload.content,
       });
 
-      this.created(ctx, doc, "Message created");
+      this.created(ctx, doc, "留言成功");
     } catch (err) {
       this.fail(ctx, err);
     }
@@ -83,7 +80,7 @@ class MessageController extends BaseController {
         reactions: countsMap[String(i._id)] || reactionService.emptyCounts(),
       }));
 
-      this.paginated(ctx, merged, pagination, "Fetched messages");
+      this.paginated(ctx, merged, pagination, "获取留言成功");
     } catch (err) {
       this.fail(ctx, err);
     }
@@ -95,9 +92,8 @@ class MessageController extends BaseController {
       const updated = await messageService.updateById(ctx.params.id, {
         status: "approved",
       });
-      if (!updated)
-        this.throwHttpError("Message not found", HttpStatus.NOT_FOUND);
-      this.ok(ctx, updated, "Message approved");
+      if (!updated) this.throwHttpError("留言未找到", HttpStatus.NOT_FOUND);
+      this.ok(ctx, updated, "留言审核通过");
     } catch (err) {
       this.fail(ctx, err);
     }
@@ -107,9 +103,8 @@ class MessageController extends BaseController {
   async remove(ctx) {
     try {
       const removed = await messageService.deleteById(ctx.params.id);
-      if (!removed)
-        this.throwHttpError("Message not found", HttpStatus.NOT_FOUND);
-      this.ok(ctx, removed, "Message deleted");
+      if (!removed) this.throwHttpError("留言未找到", HttpStatus.NOT_FOUND);
+      this.ok(ctx, removed, "留言已删除");
     } catch (err) {
       this.fail(ctx, err);
     }
@@ -120,7 +115,7 @@ class MessageController extends BaseController {
     try {
       const { type, action = "add" } = ctx.request.body || {};
       if (!reactionService.allowed.includes(type)) {
-        this.throwHttpError("invalid reaction type", HttpStatus.BAD_REQUEST);
+        this.throwHttpError("无效的表态类型", HttpStatus.BAD_REQUEST);
       }
 
       const client = ctx.state.clientInfo || getClientInfo(ctx);
@@ -140,10 +135,10 @@ class MessageController extends BaseController {
         const counts = await reactionService.unreact("message", targetId, type); // 取消表态
         if (!counts)
           this.throwHttpError(
-            "no reaction to remove or message not found",
+            "无可取消的表态或留言未找到",
             HttpStatus.BAD_REQUEST,
           );
-        this.ok(ctx, counts, "Reaction removed");
+        this.ok(ctx, counts, "表态已取消");
         return;
       }
 
@@ -159,7 +154,7 @@ class MessageController extends BaseController {
 
       await ReactionLog.create({ targetType: "message", targetId, type, ip });
       const counts = await reactionService.react("message", targetId, type); // 新增表态
-      this.ok(ctx, counts, "Reaction updated");
+      this.ok(ctx, counts, "表态已更新");
     } catch (err) {
       this.fail(ctx, err);
     }

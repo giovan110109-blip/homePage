@@ -18,7 +18,7 @@ class FriendLinkController extends BaseController {
       // 验证必填字段
       if (!name || !url || !description || !email) {
         this.throwHttpError(
-          "name, url, description, email are required",
+          "名称、链接、简介、邮箱均为必填项",
           HttpStatus.BAD_REQUEST,
         );
       }
@@ -27,14 +27,14 @@ class FriendLinkController extends BaseController {
       try {
         new URL(url);
       } catch {
-        this.throwHttpError("Invalid URL format", HttpStatus.BAD_REQUEST);
+        this.throwHttpError("请输入正确的 URL 格式", HttpStatus.BAD_REQUEST);
       }
 
       // 检查邮箱是否已申请过
       const exists = await friendLinkService.checkEmailExists(email);
       if (exists) {
         this.throwHttpError(
-          "This email has already submitted a friend link application",
+          "此邮箱已申请过友情链接，如需修改申请信息，请联系管理员。",
           HttpStatus.BAD_REQUEST,
         );
       }
