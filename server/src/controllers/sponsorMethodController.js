@@ -1,6 +1,6 @@
-const BaseController = require('../utils/baseController');
-const { HttpStatus } = require('../utils/response');
-const sponsorMethodService = require('../services/sponsorMethodService');
+const BaseController = require("../utils/baseController");
+const { HttpStatus } = require("../utils/response");
+const sponsorMethodService = require("../services/sponsorMethodService");
 
 class SponsorMethodController extends BaseController {
   // GET /api/sponsor-methods
@@ -8,9 +8,9 @@ class SponsorMethodController extends BaseController {
     try {
       const items = await sponsorMethodService.findManyByFields(
         { enabled: true },
-        { sort: { sort: 1, createdAt: -1 } }
+        { sort: { sort: 1, createdAt: -1 } },
       );
-      this.ok(ctx, items, 'Fetched sponsor methods');
+      this.ok(ctx, items, "Fetched sponsor methods");
     } catch (err) {
       this.fail(ctx, err);
     }
@@ -19,8 +19,11 @@ class SponsorMethodController extends BaseController {
   // GET /api/admin/sponsor-methods
   async listAdmin(ctx) {
     try {
-      const items = await sponsorMethodService.findManyByFields({}, { sort: { sort: 1, createdAt: -1 } });
-      this.ok(ctx, items, 'Fetched sponsor methods');
+      const items = await sponsorMethodService.findManyByFields(
+        {},
+        { sort: { sort: 1, createdAt: -1 } },
+      );
+      this.ok(ctx, items, "Fetched sponsor methods");
     } catch (err) {
       this.fail(ctx, err);
     }
@@ -31,7 +34,7 @@ class SponsorMethodController extends BaseController {
     try {
       const payload = ctx.request.body || {};
       if (!payload.name) {
-        this.throwHttpError('name is required', HttpStatus.BAD_REQUEST);
+        this.throwHttpError("name is required", HttpStatus.BAD_REQUEST);
       }
 
       const doc = await sponsorMethodService.create({
@@ -43,7 +46,7 @@ class SponsorMethodController extends BaseController {
         enabled: payload.enabled !== false,
       });
 
-      this.created(ctx, doc, 'Sponsor method created');
+      this.created(ctx, doc, "赞助方式创建成功");
     } catch (err) {
       this.fail(ctx, err);
     }
@@ -53,9 +56,12 @@ class SponsorMethodController extends BaseController {
   async update(ctx) {
     try {
       const payload = ctx.request.body || {};
-      const updated = await sponsorMethodService.updateById(ctx.params.id, payload);
-      if (!updated) this.throwHttpError('Sponsor method not found', HttpStatus.NOT_FOUND);
-      this.ok(ctx, updated, 'Sponsor method updated');
+      const updated = await sponsorMethodService.updateById(
+        ctx.params.id,
+        payload,
+      );
+      if (!updated) this.throwHttpError("赞助方式未找到", HttpStatus.NOT_FOUND);
+      this.ok(ctx, updated, "赞助方式更新成功");
     } catch (err) {
       this.fail(ctx, err);
     }
@@ -65,8 +71,8 @@ class SponsorMethodController extends BaseController {
   async remove(ctx) {
     try {
       const removed = await sponsorMethodService.deleteById(ctx.params.id);
-      if (!removed) this.throwHttpError('Sponsor method not found', HttpStatus.NOT_FOUND);
-      this.ok(ctx, removed, 'Sponsor method deleted');
+      if (!removed) this.throwHttpError("赞助方式未找到", HttpStatus.NOT_FOUND);
+      this.ok(ctx, removed, "赞助方式删除成功");
     } catch (err) {
       this.fail(ctx, err);
     }

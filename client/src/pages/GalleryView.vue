@@ -1,7 +1,10 @@
 <template>
   <div class="min-h-screen bg-black">
     <!-- 居中 loading -->
-    <div v-if="loading" class="min-h-screen w-full py-24 flex flex-col items-center justify-start">
+    <div
+      v-if="loading"
+      class="min-h-screen w-full py-24 flex flex-col items-center justify-start"
+    >
       <Loading />
     </div>
     <div class="w-full h-full">
@@ -82,7 +85,7 @@
 <script setup lang="ts">
 import { MapPin } from "lucide-vue-next";
 import MasonryWall from "@yeger/vue-masonry-wall";
-import Loading from '@/components/ui/Loading.vue';
+import Loading from "@/components/ui/Loading.vue";
 import request from "@/api/request";
 import { getPhotoOriginalUrl } from "@/utils";
 import { useLivePhotoCache } from "@/composables/useLivePhotoCache";
@@ -174,21 +177,28 @@ const loadPhotos = async (reset = true) => {
     const params: any = {
       page: pagination.page,
       limit: pagination.limit,
+      visibility: "public",
     };
 
     const res: any = await request.get("/photos", { params });
 
     if (res?.data) {
-      const newPhotos = res.data.photos.map((p: Photo) => {
-        const photo = {
-          ...p,
-          loaded: false,
-          thumbHash: p.thumbHash || p.thumbnailHash,
-          originalUrl: p.originalUrl,
-          videoUrl: p.videoUrl ? p.videoUrl : undefined,
-        };
-        return photo;
-      });
+      const newPhotos = res.data.photos
+        .map((p: Photo) => {
+          const photo = {
+            ...p,
+            loaded: false,
+            thumbHash: p.thumbHash || p.thumbnailHash,
+            originalUrl: p.originalUrl,
+            videoUrl: p.videoUrl ? p.videoUrl : undefined,
+          };
+          return photo;
+        })
+        .sort((a: PhotoWithLoaded, b: PhotoWithLoaded) => {
+          return (
+            new Date(b.dateTaken).getTime() - new Date(a.dateTaken).getTime()
+          );
+        });
 
       photos.value = newPhotos;
       Object.assign(pagination, res.data.pagination);
@@ -204,9 +214,7 @@ const loadPhotos = async (reset = true) => {
         }));
 
       if (livePhotos.length > 0) {
-        console.log(
-          `📷 预加载 ${livePhotos.length} 个 LivePhoto 视频...`,
-        );
+        console.log(`📷 预加载 ${livePhotos.length} 个 LivePhoto 视频...`);
         preloadVideosInViewport(livePhotos, {
           maxConcurrent: 1,
           prioritizeVisible: false,

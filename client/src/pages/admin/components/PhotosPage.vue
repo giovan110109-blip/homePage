@@ -60,19 +60,23 @@
               </div>
 
               <!-- 移动端上传状态（轻量提示，不遮挡） -->
-              <div
-                class="md:hidden w-full"
-                v-if="uploadingFiles.length > 0"
-              >
+              <div class="md:hidden w-full" v-if="uploadingFiles.length > 0">
                 <div
                   class="flex items-center gap-3 rounded-full border border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-slate-900/70 px-3 py-2 shadow-sm backdrop-blur"
                 >
                   <div class="flex items-center gap-2 min-w-0">
-                    <span class="inline-flex h-2 w-2 rounded-full bg-blue-500 animate-pulse"></span>
-                    <span class="text-xs font-semibold text-gray-700 dark:text-gray-200">上传中</span>
+                    <span
+                      class="inline-flex h-2 w-2 rounded-full bg-blue-500 animate-pulse"
+                    ></span>
+                    <span
+                      class="text-xs font-semibold text-gray-700 dark:text-gray-200"
+                      >上传中</span
+                    >
                   </div>
                   <div class="flex-1">
-                    <div class="h-1.5 w-full rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+                    <div
+                      class="h-1.5 w-full rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden"
+                    >
                       <div
                         class="h-full rounded-full bg-gradient-to-r from-blue-500 via-sky-500 to-emerald-500 transition-all duration-300"
                         :style="{
@@ -80,11 +84,16 @@
                         }"
                       ></div>
                     </div>
-                    <div class="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
-                      队列 {{ queuedCount }} · 上传 {{ uploadingCount }} · 处理 {{ taskStats.processing }}
+                    <div
+                      class="mt-1 text-[11px] text-gray-500 dark:text-gray-400"
+                    >
+                      队列 {{ queuedCount }} · 上传 {{ uploadingCount }} · 处理
+                      {{ taskStats.processing }}
                     </div>
                   </div>
-                  <div class="text-xs font-semibold text-gray-700 dark:text-gray-200">
+                  <div
+                    class="text-xs font-semibold text-gray-700 dark:text-gray-200"
+                  >
                     {{ queuedCount + uploadingCount + taskStats.processing }}
                   </div>
                 </div>
@@ -164,7 +173,10 @@
                     <span class="text-green-600 dark:text-green-400">{{
                       taskStats.completed
                     }}</span>
-                    <span class="text-gray-400 dark:text-gray-500 mx-1.5 text-2xl">/</span>
+                    <span
+                      class="text-gray-400 dark:text-gray-500 mx-1.5 text-2xl"
+                      >/</span
+                    >
                     <span class="text-red-600 dark:text-red-400">{{
                       taskStats.failed
                     }}</span>
@@ -172,7 +184,6 @@
                 </div>
               </div>
             </div>
-
 
             <!-- 失败任务列表 - 已暂时屏蔽，重试功能在弹窗中 -->
             <!-- <div class="mb-6">
@@ -211,8 +222,11 @@
 
             <!-- 图片列表 -->
             <div class="space-y-4">
-              <div class="flex items-center justify-between pb-4 border-b border-gray-200 dark:border-gray-700">
-                <span class="font-semibold text-lg text-gray-900 dark:text-white"
+              <div
+                class="flex items-center justify-between pb-4 border-b border-gray-200 dark:border-gray-700"
+              >
+                <span
+                  class="font-semibold text-lg text-gray-900 dark:text-white"
                   >图片列表</span
                 >
                 <div class="flex items-center gap-2">
@@ -230,7 +244,9 @@
                 </div>
               </div>
 
-              <div class="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
+              <div
+                class="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm"
+              >
                 <el-table
                   :data="photoTableData"
                   stripe
@@ -267,6 +283,11 @@
                       {{ formatFileSize(scope.row.fileSize) }}
                     </template>
                   </el-table-column>
+                  <el-table-column label="可见性" width="110">
+                    <template #default="scope">
+                      {{ scope.row.visibility === "public" ? "可见" : "私密" }}
+                    </template>
+                  </el-table-column>
                   <el-table-column prop="isLive" label="实况" width="90">
                     <template #default="scope">
                       <el-tag :type="getLiveTagType(scope.row.isLive)">
@@ -274,7 +295,11 @@
                       </el-tag>
                     </template>
                   </el-table-column>
-                  <el-table-column prop="createdAt" label="上传时间" width="180">
+                  <el-table-column
+                    prop="createdAt"
+                    label="上传时间"
+                    width="180"
+                  >
                     <template #default="scope">
                       {{ formatDate(scope.row.createdAt) }}
                     </template>
@@ -305,7 +330,8 @@
                               <el-dropdown-item command="rotate-clockwise"
                                 >⟳ 顺时针 90°</el-dropdown-item
                               >
-                              <el-dropdown-item command="rotate-counterclockwise"
+                              <el-dropdown-item
+                                command="rotate-counterclockwise"
                                 >⟲ 逆时针 90°</el-dropdown-item
                               >
                               <li
@@ -338,6 +364,21 @@
                           @click="deletePhoto(scope.row)"
                           >删除</AppButton
                         >
+                        <AppButton
+                          variant="link-primary"
+                          size="none"
+                          @click="
+                            setVisibility(
+                              scope.row,
+                              scope.row.visibility === 'public'
+                                ? 'private'
+                                : 'public',
+                            )
+                          "
+                          >{{
+                            scope.row.visibility === "public" ? "私密" : "可见"
+                          }}</AppButton
+                        >
                       </div>
                     </template>
                   </el-table-column>
@@ -358,7 +399,9 @@
           </el-tab-pane>
 
           <el-tab-pane label="相册管理" name="albums">
-            <div class="flex items-center justify-between mb-4 pb-4 border-b border-gray-200 dark:border-gray-700">
+            <div
+              class="flex items-center justify-between mb-4 pb-4 border-b border-gray-200 dark:border-gray-700"
+            >
               <span class="font-semibold text-lg text-gray-900 dark:text-white"
                 >相册列表</span
               >
@@ -375,7 +418,9 @@
               </div>
             </div>
 
-            <div class="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
+            <div
+              class="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm"
+            >
               <el-table
                 :data="albumTableData"
                 stripe
@@ -753,8 +798,14 @@ const isDragging = ref(false);
 const fileInput = ref<HTMLInputElement | null>(null);
 const activeTab = ref("photos");
 const uploadQueueStore = useUploadQueueStore();
-const { taskStats, failedTasks, failedLoading, queuedCount, uploadingCount, uploadingFiles } =
-  storeToRefs(uploadQueueStore);
+const {
+  taskStats,
+  failedTasks,
+  failedLoading,
+  queuedCount,
+  uploadingCount,
+  uploadingFiles,
+} = storeToRefs(uploadQueueStore);
 
 const photoTableData = ref<any[]>([]);
 const photoLoading = ref(false);
@@ -803,7 +854,9 @@ const locationDialogVisible = ref(false);
 const savingLocation = ref(false);
 const searchingLocation = ref(false);
 const searchAddress = ref("");
-const searchResults = ref<Array<{ latitude: number; longitude: number; displayName: string }>>([]);
+const searchResults = ref<
+  Array<{ latitude: number; longitude: number; displayName: string }>
+>([]);
 const miniMapContainer = ref<HTMLDivElement | null>(null);
 const locationForm = ref({
   photoId: "",
@@ -1031,6 +1084,18 @@ const savePhoto = async () => {
   }
 };
 
+const setVisibility = async (row: any, visibility: string) => {
+  try {
+    await request.put(`/photos/${row._id}`, {
+      visibility,
+    });
+    ElMessage.success("更新成功");
+    await loadPhotos();
+  } catch (error: any) {
+    ElMessage.error(error?.message || "更新失败");
+  }
+};
+
 const handlePhotoAction = async (command: string, row: any) => {
   if (command === "rotate-clockwise") {
     await rotatePhotoImage(row, 90);
@@ -1217,7 +1282,7 @@ watch(
       loadPhotos();
       ElMessage.success("上传完成，已刷新列表");
     }
-  }
+  },
 );
 
 // 移动端进度条：汇总上传队列进度并保持单调递增，避免闪动
@@ -1232,7 +1297,8 @@ watch(
     const total = files.length || 1;
     const sum = files.reduce((acc, file) => {
       if (file.status === "completed") return acc + 100;
-      if (file.status === "processing") return acc + Math.max(file.progress || 0, 80);
+      if (file.status === "processing")
+        return acc + Math.max(file.progress || 0, 80);
       if (file.status === "uploading") return acc + (file.progress || 0);
       return acc + 0;
     }, 0);
@@ -1240,7 +1306,7 @@ watch(
     const avg = Math.min(99, Math.round(sum / total));
     mobileUploadProgress.value = Math.max(mobileUploadProgress.value, avg);
   },
-  { deep: true }
+  { deep: true },
 );
 
 const searchLocation = async () => {

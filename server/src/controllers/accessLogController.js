@@ -1,18 +1,21 @@
-const BaseController = require('../utils/baseController');
-const accessLogService = require('../services/accessLogService');
-const { getLocationByIp } = require('../utils/ipLocator');
+const BaseController = require("../utils/baseController");
+const accessLogService = require("../services/accessLogService");
+const { getLocationByIp } = require("../utils/ipLocator");
 
 class AccessLogController extends BaseController {
   // GET /api/admin/access-logs?page=1&pageSize=20
   async list(ctx) {
     try {
       const { page = 1, pageSize = 20 } = ctx.query;
-      const { items, pagination } = await accessLogService.paginate({}, {
-        page,
-        pageSize,
-        sort: { createdAt: -1 },
-      });
-      this.paginated(ctx, items, pagination, 'Fetched access logs');
+      const { items, pagination } = await accessLogService.paginate(
+        {},
+        {
+          page,
+          pageSize,
+          sort: { createdAt: -1 },
+        },
+      );
+      this.paginated(ctx, items, pagination, "获取访问日志列表成功");
     } catch (err) {
       this.fail(ctx, err);
     }
@@ -23,8 +26,8 @@ class AccessLogController extends BaseController {
     try {
       const client = ctx.state.clientInfo || {};
       const payload = ctx.request.body || {};
-      if (payload?.path && String(payload.path).startsWith('/admin')) {
-        this.ok(ctx, null, 'Ignored');
+      if (payload?.path && String(payload.path).startsWith("/admin")) {
+        this.ok(ctx, null, "已忽略管理员访问日志");
         return;
       }
       const location = await getLocationByIp(client.ip);
@@ -46,7 +49,7 @@ class AccessLogController extends BaseController {
         location,
       });
 
-      this.ok(ctx, null, 'Recorded');
+      this.ok(ctx, null, "已记录访问日志");
     } catch (err) {
       this.fail(ctx, err);
     }

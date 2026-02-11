@@ -68,7 +68,7 @@ class FriendLinkController extends BaseController {
         name: name,
         content: url,
       });
-      this.created(ctx, doc, "Friend link application submitted successfully");
+      this.created(ctx, doc, "友情链接申请提交成功，等待审核");
     } catch (err) {
       this.fail(ctx, err);
     }
@@ -93,7 +93,7 @@ class FriendLinkController extends BaseController {
     try {
       const { id } = ctx.params;
       await friendLinkService.incrementClick(id);
-      this.ok(ctx, null, "Click recorded");
+      this.ok(ctx, null, "点击已记录");
     } catch (err) {
       this.fail(ctx, err);
     }
@@ -130,7 +130,7 @@ class FriendLinkController extends BaseController {
       const link = await friendLinkService.findById(id);
 
       if (!link) {
-        this.throwHttpError("Friend link not found", HttpStatus.NOT_FOUND);
+        this.throwHttpError("友情链接未找到", HttpStatus.NOT_FOUND);
       }
 
       this.ok(ctx, link);
@@ -149,10 +149,10 @@ class FriendLinkController extends BaseController {
 
       const updated = await friendLinkService.update(id, payload);
       if (!updated) {
-        this.throwHttpError("Friend link not found", HttpStatus.NOT_FOUND);
+        this.throwHttpError("友情链接未找到", HttpStatus.NOT_FOUND);
       }
 
-      this.ok(ctx, updated, "Friend link updated successfully");
+      this.ok(ctx, updated, "友情链接更新成功");
     } catch (err) {
       this.fail(ctx, err);
     }
@@ -169,16 +169,13 @@ class FriendLinkController extends BaseController {
 
       if (!status || !["approved", "rejected"].includes(status)) {
         this.throwHttpError(
-          'Invalid status. Must be "approved" or "rejected"',
+          '状态无效。必须是 "approved" 或 "rejected"',
           HttpStatus.BAD_REQUEST,
         );
       }
 
       if (status === "rejected" && !reason) {
-        this.throwHttpError(
-          "Reason is required when rejecting",
-          HttpStatus.BAD_REQUEST,
-        );
+        this.throwHttpError("请填写审核不通过的理由", HttpStatus.BAD_REQUEST);
       }
 
       // 从认证信息中获取审核人（如果有的话）
@@ -190,7 +187,7 @@ class FriendLinkController extends BaseController {
         reviewedBy,
       });
       if (!updated) {
-        this.throwHttpError("Friend link not found", HttpStatus.NOT_FOUND);
+        this.throwHttpError("友情链接未找到", HttpStatus.NOT_FOUND);
       }
       if (status === "approved") {
         //审核通过邮件
@@ -209,7 +206,7 @@ class FriendLinkController extends BaseController {
           content: reason,
         });
       }
-      this.ok(ctx, updated, `Friend link ${status} successfully`);
+      this.ok(ctx, updated, `友情链接${status}成功`);
     } catch (err) {
       this.fail(ctx, err);
     }
@@ -224,10 +221,10 @@ class FriendLinkController extends BaseController {
       const deleted = await friendLinkService.delete(id);
 
       if (!deleted) {
-        this.throwHttpError("Friend link not found", HttpStatus.NOT_FOUND);
+        this.throwHttpError("友情链接未找到", HttpStatus.NOT_FOUND);
       }
 
-      this.ok(ctx, null, "Friend link deleted successfully");
+      this.ok(ctx, null, "友情链接删除成功");
     } catch (err) {
       this.fail(ctx, err);
     }
@@ -241,14 +238,11 @@ class FriendLinkController extends BaseController {
       const { updates } = ctx.request.body || {};
 
       if (!Array.isArray(updates) || updates.length === 0) {
-        this.throwHttpError(
-          "Updates array is required",
-          HttpStatus.BAD_REQUEST,
-        );
+        this.throwHttpError("更新数组是必需的", HttpStatus.BAD_REQUEST);
       }
 
       await friendLinkService.updateSort(updates);
-      this.ok(ctx, null, "Sort order updated successfully");
+      this.ok(ctx, null, "排序更新成功");
     } catch (err) {
       this.fail(ctx, err);
     }
