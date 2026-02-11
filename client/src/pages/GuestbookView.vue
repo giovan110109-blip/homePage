@@ -198,40 +198,59 @@
             >
               {{ message.content }}
             </p>
-            <div class="flex flex-wrap gap-2 my-3">
-              <span
-                v-if="message.os || message.browser || message.deviceType"
-                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-white/60 text-gray-500 border border-black/5 dark:bg-white/10 dark:text-gray-400 dark:border-white/10"
-              >
-                <component
-                  v-if="getOsIcon(message.os)"
-                  :is="getOsIcon(message.os)"
-                  class="w-3.5 h-3.5"
-                />
-                {{ message.os || "未知OS" }}
-                <span class="opacity-60">·</span>
-                <component
-                  v-if="getBrowserIcon(message.browser)"
-                  :is="getBrowserIcon(message.browser)"
-                  class="w-3.5 h-3.5"
-                />
-                {{ message.browser || "未知浏览器" }}
-                <template v-if="message.deviceType">
-                  <span class="opacity-60">·</span>
+            <div class="flex justify-between items-center">
+              <div class="flex flex-wrap gap-2 my-3">
+                <span
+                  v-if="message.os || message.browser || message.deviceType"
+                  class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-white/60 text-gray-500 border border-black/5 dark:bg-white/10 dark:text-gray-400 dark:border-white/10"
+                >
                   <component
-                    :is="getDeviceIcon(message.deviceType)"
+                    v-if="getOsIcon(message.os)"
+                    :is="getOsIcon(message.os)"
                     class="w-3.5 h-3.5"
                   />
-                  {{ message.deviceType }}
-                </template>
-              </span>
-              <span
-                v-if="message.location"
-                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-white/60 text-gray-500 border border-black/5 dark:bg-white/10 dark:text-gray-400 dark:border-white/10"
+                  {{ message.os || "未知OS" }}
+                  <span class="opacity-60">·</span>
+                  <component
+                    v-if="getBrowserIcon(message.browser)"
+                    :is="getBrowserIcon(message.browser)"
+                    class="w-3.5 h-3.5"
+                  />
+                  {{ message.browser || "未知浏览器" }}
+                  <template v-if="message.deviceType">
+                    <span class="opacity-60">·</span>
+                    <component
+                      :is="getDeviceIcon(message.deviceType)"
+                      class="w-3.5 h-3.5"
+                    />
+                    {{ message.deviceType }}
+                  </template>
+                </span>
+                <span
+                  v-if="message.location"
+                  class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-white/60 text-gray-500 border border-black/5 dark:bg-white/10 dark:text-gray-400 dark:border-white/10"
+                >
+                  来源：{{ formatLocation(message.location) }}
+                </span>
+              </div>
+              <div
+                class="text-xs text-gray-500 dark:text-gray-400 cursor-pointer whitespace-nowrap"
+                v-if="1==2"
+                @click="handelClick(index)"
               >
-                来源：{{ formatLocation(message.location) }}
-              </span>
+                评论
+              </div>
             </div>
+            <transition
+              enter-active-class="transition-all duration-800 ease-in-out overflow-hidden"
+              leave-active-class="transition-all duration-800 ease-in-out overflow-hidden"
+              enter-from-class="max-h-0 opacity-0"
+              enter-to-class="max-h-[600px] opacity-100"
+              leave-from-class="max-h-[600px] opacity-100"
+              leave-to-class="max-h-0 opacity-0"
+            >
+              <CommentBox v-if="showIndex === index"> </CommentBox>
+            </transition>
           </div>
 
           <!-- 加载更多提示 -->
@@ -631,5 +650,14 @@ const handleCardMouseLeave = () => {
 
 const isHttpAvatar = (avatar: string) => {
   return typeof avatar === "string" && avatar.startsWith("http");
+};
+
+const showIndex = ref(-1);
+const handelClick = (index) => {
+  if (index === showIndex.value) {
+    showIndex.value = -1;
+    return;
+  }
+  showIndex.value = index;
 };
 </script>

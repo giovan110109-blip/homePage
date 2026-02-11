@@ -15,6 +15,7 @@ declare module 'vue' {
     AppButton: typeof import('./src/components/ui/AppButton.vue')['default']
     Button: typeof import('./src/components/ui/Button.vue')['default']
     Card: typeof import('./src/components/ui/Card.vue')['default']
+    CommentBox: typeof import('./src/components/ui/CommentBox.vue')['default']
     DotGrid: typeof import('./src/components/DotGrid.vue')['default']
     ElAside: typeof import('element-plus/es')['ElAside']
     ElAutocomplete: typeof import('element-plus/es')['ElAutocomplete']
