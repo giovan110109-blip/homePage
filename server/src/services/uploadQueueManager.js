@@ -7,6 +7,7 @@ const Photo = require('../models/photo')
 const imageProcessing = require('./imageProcessing')
 const videoOptimizer = require('./videoOptimizer')
 const geocoding = require('./geocoding')
+const imageTagService = require('./imageTagService')
 const { execFile } = require('child_process')
 const { promisify } = require('util')
 
@@ -451,6 +452,15 @@ class UploadQueueManager extends EventEmitter {
       const dateTaken = processed.exif.DateTimeOriginal 
         ? new Date(processed.exif.DateTimeOriginal)
         : new Date()
+
+      // 阶段6.5: 图片标签识别
+      let imageTags = []
+      try {
+        const tagResult = await imageTagService.analyze(processed.processedBuffer)
+        imageTags = tagResult.allKeywords || []
+      } catch (tagError) {
+        console.warn('⚠️ 图片标签识别失败，继续处理:', tagError.message)
+      }
       
       // Live Photo 处理：检查是否有配对的视频文件
       let isLive = false
@@ -576,6 +586,8 @@ class UploadQueueManager extends EventEmitter {
           flash: processed.exif.Flash,
           exposureProgram: processed.exif.ExposureProgram
         },
+        
+        tags: imageTags,
         
         status: 'completed',
         uploadedBy: task.uploadedBy

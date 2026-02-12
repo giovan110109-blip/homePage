@@ -1,5 +1,3 @@
-@use "sass:list";
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -29,7 +27,7 @@ body {
 
 /* 仅在深色模式下覆盖白色背景，浅色模式保持纯白 */
 .dark .bg-white {
-  background-color: #111827 !important; /* gray-900 */
+  background-color: #111827 !important;
 }
 
 .light .bg-white {
@@ -141,11 +139,6 @@ body {
   @apply bg-black/20 !important;
 }
 
-/* 浅色模式优化 - 保持浅色但增强对比度 */
-:root:not(.dark) {
-  /* 保持浅色背景但稍微加深以提供更好的对比度 */
-}
-
 /* 浅色模式下的特定优化 */
 :root:not(.dark) .bg-gradient-to-br.from-gray-50.via-blue-50.to-purple-50 {
   background: linear-gradient(
@@ -219,48 +212,6 @@ body {
   .bg-gradient-to-r.from-slate-600\/80.to-stone-700\/80
   .text-slate-100 {
   color: #475569 !important;
-}
-
-/* Admin common styles */
-.page-content {
-  animation: fadeIn 0.3s ease;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-
-.page-header {
-  margin-bottom: 0px;
-}
-
-.page-title {
-  font-size: 28px;
-  font-weight: 700;
-  color: #1f2937;
-  margin: 0 0 8px 0;
-}
-
-.page-subtitle {
-  font-size: 14px;
-  color: #9ca3af;
-  margin: 0;
-}
-
-.pagination {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 16px;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
 }
 
 :root:not(.dark)
@@ -379,8 +330,6 @@ body {
   border-color: rgba(75, 85, 99, 0.3) !important;
 }
 
-/* 网站卡片技术标签在浅色模式下的优化 - 已在上面定义 */
-
 /* 标签边框在浅色模式下的进一步优化 - 更柔和的边框 */
 :root:not(.dark) .border-gray-300\/40 {
   border-color: rgba(75, 85, 99, 0.25) !important;
@@ -404,9 +353,6 @@ body {
   background-color: rgba(255, 255, 255, 0.9) !important;
   border-color: rgba(156, 163, 175, 0.6) !important;
 }
-
-/* 修复文章和关于页面在浅色模式下的深色元素问题 */
-/* 这些样式已在上面定义，删除重复 */
 
 /* 修复文章分类标签 - 更柔和的边框 */
 :root:not(.dark) .bg-blue-200\/60 {
@@ -437,290 +383,4 @@ body {
 
 :root:not(.dark) .border-gray-300 {
   border-color: rgba(209, 213, 219, 0.5) !important;
-}
-
-//留言板
-
-// 颜色变量
-$color-primary: #3b82f6;
-$color-primary-dark: #2563eb;
-$color-text-dark: #1f2937;
-$color-text-light: rgba(255, 255, 255, 0.95);
-$color-text-gray: #6b7280;
-$color-text-gray-light: #9ca3af;
-$color-text-gray-dark: #4b5563;
-$color-border: #e5e7eb;
-$color-bg-light: #f9fafb;
-$color-bg-dark: #1f2937;
-$color-bg-darker: #111827;
-
-$color-dark-border: #374151;
-$color-dark-border-light: #4b5563;
-$color-dark-text: #d1d5db;
-$color-dark-text-light: #6b7280;
-$color-dark-text-lighter: #f3f4f6;
-
-// 便签颜色
-$note-colors: (
-  0: (
-    #fef3c7,
-    #fde68a,
-    #92400e,
-    #78350f,
-  ),
-  1: (
-    #fce7f3,
-    #fbcfe8,
-    #831843,
-    #500724,
-  ),
-  2: (
-    #cffafe,
-    #a5f3fc,
-    #164e63,
-    #0e3a47,
-  ),
-  3: (
-    #c7d2fe,
-    #a5b4fc,
-    #312e81,
-    #1e1b4b,
-  ),
-  4: (
-    #d1fae5,
-    #a7f3d0,
-    #064e3b,
-    #042f2e,
-  ),
-);
-
-// 间距变量
-$spacing-xs: 12px;
-$spacing-sm: 16px;
-$spacing-md: 20px;
-$spacing-lg: 24px;
-$spacing-xl: 32px;
-$spacing-2xl: 48px;
-$spacing-3xl: 80px;
-
-// 圆角变量
-$radius-sm: 6px;
-$radius-md: 8px;
-$radius-lg: 12px;
-$radius-xl: 16px;
-
-// 字体大小
-$font-xs: 12px;
-$font-sm: 14px;
-$font-base: 15px;
-$font-lg: 16px;
-$font-xl: 18px;
-$font-2xl: 20px;
-$font-3xl: 28px;
-$font-4xl: 36px;
-
-/* Sponsor theme overrides */
-.dark .sponsor-page .sponsor-card {
-  background: rgba(17, 24, 39, 0.7);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-}
-
-.dark .sponsor-page .title {
-  color: rgba(255, 255, 255, 0.95);
-}
-
-.dark .sponsor-page .subtitle {
-  color: rgba(255, 255, 255, 0.6);
-}
-
-.dark .sponsor-page .qr-card {
-  background: #1f2937;
-  border: 1px solid #374151;
-}
-
-.dark .sponsor-page .qr-card h3 {
-  color: white;
-}
-
-.dark .sponsor-page .qr-placeholder {
-  background: #374151;
-  border: 1px solid #4b5563;
-}
-
-.dark .sponsor-page .qr-description {
-  color: rgba(255, 255, 255, 0.7);
-}
-
-.dark .sponsor-page .afdian-link {
-  background: #374151;
-  color: #f9fafb;
-  border: 1px solid #4b5563;
-}
-
-.dark .sponsor-page .afdian-link:hover {
-  background: #4b5563;
-}
-
-.dark .sponsor-page .notice {
-  background: #1e293b;
-  border: 1px solid #334155;
-  color: #cbd5e1;
-}
-
-.dark .sponsor-page .notice-text {
-  color: #cbd5e1;
-}
-
-.dark .sponsor-page .notice-text strong {
-  color: #f87171;
-}
-
-.dark .sponsor-page .email {
-  color: #93c5fd;
-  background: #334155;
-}
-
-.dark .sponsor-page .email:hover {
-  background: #475569;
-}
-
-.dark .sponsor-page .sponsors-table h2 {
-  color: white;
-}
-
-.dark .sponsor-page .sponsors-table table {
-  background: #111827;
-  border: 1px solid #374151;
-}
-
-.dark .sponsor-page .sponsors-table th,
-.dark .sponsor-page .sponsors-table td {
-  border-bottom: 1px solid #374151;
-}
-
-.dark .sponsor-page .sponsors-table th {
-  background: #1f2937;
-  color: #f3f4f6;
-}
-
-.dark .sponsor-page .sponsors-table td {
-  color: #d1d5db;
-}
-
-.dark .sponsor-page .sponsors-table tbody tr:hover {
-  background: #1f2937;
-}
-
-/* Guestbook theme overrides */
-.dark .guestbook-page .guestbook-card {
-  background: rgba(17, 24, 39, 0.7);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-}
-
-.dark .guestbook-page .title {
-  color: $color-text-light;
-}
-
-.dark .guestbook-page .subtitle {
-  color: rgba(255, 255, 255, 0.6);
-}
-
-.dark .guestbook-page .message-form-section {
-  background: $color-bg-dark;
-  border: 1px solid $color-dark-border;
-}
-
-.dark .guestbook-page .message-form {
-  --el-border-color: #374151;
-  --el-text-color-regular: #d1d5db;
-}
-
-.dark .guestbook-page .section-title {
-  color: white;
-  border-bottom-color: $color-dark-border;
-}
-
-.dark .guestbook-page .form-label {
-  color: $color-dark-text;
-}
-
-.dark .guestbook-page .form-input,
-.dark .guestbook-page .form-textarea {
-  background: $color-bg-darker;
-  border-color: $color-dark-border-light;
-  color: $color-dark-text-lighter;
-}
-
-.dark .guestbook-page .form-input:focus,
-.dark .guestbook-page .form-textarea:focus {
-  border-color: #60a5fa;
-}
-
-.dark .guestbook-page .empty-state {
-  color: $color-dark-text-light;
-}
-
-.dark .guestbook-page .message-item:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-}
-
-@each $index, $colors in $note-colors {
-  $dark-start: list.nth($colors, 3);
-  $dark-end: list.nth($colors, 4);
-
-  .dark .guestbook-page .message-item.note-color-#{$index} {
-    background: linear-gradient(135deg, $dark-start 0%, $dark-end 100%);
-  }
-}
-
-.dark .guestbook-page .meta-badge {
-  background: rgba(16, 185, 129, 0.2);
-  color: #34d399;
-}
-
-.dark .guestbook-page .meta-chip {
-  background: rgba(255, 255, 255, 0.05);
-  color: $color-dark-text;
-  border-color: rgba(255, 255, 255, 0.08);
-}
-
-.dark .guestbook-page .user-name {
-  color: white;
-}
-
-.dark .guestbook-page .message-time {
-  color: $color-dark-text-light;
-}
-
-.dark .guestbook-page .website-link {
-  background: $color-dark-border;
-  color: $color-dark-text;
-}
-
-.dark .guestbook-page .website-link:hover {
-  background: $color-dark-border-light;
-  color: $color-dark-text-lighter;
-}
-
-.dark .guestbook-page .message-content {
-  color: $color-dark-text;
-}
-
-.dark .guestbook-page .loading-state {
-  color: $color-dark-text-light;
-}
-
-.dark .guestbook-page .spinner {
-  border-color: $color-dark-border;
-  border-top-color: #60a5fa;
-}
-
-.dark .guestbook-page .load-more-hint {
-  color: $color-dark-text-light;
-}
-
-.dark .guestbook-page .no-more-state {
-  color: $color-dark-text-light;
 }
