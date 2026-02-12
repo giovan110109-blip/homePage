@@ -104,7 +104,8 @@ const getStageText = (stage: string) => {
     metadata_extraction: '提取元数据',
     thumbnail_generation: '生成缩略图',
     location_lookup: '地理位置解析',
-    database_save: '保存到数据库'
+    database_save: '保存到数据库',
+    tag_recognition: '图片标签识别'
   }
   return map[stage] || stage
 }

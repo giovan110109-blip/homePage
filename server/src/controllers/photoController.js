@@ -984,6 +984,20 @@ class PhotoController {
         }
       }
 
+      // 重新生成 ThumbHash（用于模糊占位图）
+      try {
+        console.log("[ROTATE] 重新生成 ThumbHash...");
+        const imageProcessing = require("../services/imageProcessing");
+        const rotatedBuffer = await fsp.readFile(filePath);
+        const newThumbHash = await imageProcessing.generateThumbHash(rotatedBuffer);
+        if (newThumbHash) {
+          photo.thumbnailHash = newThumbHash;
+          console.log("[ROTATE] ✓ ThumbHash 生成成功");
+        }
+      } catch (thumbHashError) {
+        console.warn("[ROTATE] ⚠️ ThumbHash 生成失败:", thumbHashError.message);
+      }
+
       // 更新数据库中的尺寸信息
       photo.width = newWidth;
       photo.height = newHeight;

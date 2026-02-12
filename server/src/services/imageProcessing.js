@@ -54,8 +54,26 @@ class ImageProcessingService {
 
   /**
    * 转换 HEIC 到 JPEG
+   * 优先使用 Sharp（可禁用自动旋转），失败时回退到 heic-convert
    */
   async convertHeicToJpeg(buffer, originalBuffer = null) {
+    // 优先使用 Sharp 处理 HEIC，因为可以禁用自动旋转
+    try {
+      console.log('🔄 使用 Sharp 处理 HEIC 图片...')
+      const jpegBuffer = await sharp(buffer, {
+        failOnError: false,
+        limitInputPixels: false,
+        autoRotate: false
+      })
+        .jpeg({ quality: 100 })
+        .toBuffer()
+      console.log('✅ Sharp 处理 HEIC 成功')
+      return jpegBuffer
+    } catch (sharpError) {
+      console.warn(`⚠️ Sharp 处理 HEIC 失败: ${sharpError.message}，尝试 heic-convert...`)
+    }
+
+    // Sharp 失败，使用 heic-convert（注意：会自动应用 EXIF Orientation）
     try {
       const outputBuffer = await heicConvert({
         buffer,
@@ -63,28 +81,10 @@ class ImageProcessingService {
         quality: 1.0
       })
       const jpegBuffer = Buffer.from(outputBuffer)
-      
-      // 如果转换后丢失了方向信息，尝试从原始buffer恢复
-      // 这个在后续的旋转处理中会通过EXIF提取来解决
-      console.log('✅ HEIC 已转换为 JPEG 格式')
+      console.log('✅ heic-convert 转换 HEIC 成功（注意：可能已应用旋转）')
       return jpegBuffer
     } catch (error) {
-      console.error(`❌ HEIC 转换失败: ${error.message}`)
-      // HEIC转换失败，尝试用Sharp直接处理
-      try {
-        console.log('🔄 尝试使用 Sharp 处理 HEIC 图片...')
-        const jpegBuffer = await sharp(buffer, {
-          failOnError: false,
-          limitInputPixels: false,
-          autoRotate: false
-        })
-          .jpeg({ quality: 100 })
-          .toBuffer()
-        console.log('✅ Sharp 处理 HEIC 成功')
-        return jpegBuffer
-      } catch (sharpError) {
-        throw new Error(`HEIC 转换失败（Sharp也失败）: ${sharpError.message}`)
-      }
+      throw new Error(`HEIC 转换失败: ${error.message}`)
     }
   }
 

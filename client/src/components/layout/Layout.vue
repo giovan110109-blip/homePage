@@ -66,11 +66,11 @@ const routeOrder = {
   '/': 0,
   '/about': 1,
   '/note': 2,
-  '/articles': 3,
-  '/sites': 4,
-  '/friends': 5,
+  // '/articles': 3,
+  '/sites': 3,
+  '/friends': 4,
   // '/sponsor': 6,
-  '/gallery': 6,
+  '/gallery': 5,
 }
 
 // 监听路由变化，动态设置过渡动画

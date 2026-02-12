@@ -616,6 +616,16 @@ const formatExifValue = (value: any): string => {
                 >{{ displayPhoto.exif.LensInfo }}</span
               >
             </div>
+                <div
+              v-if="displayPhoto.exif?.Software"
+              class="flex items-center justify-between text-xs px-4 py-2.5 hover:bg-slate-700/30 transition-all duration-150"
+            >
+              <span class="text-slate-300 whitespace-nowrap">软件</span>
+              <span
+                class="text-white text-right max-w-xs truncate font-semibold"
+                >{{ displayPhoto.exif.Software }}</span
+              >
+            </div>
           </div>
         </div>
 

@@ -9,13 +9,17 @@ const client = new AipImageClassifyClient(APP_ID, API_KEY, SECRET_KEY)
 class ImageTagService {
   async getTags(imageBuffer) {
     try {
-      const result = await client.advancedGeneral(imageBuffer, {
+      const imageBase64 = imageBuffer.toString('base64')
+      
+      const result = await client.advancedGeneral(imageBase64, {
         BaikeNum: 0
       })
       
+      console.log('📊 百度API返回:', JSON.stringify(result, null, 2))
+      
       if (result.result && result.result.length > 0) {
         const tags = result.result
-          .filter(item => item.score > 0.3)
+          .filter(item => item.score > 0.2)
           .map(item => ({
             keyword: item.keyword,
             score: Math.round(item.score * 100) / 100
@@ -25,49 +29,21 @@ class ImageTagService {
         return tags
       }
       
+      console.log('⚠️ 百度API返回无结果:', result)
       return []
     } catch (error) {
       console.error('❌ 图片标签识别失败:', error.message)
-      return []
-    }
-  }
-
-  async getScene(imageBuffer) {
-    try {
-      const result = await client.sceneAdvancedClassify(imageBuffer)
-      
-      if (result.result && result.result.length > 0) {
-        const scenes = result.result
-          .filter(item => item.score > 0.3)
-          .map(item => ({
-            scene: item.keyword,
-            score: Math.round(item.score * 100) / 100
-          }))
-        
-        console.log(`🏞️ 场景识别成功: ${scenes.map(s => s.scene).join(', ')}`)
-        return scenes
-      }
-      
-      return []
-    } catch (error) {
-      console.error('❌ 场景识别失败:', error.message)
+      console.error('❌ 错误堆栈:', error.stack)
       return []
     }
   }
 
   async analyze(imageBuffer) {
-    const [tags, scenes] = await Promise.all([
-      this.getTags(imageBuffer),
-      this.getScene(imageBuffer)
-    ])
+    const tags = await this.getTags(imageBuffer)
     
     return {
       tags,
-      scenes,
-      allKeywords: [
-        ...tags.map(t => t.keyword),
-        ...scenes.map(s => s.scene)
-      ].filter((v, i, a) => a.indexOf(v) === i)
+      allKeywords: tags.map(t => t.keyword)
     }
   }
 }

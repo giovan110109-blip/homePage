@@ -32,8 +32,9 @@ const uploadTaskSchema = new mongoose.Schema(
         'metadata_extraction', // EXIF提取
         'thumbnail_generation',
         'location_lookup', // 反向地理编码
-        'database_save'
-      ]
+        'database_save',
+        'tag_recognition'
+      ],
     },
     
     // 进度
