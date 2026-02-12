@@ -14,7 +14,6 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed, watch, nextTick } from 'vue'
 
 interface Props {
   dotSize?: number

@@ -5,26 +5,43 @@
       class="bg-white/80 dark:bg-white/5 backdrop-blur-xl rounded-xl p-3 sm:p-4 border border-gray-200/60 dark:border-white/10 shadow-md"
     >
       <form @submit.prevent="onSubmit" class="space-y-3">
-        <div class="flex flex-col sm:flex-row gap-2">
+        <!-- 登录状态：显示用户信息 -->
+        <div v-if="isLoggedIn" class="flex items-center gap-3 mb-2">
+          <img
+            :src="userAvatar"
+            alt="avatar"
+            class="w-10 h-10 rounded-full object-cover"
+          />
+          <div>
+            <div class="font-medium text-gray-900 dark:text-white">
+              {{ userName }}
+            </div>
+            <div class="text-xs text-gray-500 dark:text-gray-400">
+              楼主
+            </div>
+          </div>
+        </div>
+        <!-- 未登录：显示输入框 -->
+        <div v-else class="grid grid-cols-1 sm:grid-cols-3 gap-2">
           <input
-            v-model="form.nickname"
+            v-model="form.name"
             type="text"
             required
-            class="w-full sm:w-1/4 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white/50 dark:bg-white/5 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-sm"
+            class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus:border-blue-500 outline-none transition-all text-sm"
             placeholder="昵称*"
           />
           <input
             v-model="form.email"
             type="email"
             required
-            class="w-full sm:w-1/4 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white/50 dark:bg-white/5 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-sm"
+            class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus:border-blue-500 outline-none transition-all text-sm"
             placeholder="邮箱*"
           />
           <input
             v-model="form.website"
             type="text"
             inputmode="url"
-            class="w-full sm:w-1/4 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white/50 dark:bg-white/5 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-sm"
+            class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus:border-blue-500 outline-none transition-all text-sm"
             placeholder="网址（可选）"
             autocomplete="url"
           />
@@ -33,7 +50,7 @@
           v-model="form.content"
           required
           rows="2"
-          class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white/50 dark:bg-white/5 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all resize-none text-sm"
+          class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus:border-blue-500 outline-none transition-all resize-none text-sm"
           placeholder="请输入评论..."
         ></textarea>
         <div class="flex items-center justify-end space-x-2">
@@ -62,155 +79,211 @@
       <p>还没有评论，快来抢沙发吧！</p>
     </div>
     <div v-else class="flex flex-col gap-2 py-2">
-      <div
-        v-for="(comment, idx) in comments"
-        :key="comment.id || idx"
-        class="bg-white/80 dark:bg-white/5 backdrop-blur-xl rounded-xl p-3 border border-gray-200/60 dark:border-white/10 shadow hover:shadow-lg dark:hover:shadow-blue-900/20 hover:border-blue-400/70 dark:hover:border-blue-400/50 hover:-translate-y-0.5 transition-all"
-      >
-        <div class="flex items-center gap-2 mb-1">
-          <img
-            v-if="comment.avatar"
-            :src="comment.avatar"
-            alt="avatar"
-            class="w-8 h-8 rounded-full object-cover"
-          />
-          <span class="font-semibold text-gray-900 dark:text-white text-sm">{{
-            comment.nickname
-          }}</span>
-          <a
-            v-if="comment.website"
-            :href="normalizeWebsite(comment.website)"
-            target="_blank"
-            rel="noopener"
-            class="text-xs text-blue-500 hover:underline ml-1"
-            >网站</a
-          >
-        </div>
-        <div
-          class="text-gray-700 dark:text-gray-300 text-[13px] leading-5 m-0 break-words mb-1"
-        >
-          {{ comment.content }}
-        </div>
-        <div class="text-xs text-gray-400 dark:text-gray-500 mb-0.5">
-          {{ formatDate(comment.createdAt) }}
-        </div>
-        <!-- 回复区 -->
-        <div
-          v-if="comment.replies && comment.replies.length"
-          class="ml-4 mt-1 flex flex-col gap-1"
-        >
-          <div
-            v-for="reply in comment.replies"
-            :key="reply.id"
-            class="bg-white/60 dark:bg-white/10 rounded-lg p-2 border border-gray-200/40 dark:border-white/10"
-          >
-            <div class="flex gap-1 items-center">
-              <img
-                v-if="reply.avatar"
-                :src="reply.avatar"
-                alt="avatar"
-                class="w-6 h-6 rounded-full object-cover"
-              />
-              <span
-                class="font-semibold text-gray-800 dark:text-gray-200 text-xs"
-                >{{ reply.nickname }}</span
-              >
-              <a
-                v-if="reply.website"
-                :href="normalizeWebsite(reply.website)"
-                target="_blank"
-                rel="noopener"
-                class="text-xs text-blue-400 hover:underline ml-1"
-                >网站</a
-              >
-            </div>
-            <div class="text-gray-600 dark:text-gray-400 text-xs">
-              {{ reply.content }}
-            </div>
-            <div class="text-xs text-gray-400 dark:text-gray-500">
-              {{ formatDate(reply.createdAt) }}
-            </div>
-          </div>
-        </div>
-        <!-- 回复按钮（可扩展） -->
-      </div>
+      <CommentItem
+        v-for="comment in comments"
+        :key="comment.id"
+        :comment="comment"
+        :target-id="targetId"
+        :is-logged-in="isLoggedIn"
+        :user-name="userName"
+        :user-email="userEmail"
+        :user-avatar="userAvatar"
+        @reply-submitted="fetchComments"
+        @comment-deleted="fetchComments"
+      />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { ElMessage } from "element-plus";
+import request from "@/api/request";
+import { buildAvatarSvg } from "@/utils/avatarSvg";
+import { useAuthStore } from "@/stores/auth";
+import AppButton from "@/components/ui/AppButton.vue";
+import CommentItem from "@/components/ui/CommentItem.vue";
 
-interface CommentItem {
+interface CommentType {
   id: string;
-  nickname: string;
+  name: string;
   email: string;
   website?: string;
   avatar?: string;
   content: string;
   createdAt: string;
-  replies?: CommentItem[];
+  parentId?: string | null;
+  os?: string;
+  browser?: string;
+  deviceType?: string;
+  location?: string | null;
+  replies?: CommentType[];
 }
 
-const form = ref({ nickname: "", email: "", website: "", content: "" });
-const submitting = ref(false);
-const loading = ref(false);
-const comments = ref<CommentItem[]>([]);
+const props = defineProps<{
+  targetId: string;
+}>();
 
-function onSubmit() {
-  if (!form.value.nickname || !form.value.email || !form.value.content) return;
-  submitting.value = true;
-  setTimeout(() => {
-    // 模拟添加评论
-    comments.value.unshift({
-      id: Date.now().toString(),
-      nickname: form.value.nickname,
+const emit = defineEmits<{
+  (e: "commented"): void;
+}>();
+
+const authStore = useAuthStore();
+const isLoggedIn = computed(() => authStore.isLoggedIn);
+const userName = computed(() => authStore.user?.nickname || authStore.user?.username || "管理员");
+const userEmail = computed(() => authStore.user?.email || "");
+const userAvatar = computed(() => authStore.user?.avatar || "");
+
+const COMMENT_FORM_KEY = "comment-form-cache";
+const loadFormCache = () => {
+  try {
+    const cached = localStorage.getItem(COMMENT_FORM_KEY);
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      return parsed;
+    }
+  } catch {}
+  return { name: "", email: "", website: "", content: "" };
+};
+
+const saveFormCache = () => {
+  if (!isLoggedIn.value) {
+    localStorage.setItem(COMMENT_FORM_KEY, JSON.stringify({
+      name: form.value.name,
       email: form.value.email,
       website: form.value.website,
-      avatar: "",
-      content: form.value.content,
-      createdAt: new Date().toISOString(),
-      replies: [],
+    }));
+  }
+};
+
+const form = ref(loadFormCache());
+const submitting = ref(false);
+const loading = ref(false);
+const comments = ref<CommentType[]>([]);
+
+const fetchComments = async () => {
+  if (!props.targetId) return;
+  loading.value = true;
+  try {
+    const res = await request.get("/comments", {
+      params: { targetId: props.targetId },
     });
-    form.value.content = "";
-    submitting.value = false;
-  }, 600);
-}
-
-function normalizeWebsite(url: string) {
-  if (!url) return "";
-  let u = url.trim();
-  if (!u) return "";
-  try {
-    new URL(u);
-    return u;
-  } catch {}
-  if (!/^https?:\/\//i.test(u)) u = `https://${u}`;
-  try {
-    new URL(u);
-    return u;
-  } catch {
-    return "";
+    const list = (res as any)?.data ?? (res as any)?.items ?? res ?? [];
+    const mapped = Array.isArray(list) ? list.map(mapComment) : [];
+    comments.value = buildCommentTree(mapped);
+  } catch (error) {
+    console.error("加载评论失败:", error);
+  } finally {
+    loading.value = false;
   }
-}
+};
 
-function formatDate(value: string | Date) {
-  const date = value instanceof Date ? value : new Date(value);
-  const now = new Date();
-  const diff = now.getTime() - date.getTime();
-  const days = Math.floor(diff / (24 * 60 * 60 * 1000));
-  if (days === 0) {
-    const hours = Math.floor(diff / (60 * 60 * 1000));
-    if (hours === 0) {
-      const minutes = Math.floor(diff / (60 * 1000));
-      return `${minutes}分钟前`;
+const mapComment = (item: any): (CommentType & { parentId?: string | null }) | null => {
+  const id = String(item?._id ?? item?.id ?? "");
+  if (!id) return null;
+  const location = (() => {
+    if (!item?.location) return null;
+    if (typeof item.location === "string") return item.location;
+    const country = item.location.country || item.location.countryName || "";
+    const region = item.location.region || item.location.province || "";
+    const city = item.location.city || "";
+    const parts = [country, region, city].filter(Boolean);
+    return parts.length ? parts.join(" ") : null;
+  })();
+  return {
+    id,
+    name: item.name,
+    email: item.email,
+    website: item.website,
+    avatar: item.avatar,
+    content: item.content,
+    createdAt: item.createdAt ?? new Date().toISOString(),
+    parentId: item.parentId ?? null,
+    os: item.os,
+    browser: item.browser,
+    deviceType: item.deviceType,
+    location,
+  };
+};
+
+const buildCommentTree = (flatComments: (CommentType & { parentId?: string | null })[]): CommentType[] => {
+  const commentMap = new Map<string, CommentType>();
+  const rootComments: CommentType[] = [];
+
+  flatComments.forEach((comment) => {
+    commentMap.set(comment.id, { ...comment, replies: [] });
+  });
+
+  flatComments.forEach((comment) => {
+    const node = commentMap.get(comment.id);
+    if (!node) return;
+
+    if (!comment.parentId) {
+      rootComments.push(node);
+    } else {
+      const parent = commentMap.get(comment.parentId);
+      if (parent) {
+        parent.replies = parent.replies || [];
+        parent.replies.push(node);
+      } else {
+        rootComments.push(node);
+      }
     }
-    return `${hours}小时前`;
-  } else if (days === 1) {
-    return "昨天";
-  } else if (days < 7) {
-    return `${days}天前`;
-  } else {
-    return date.toLocaleDateString("zh-CN");
+  });
+
+  return rootComments;
+};
+
+const onSubmit = async () => {
+  const name = isLoggedIn.value ? userName.value : form.value.name;
+  const email = isLoggedIn.value ? userEmail.value : form.value.email;
+  
+  if (!form.value.content) {
+    ElMessage.warning("请输入评论内容");
+    return;
   }
-}
+  if (!isLoggedIn.value && (!name || !email)) {
+    ElMessage.warning("请填写昵称和邮箱");
+    return;
+  }
+  if (!props.targetId) {
+    ElMessage.warning("无法确定评论目标");
+    return;
+  }
+  submitting.value = true;
+  try {
+    const avatar = isLoggedIn.value && userAvatar.value 
+      ? userAvatar.value 
+      : await buildAvatarSvg();
+    await request.post("/comments", {
+      targetId: props.targetId,
+      name: name || "楼主",
+      email: email || "14945447@qq.com",
+      website: form.value.website || undefined,
+      avatar,
+      content: form.value.content,
+      isAdmin: isLoggedIn.value,
+    });
+    saveFormCache();
+    form.value.content = "";
+    ElMessage.success("评论成功");
+    await fetchComments();
+    emit("commented");
+  } catch (error) {
+    console.error("评论失败:", error);
+    const msg = (error as any)?.response?.data?.message || "评论失败，请稍后再试";
+    ElMessage.error(msg);
+  } finally {
+    submitting.value = false;
+  }
+};
+
+watch(
+  () => props.targetId,
+  (newVal) => {
+    if (newVal) {
+      fetchComments();
+    }
+  },
+  { immediate: true }
+);
 </script>

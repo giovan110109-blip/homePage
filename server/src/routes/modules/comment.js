@@ -1,7 +1,7 @@
 const Router = require('@koa/router');
 const commentController = require('../../controllers/commentController');
 
-const router = new Router({ prefix: '/comments' });
+const router = new Router({ prefix: '/api/comments' });
 
 // 创建评论或回复
 router.post('/', commentController.create.bind(commentController));

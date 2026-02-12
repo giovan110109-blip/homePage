@@ -235,7 +235,6 @@
               </div>
               <div
                 class="text-xs text-gray-500 dark:text-gray-400 cursor-pointer whitespace-nowrap"
-                v-if="1==2"
                 @click="handelClick(index)"
               >
                 评论
@@ -249,7 +248,10 @@
               leave-from-class="max-h-[600px] opacity-100"
               leave-to-class="max-h-0 opacity-0"
             >
-              <CommentBox v-if="showIndex === index"> </CommentBox>
+              <CommentBox
+                v-if="showIndex === index"
+                :target-id="message.id"
+              />
             </transition>
           </div>
 
@@ -294,6 +296,7 @@ import {
 import { ElMessage } from "element-plus";
 import AppButton from "@/components/ui/AppButton.vue";
 import Loading from "@/components/ui/Loading.vue";
+import CommentBox from "@/components/ui/CommentBox.vue";
 import request from "@/api/request";
 import { buildAvatarSvg } from "@/utils/avatarSvg";
 import { getExternalLinkRedirectUrl } from "@/utils/external-link";

@@ -40,7 +40,8 @@ function registerRoutes(app) {
         'photos.js',
         'dashboard.js',
         'geo.js',
-        'comment.js'
+        'comment.js',
+        'adminComments.js'
     ]);
 
     // 过滤出路由文件

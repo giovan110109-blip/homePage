@@ -1,5 +1,5 @@
 function getEmailTemplate(data) {
-  const { type, name, content } = data;
+  const { type, name, content, commenterName } = data;
   let template = "";
   switch (type) {
     case 5:
@@ -38,6 +38,70 @@ function getEmailTemplate(data) {
         </table>
         `;
       break;
+    case 6:
+      template = `
+        <table width="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr>
+                <td style="padding-bottom: 20px;padding-top: 20px;">
+                    <p style="margin: 0; font-size: 18px; color: #222; line-height: 1.5;">Hi ${name}～🗨️</p>
+                    <p style="margin: 8px 0 0 0; font-size: 16px; color: #10b981; line-height: 1.6; font-weight: bold;">
+                        您的留言收到了新评论！
+                    </p>
+                    <p style="margin: 8px 0 0 0; font-size: 15px; color: #666; line-height: 1.6;">
+                        <span style="color: #10b981; font-weight: 500;">${commenterName || "有人"}</span> 对您的留言进行了评论，快来看看吧～
+                    </p>
+                    <p style="margin: 8px 0 0 0; font-size: 15px; color: #666; line-height: 1.6;">
+                        评论内容：${content}
+                    </p>
+                </td>
+            </tr>
+            <tr>
+                <td align="center" style="padding: 24px 0;">
+                    <a href="https://www.giovan.cn/#/note" target="_blank" style="display: inline-block; padding: 12px 36px; background-color: #10b981; color: #fff; font-size: 14px; font-weight: 400; text-decoration: none; border-radius: 30px; border: 0;">
+                        查看评论详情
+                    </a>
+                </td>
+            </tr>
+            <tr>
+                <td style="padding-top: 16px;">
+                    <p style="font-size: 13px; color: #888;">感谢您的参与，期待您的回复！</p>
+                </td>
+            </tr>
+        </table>
+        `;
+      break;
+    case 7:
+      template = `
+        <table width="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr>
+                <td style="padding-bottom: 20px;padding-top: 20px;">
+                    <p style="margin: 0; font-size: 18px; color: #222; line-height: 1.5;">Hi ${name}～💬</p>
+                    <p style="margin: 8px 0 0 0; font-size: 16px; color: #f59e0b; line-height: 1.6; font-weight: bold;">
+                        您的评论收到了新回复！
+                    </p>
+                    <p style="margin: 8px 0 0 0; font-size: 15px; color: #666; line-height: 1.6;">
+                        <span style="color: #f59e0b; font-weight: 500;">${commenterName || "有人"}</span> 回复了您的评论，快来互动吧～
+                    </p>
+                    <p style="margin: 8px 0 0 0; font-size: 15px; color: #666; line-height: 1.6;">
+                        回复内容：${content}
+                    </p>
+                </td>
+            </tr>
+            <tr>
+                <td align="center" style="padding: 24px 0;">
+                    <a href="https://www.giovan.cn/#/note" target="_blank" style="display: inline-block; padding: 12px 36px; background-color: #f59e0b; color: #fff; font-size: 14px; font-weight: 400; text-decoration: none; border-radius: 30px; border: 0;">
+                        查看回复详情
+                    </a>
+                </td>
+            </tr>
+            <tr>
+                <td style="padding-top: 16px;">
+                    <p style="font-size: 13px; color: #888;">感谢您的参与，期待您的互动！</p>
+                </td>
+            </tr>
+        </table>
+        `;
+          break;
     case 9:
       template = `
         <table width="100%" border="0" cellpadding="0" cellspacing="0">
