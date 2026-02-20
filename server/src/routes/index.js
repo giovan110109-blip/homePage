@@ -41,7 +41,8 @@ function registerRoutes(app) {
         'dashboard.js',
         'geo.js',
         'comment.js',
-        'adminComments.js'
+        'adminComments.js',
+        'wechatAuth.js'
     ]);
 
     // 过滤出路由文件
