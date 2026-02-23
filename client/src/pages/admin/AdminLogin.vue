@@ -66,8 +66,30 @@
             <span class="text-xs px-2 py-1 rounded-full bg-green-900/10 text-green-900 tracking-wider dark:bg-green-600/20 dark:text-green-200">WECHAT</span>
           </div>
           <div class="bg-green-100 rounded-lg p-6 flex flex-col items-center gap-2.5 text-sm text-green-900 dark:bg-green-600/15 dark:text-green-200">
-            <img src="https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=weapp-login" alt="小程序二维码" class="w-36 h-36 rounded-lg bg-white p-1.5" />
-            <span>扫码/一键登录</span>
+            <div class="relative w-36 h-36 rounded-lg bg-white p-1.5 flex items-center justify-center">
+              <img 
+                v-if="qrCodeUrl" 
+                :src="qrCodeUrl" 
+                alt="小程序二维码" 
+                class="w-full h-full"
+                @error="handleQrError"
+              />
+              <div v-else class="flex flex-col items-center gap-2 text-gray-400">
+                <RefreshCw class="w-8 h-8" />
+                <span class="text-xs">加载中...</span>
+              </div>
+              <!-- 二维码过期遮罩 -->
+              <div 
+                v-if="qrExpired" 
+                class="absolute inset-0 bg-white/90 flex flex-col items-center justify-center gap-2 rounded-lg"
+              >
+                <span class="text-xs text-gray-500">二维码已过期</span>
+                <AppButton variant="primary" size="sm" @click="initQrLogin">
+                  刷新
+                </AppButton>
+              </div>
+            </div>
+            <span>{{ qrStatus === 'scanned' ? '已扫码，请在手机上确认' : '扫码/一键登录' }}</span>
           </div>
         </div>
       </el-card>
@@ -76,13 +98,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import type { FormInstance, FormRules } from 'element-plus'
 import { ElMessage } from 'element-plus'
-import { ArrowLeft } from 'lucide-vue-next'
+import { ArrowLeft, RefreshCw } from 'lucide-vue-next'
 import AppButton from '@/components/ui/AppButton.vue'
 import { useAuthStore } from '@/stores/auth'
+import { createQrSession, getQrCodeUrl, checkQrStatus } from '@/api/auth'
 
 const router = useRouter()
 const route = useRoute()
@@ -99,6 +122,12 @@ const rules: FormRules = {
   username: [{ required: true, message: '请输入账号', trigger: 'blur' }],
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
 }
+
+const qrToken = ref('')
+const qrCodeUrl = ref('')
+const qrStatus = ref<'pending' | 'scanned' | 'confirmed'>('pending')
+const qrExpired = ref(false)
+let pollTimer: ReturnType<typeof setInterval> | null = null
 
 const handleLogin = async () => {
   if (!formRef.value) return
@@ -121,4 +150,71 @@ const handleLogin = async () => {
 const handleBackHome = () => {
   router.push('/')
 }
+
+const initQrLogin = async () => {
+  try {
+    qrExpired.value = false
+    qrStatus.value = 'pending'
+    
+    const res = await createQrSession()
+    console.log('createQrSession response:', res)
+    qrToken.value = res.data.qrToken
+    qrCodeUrl.value = getQrCodeUrl(qrToken.value)
+    console.log('qrCodeUrl:', qrCodeUrl.value)
+    
+    startPolling()
+  } catch (error) {
+    console.error('initQrLogin error:', error)
+    ElMessage.error('初始化二维码失败')
+  }
+}
+
+const startPolling = () => {
+  stopPolling()
+  
+  pollTimer = setInterval(async () => {
+    if (!qrToken.value) return
+    
+    try {
+      const res = await checkQrStatus(qrToken.value)
+      qrStatus.value = res.data.status
+      
+      if (res.data.status === 'scanned' && res.data.userInfo) {
+        // 已扫码，显示用户信息
+      }
+      
+      if (res.data.status === 'confirmed' && res.data.token) {
+        stopPolling()
+        authStore.token = res.data.token
+        authStore.user = res.data.user || null
+        ElMessage.success('登录成功')
+        const redirect = (route.query.redirect as string) || '/admin'
+        router.replace(redirect)
+      }
+    } catch {
+      qrExpired.value = true
+      stopPolling()
+    }
+  }, 2000)
+}
+
+const stopPolling = () => {
+  if (pollTimer) {
+    clearInterval(pollTimer)
+    pollTimer = null
+  }
+}
+
+const handleQrError = () => {
+  qrExpired.value = true
+  stopPolling()
+}
+
+onMounted(() => {
+  initQrLogin()
+})
+
+onUnmounted(() => {
+  stopPolling()
+})
 </script>

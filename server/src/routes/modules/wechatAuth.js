@@ -381,7 +381,7 @@ router.post("/confirm-qr", async (ctx) => {
 
 router.post("/create-qr-session", async (ctx) => {
   try {
-    const qrToken = crypto.randomUUID();
+    const qrToken = crypto.randomBytes(16).toString("hex");
     qrSessions.set(qrToken, {
       status: "pending",
       createdAt: new Date(),
@@ -426,6 +426,79 @@ router.get("/check-qr-status/:qrToken", async (ctx) => {
 
     ctx.body = Response.success(result);
   } catch (error) {
+    ctx.body = Response.error(error.message, HttpStatus.INTERNAL_ERROR);
+  }
+});
+
+router.get("/generate-qr-code", async (ctx) => {
+  try {
+    const { qrToken } = ctx.query;
+
+    if (!qrToken) {
+      ctx.body = Response.error("缺少qrToken", HttpStatus.BAD_REQUEST);
+      return;
+    }
+
+    const appid = process.env.WECHAT_APPID;
+    const secret = process.env.WECHAT_SECRET;
+
+    if (!appid || !secret) {
+      console.error("微信小程序配置缺失: WECHAT_APPID 或 WECHAT_SECRET 未设置");
+      ctx.body = Response.error(
+        "微信小程序配置缺失",
+        HttpStatus.INTERNAL_ERROR,
+      );
+      return;
+    }
+
+    const tokenRes = await fetch(
+      `https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=${appid}&secret=${secret}`,
+    );
+    const tokenData = await tokenRes.json();
+
+    if (tokenData.errcode) {
+      console.error("获取access_token失败:", tokenData);
+      ctx.body = Response.error(
+        `获取access_token失败: ${tokenData.errmsg}`,
+        HttpStatus.INTERNAL_ERROR,
+      );
+      return;
+    }
+
+    const accessToken = tokenData.access_token;
+
+    const qrRes = await fetch(
+      `https://api.weixin.qq.com/wxa/getwxacodeunlimit?access_token=${accessToken}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          scene: qrToken,
+          width: 280,
+          auto_color: false,
+          line_color: { r: 99, g: 102, b: 241 },
+        }),
+      },
+    );
+
+    const contentType = qrRes.headers.get("content-type") || "";
+
+    if (contentType.includes("application/json")) {
+      const errorData = await qrRes.json();
+      console.error("生成小程序码失败:", errorData);
+      ctx.body = Response.error(
+        errorData.errmsg || "生成小程序码失败",
+        HttpStatus.INTERNAL_ERROR,
+      );
+      return;
+    }
+
+    const buffer = Buffer.from(await qrRes.arrayBuffer());
+    ctx.set("Content-Type", "image/png");
+    ctx.set("Cache-Control", "no-cache");
+    ctx.body = buffer;
+  } catch (error) {
+    console.error("生成小程序码异常:", error);
     ctx.body = Response.error(error.message, HttpStatus.INTERNAL_ERROR);
   }
 });
