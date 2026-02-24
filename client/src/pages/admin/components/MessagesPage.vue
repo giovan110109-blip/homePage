@@ -128,13 +128,20 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="180" fixed="right">
+        <el-table-column label="操作" width="240" fixed="right">
           <template #default="scope">
             <AppButton
               variant="link-primary"
               size="none"
               @click="handleView(scope.row)"
               >查看</AppButton
+            >
+
+            <AppButton
+              variant="link-primary"
+              size="none"
+              @click="handleRefreshAvatar(scope.row)"
+              >重新获取头像</AppButton
             >
 
             <AppButton
@@ -450,6 +457,19 @@ const handleDelete = async (row: MessageItem) => {
     });
     await request.delete(`/admin/messages/${row._id}`);
     ElMessage.success("已删除");
+    handleFetch();
+  } catch (error: any) {
+    if (error?.message) ElMessage.error(error.message);
+  }
+};
+
+const handleRefreshAvatar = async (row: MessageItem) => {
+  try {
+    await ElMessageBox.confirm("确认重新获取该留言的头像吗？", "提示", {
+      type: "info",
+    });
+    await request.patch(`/admin/messages/${row._id}/refresh-avatar`);
+    ElMessage.success("头像已更新");
     handleFetch();
   } catch (error: any) {
     if (error?.message) ElMessage.error(error.message);

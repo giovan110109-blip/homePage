@@ -10,6 +10,7 @@ router.get('/', controller.list.bind(controller));
 
 // PATCH /api/admin/messages/:id/approve
 router.patch('/:id/approve', controller.approve.bind(controller));
+router.patch('/:id/refresh-avatar', controller.refreshAvatar.bind(controller));
 router.delete('/:id', controller.remove.bind(controller));
 
 module.exports = router;

@@ -10,7 +10,8 @@ module.exports = function rateLimitTimestamp(options = {}) {
   const hits = new Map();
 
   return async (ctx, next) => {
-    if (ctx.request.url === '/api/upload' || ctx.request.url.startsWith('/api/auth/generate-qr-code')) {
+    const url = ctx.request.url || ctx.url || '';
+    if (url.includes('/upload') || url.includes('/generate-qr-code')) {
       return await next();
     }
     const now = Date.now();

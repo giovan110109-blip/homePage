@@ -186,18 +186,36 @@
                     >
                       <div class="timeline-content">
                         <div class="flex items-start">
-                          <div class="ml-4">
+                          <div class="ml-4 w-full">
                             <div class="pb-6">
-                              <div
-                                class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-1"
-                              >
-                                <h4
-                                  class="font-medium text-gray-900 dark:text-white drop-shadow-sm"
-                                >
-                                  {{ experience.position }}
-                                </h4>
+                              <div class="flex items-center justify-between mb-1">
+                                <div class="flex items-center gap-2 min-w-0">
+                                  <h4
+                                    class="font-medium text-gray-900 dark:text-white drop-shadow-sm truncate"
+                                  >
+                                    {{ experience.position }}
+                                  </h4>
+                                  <el-popover
+                                    v-if="experience.images && experience.images.length > 0"
+                                    placement="right"
+                                    trigger="hover"
+                                  >
+                                    <template #reference>
+                                      <ImageIcon class="w-4 h-4 text-blue-500 cursor-pointer hover:text-blue-600 transition-colors flex-shrink-0" />
+                                    </template>
+                                    <div class="flex">
+                                      <img
+                                        v-for="(img, imgIndex) in experience.images"
+                                        :key="imgIndex"
+                                        :src="img"
+                                        class="h-36 w-auto rounded-lg object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                                        @click="handleImagePreview(experience.images, imgIndex)"
+                                      />
+                                    </div>
+                                  </el-popover>
+                                </div>
                                 <span
-                                  class="text-sm text-gray-600 dark:text-gray-300 drop-shadow-sm"
+                                  class="text-sm text-gray-600 dark:text-gray-300 drop-shadow-sm flex-shrink-0 ml-2"
                                   >{{ experience.period }}</span
                                 >
                               </div>
@@ -329,6 +347,14 @@
         </div>
       </section>
     </div>
+
+    <!-- 图片预览 -->
+    <el-image-viewer
+      v-if="showPreview"
+      :url-list="previewImages"
+      :initial-index="previewInitialIndex"
+      @close="showPreview = false"
+    />
   </div>
 </template>
 
@@ -347,9 +373,10 @@ import {
   Music,
   Gamepad2,
   Bike,
+  Image as ImageIcon,
 } from "lucide-vue-next";
 import { useSiteInfoStore } from "@/stores/siteInfo";
-import Card from "@/components/ui/Card.vue";
+import weCode from '@/assets/weCode.png'
 
 const aboutCardRefs = ref<HTMLElement[]>([]);
 const aboutCardEffects = reactive<
@@ -413,21 +440,39 @@ const imageUrls = slugs.map(
   (slug) => `https://cdn.simpleicons.org/${slug}/${slug}`,
 );
 const experiences = [
-  {
+    {
     id: 1,
+    position: "小程序",
+    company: "小程序初版发布🎉",
+    period: "2026.2",
+    description: "画廊展示待优化，livephoto 待开发。",
+    images: [weCode]
+  },
+  {
+    id: 2,
     position: "自家服务器硬盘坏掉了",
     company: "导致所有数据丢失😭😭",
     period: "2026.2",
     description: "😭😭",
   },
   {
-    id: 2,
+    id: 3,
     position: "重构个人主页开发中",
     company: "工作较忙 重构较慢",
     period: "2025.1",
     description: "努力重构中",
   },
 ];
+
+const handleImagePreview = (images: string[], index: number) => {
+  previewImages.value = images;
+  previewInitialIndex.value = index;
+  showPreview.value = true;
+};
+
+const showPreview = ref(false);
+const previewImages = ref<string[]>([]);
+const previewInitialIndex = ref(0);
 
 const interests = [
   { name: "编程", icon: Code },

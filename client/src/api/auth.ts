@@ -47,39 +47,31 @@ export interface QrStatusData {
  * 验证 token 是否有效
  */
 export function verifyToken(): Promise<any> {
-  return request<VerifyResponse>({
-    url: '/admin/verify',
-    method: 'GET'
-  })
+  return request.get('/admin/verify')
 }
 
 /**
  * 创建扫码登录会话
  */
-export function createQrSession(): Promise<ApiResponse<QrSessionData>> {
-  return request<ApiResponse<QrSessionData>>({
-    url: '/auth/create-qr-session',
-    method: 'POST'
-  })
+export function createQrSession(): Promise<any> {
+  return request.post('/auth/create-qr-session')
 }
 
 /**
  * 获取小程序码图片URL
  */
 export function getQrCodeUrl(qrToken: string): string {
-  if (import.meta.env.DEV) {
-    return `/api/auth/generate-qr-code?qrToken=${qrToken}`
-  }
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://serve.giovan.cn/api'
+  const rawBaseUrl = import.meta.env.VITE_API_BASE_URL || 'https://serve.giovan.cn'
+  // 与 http.ts 保持一致，自动补全 /api
+  const baseUrl = rawBaseUrl.replace(/\/$/, '').endsWith('/api') 
+    ? rawBaseUrl.replace(/\/$/, '') 
+    : `${rawBaseUrl.replace(/\/$/, '')}/api`
   return `${baseUrl}/auth/generate-qr-code?qrToken=${qrToken}`
 }
 
 /**
  * 检查扫码登录状态
  */
-export function checkQrStatus(qrToken: string): Promise<ApiResponse<QrStatusData>> {
-  return request<ApiResponse<QrStatusData>>({
-    url: `/auth/check-qr-status/${qrToken}`,
-    method: 'GET'
-  })
+export function checkQrStatus(qrToken: string): Promise<any> {
+  return request.get(`/auth/check-qr-status/${qrToken}`)
 }

@@ -172,8 +172,18 @@ const initQrLogin = async () => {
 const startPolling = () => {
   stopPolling()
   
+  let pollCount = 0
+  const maxPolls = 150 // 最多轮询150次 (约7.5分钟)
+  
   pollTimer = setInterval(async () => {
     if (!qrToken.value) return
+    
+    pollCount++
+    if (pollCount > maxPolls) {
+      qrExpired.value = true
+      stopPolling()
+      return
+    }
     
     try {
       const res = await checkQrStatus(qrToken.value)
@@ -195,7 +205,7 @@ const startPolling = () => {
       qrExpired.value = true
       stopPolling()
     }
-  }, 2000)
+  }, 3000) // 3秒轮询一次
 }
 
 const stopPolling = () => {

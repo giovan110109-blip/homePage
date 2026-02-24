@@ -128,23 +128,16 @@
           留言列表
         </h2>
 
-        <!-- 优先显示 loading -->
+        <!-- 仅在首次加载且无留言时显示空状态 -->
         <div
-          v-if="isLoading"
-          class="flex flex-col items-center justify-center py-12 px-5"
-        >
-          <Loading />
-        </div>
-
-        <!-- 仅在非 loading 且无留言时显示空状态 -->
-        <div
-          v-else-if="messages.length === 0"
+          v-if="!isLoading && messages.length === 0"
           class="text-center py-10 px-5 text-gray-400 dark:text-gray-500 text-base"
         >
           <p>还没有留言，成为第一个留言的人吧！</p>
         </div>
 
-        <div v-else class="flex flex-col gap-4" ref="messageListRef">
+        <!-- 留言列表 - 始终显示，加载更多时不隐藏 -->
+        <div v-if="messages.length > 0" class="flex flex-col gap-4" ref="messageListRef">
           <div
             v-for="(message, index) in displayedMessages"
             :key="message.id || index"
@@ -254,28 +247,36 @@
               />
             </transition>
           </div>
+        </div>
 
-          <!-- 加载更多提示 -->
-          <div
-            v-if="isLoading"
-            class="flex flex-col items-center justify-center py-12 px-5"
-          >
-            <Loading />
-          </div>
+        <!-- 首次加载时的 Loading -->
+        <div
+          v-if="isLoading && messages.length === 0"
+          class="flex flex-col items-center justify-center py-12 px-5"
+        >
+          <Loading />
+        </div>
 
-          <div
-            v-if="hasMoreMessages && !isLoading"
-            class="text-center py-6 text-gray-400 dark:text-gray-500 text-sm animate-fade-in-out"
-          >
-            向下滑动加载更多
-          </div>
+        <!-- 加载更多时的 Loading -->
+        <div
+          v-if="isLoading && messages.length > 0"
+          class="flex flex-col items-center justify-center py-8 px-5"
+        >
+          <Loading />
+        </div>
 
-          <div
-            v-if="!hasMoreMessages && displayedMessages.length > 0"
-            class="text-center py-6 text-gray-400 dark:text-gray-500 text-sm"
-          >
-            已加载全部留言
-          </div>
+        <div
+          v-if="hasMoreMessages && !isLoading"
+          class="text-center py-6 text-gray-400 dark:text-gray-500 text-sm animate-fade-in-out"
+        >
+          向下滑动加载更多
+        </div>
+
+        <div
+          v-if="!hasMoreMessages && displayedMessages.length > 0"
+          class="text-center py-6 text-gray-400 dark:text-gray-500 text-sm"
+        >
+          已加载全部留言
         </div>
       </div>
     </div>
@@ -407,22 +408,20 @@ const fetchMessages = async (reset = false) => {
     );
 
     if (reset) {
-      messages.value = [];
-      page.value = 1;
+      // 直接替换，不要先清空再赋值，避免闪烁
+      messages.value = mappedWithAvatar;
+      page.value = 2;
+    } else {
+      // 追加数据
+      messages.value = [...messages.value, ...mappedWithAvatar];
+      if (mapped.length) {
+        page.value += 1;
+      }
     }
-
-    messages.value = reset
-      ? mappedWithAvatar
-      : [...messages.value, ...mappedWithAvatar];
+    
     totalMessages.value = Number(
       meta.total ?? totalMessages.value ?? messages.value.length,
     );
-
-    if (mapped.length && !reset) {
-      page.value += 1;
-    } else if (reset && mapped.length) {
-      page.value = 2;
-    }
   } catch (error) {
     console.error("加载留言失败:", error);
     ElMessage.error("加载留言失败，请稍后再试");

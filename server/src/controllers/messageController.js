@@ -159,6 +159,23 @@ class MessageController extends BaseController {
       this.fail(ctx, err);
     }
   }
+
+  // PATCH /api/messages/:id/refresh-avatar  根据邮箱重新获取头像
+  async refreshAvatar(ctx) {
+    try {
+      const message = await messageService.getById(ctx.params.id);
+      if (!message) this.throwHttpError("留言未找到", HttpStatus.NOT_FOUND);
+      
+      const newAvatar = getAvatarByEmail(message.email);
+      const updated = await messageService.updateById(ctx.params.id, {
+        avatar: newAvatar,
+      });
+      
+      this.ok(ctx, updated, "头像已更新");
+    } catch (err) {
+      this.fail(ctx, err);
+    }
+  }
 }
 
 module.exports = new MessageController();

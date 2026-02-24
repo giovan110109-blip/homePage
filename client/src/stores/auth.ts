@@ -3,10 +3,11 @@ import request from '@/api/request'
 import { verifyToken as verifyTokenApi } from '@/api/auth'
 
 interface AdminUser {
-  username: string
+  username?: string
   nickname?: string
   avatar?: string
   email?: string
+  role?: string
 }
 
 export const useAuthStore = defineStore('auth', {

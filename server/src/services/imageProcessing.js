@@ -513,6 +513,28 @@ class ImageProcessingService {
   }
 
   /**
+   * 将 ThumbHash base64 转换为 data URL
+   */
+  async thumbHashToDataURL(base64ThumbHash) {
+    try {
+      const th = await getThumbhash()
+      const toDataURL = typeof th.thumbHashToDataURL === 'function'
+        ? th.thumbHashToDataURL
+        : null
+      if (!toDataURL) {
+        throw new Error('thumbhash.thumbHashToDataURL 不可用')
+      }
+
+      const buffer = Buffer.from(base64ThumbHash, 'base64')
+      const bytes = new Uint8Array(buffer)
+      return toDataURL(bytes)
+    } catch (error) {
+      console.error('ThumbHash 转 data URL 错误:', error)
+      return null
+    }
+  }
+
+  /**
    * 完整处理图片流程
    */
   async processImage(inputBuffer, originalFileName, tempDir, options = {}) {
@@ -522,6 +544,7 @@ class ImageProcessingService {
       location: null,
       thumbnail: null,
       thumbHash: null,
+      thumbHashDataURL: null,
       processedBuffer: null
     }
 
@@ -606,9 +629,14 @@ class ImageProcessingService {
         if (!result.thumbHash && result.thumbnail) {
           result.thumbHash = await this.generateThumbHash(result.thumbnail)
         }
+        // 7. 将 thumbHash 转换为 data URL
+        if (result.thumbHash) {
+          result.thumbHashDataURL = await this.thumbHashToDataURL(result.thumbHash)
+        }
       } catch (error) {
         console.warn('ThumbHash 生成失败，继续处理:', error.message)
         result.thumbHash = null
+        result.thumbHashDataURL = null
       }
 
       return result

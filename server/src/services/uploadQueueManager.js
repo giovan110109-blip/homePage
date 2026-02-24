@@ -626,7 +626,7 @@ class UploadQueueManager extends EventEmitter {
         baseName: derivedBaseName,
         storageKey: finalStorageKey,
         originalKey: originalStorageKey, // 原始文件的 storage key
-        thumbnailKey: undefined,
+        thumbnailKey: webpFileName, // 缩略图文件名
         fileSize: task.fileSize,
         mimeType: finalMimeType,
 
@@ -636,8 +636,8 @@ class UploadQueueManager extends EventEmitter {
 
         originalUrl: `${this.uploadBaseUrl}/photos-webp/${webpFileName}`, // WebP 缩略图
         originalFileUrl: `${this.uploadBaseUrl}/photos/${originalStorageKey}`, // 原始高分辨率文件
-        thumbnailUrl: undefined,
-        thumbnailHash: processed.thumbHash,
+        thumbnailUrl: processed.thumbHashDataURL, // thumbHash data URL（可直接用于 img src）
+        thumbnailHash: processed.thumbHash, // thumbHash base64（备用）
 
         // Live Photo
         isLive,
