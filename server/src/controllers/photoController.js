@@ -17,49 +17,31 @@ class PhotoController {
     const localBaseUrl =
       ctx.state.localBaseUrl || "https://serve.giovan.cn/uploads";
 
-    if (!cdnEnabled || !cdnBaseUrl) {
-      return photos;
-    }
-
-    const baseUrl = cdnBaseUrl;
+    const baseUrl = cdnEnabled && cdnBaseUrl ? cdnBaseUrl : null;
 
     return photos.map((photo) => {
       const updatedPhoto = { ...photo };
 
-      if (updatedPhoto.originalUrl) {
-        const oldUrl = updatedPhoto.originalUrl;
-        if (oldUrl.includes("/uploads/photos-webp/")) {
-          updatedPhoto.originalUrl = oldUrl.replace(
-            /https?:\/\/[^\/]+/,
-            baseUrl,
-          );
+      if (baseUrl) {
+        if (updatedPhoto.originalUrl && updatedPhoto.originalUrl.includes("/uploads/photos-webp/")) {
+          updatedPhoto.originalUrl = updatedPhoto.originalUrl.replace(/https?:\/\/[^\/]+/, baseUrl);
+        }
+        if (updatedPhoto.thumbnailUrl && updatedPhoto.thumbnailUrl.includes("/uploads/photos-webp/")) {
+          updatedPhoto.thumbnailUrl = updatedPhoto.thumbnailUrl.replace(/https?:\/\/[^\/]+/, baseUrl);
+        }
+        if (updatedPhoto.videoUrl && updatedPhoto.videoUrl.includes("/uploads/photos/")) {
+          updatedPhoto.videoUrl = updatedPhoto.videoUrl.replace(/https?:\/\/[^\/]+/, baseUrl);
+        }
+        if (updatedPhoto.originalFileUrl && updatedPhoto.originalFileUrl.includes("/uploads/photos/")) {
+          updatedPhoto.originalFileUrl = updatedPhoto.originalFileUrl.replace(/https?:\/\/[^\/]+/, baseUrl);
         }
       }
 
-      if (updatedPhoto.thumbnailUrl) {
-        const oldUrl = updatedPhoto.thumbnailUrl;
-        if (oldUrl.includes("/uploads/photos-webp/")) {
-          updatedPhoto.thumbnailUrl = oldUrl.replace(
-            /https?:\/\/[^\/]+/,
-            baseUrl,
-          );
-        }
-      }
-
-      if (updatedPhoto.videoUrl) {
-        const oldUrl = updatedPhoto.videoUrl;
-        if (oldUrl.includes("/uploads/photos/")) {
-          updatedPhoto.videoUrl = oldUrl.replace(/https?:\/\/[^\/]+/, baseUrl);
-        }
-      }
-
-      if (updatedPhoto.originalFileUrl) {
-        const oldUrl = updatedPhoto.originalFileUrl;
-        if (oldUrl.includes("/uploads/photos/")) {
-          updatedPhoto.originalFileUrl = oldUrl.replace(
-            /https?:\/\/[^\/]+/,
-            baseUrl,
-          );
+      if (updatedPhoto.location) {
+        const hasValidCoords = updatedPhoto.location.latitude != null && 
+                               updatedPhoto.location.longitude != null;
+        if (!hasValidCoords) {
+          updatedPhoto.location = null;
         }
       }
 

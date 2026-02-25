@@ -17,8 +17,6 @@ services:
     restart: unless-stopped
     networks:
       - homepage-network
-    # depends_on:
-    #   - server
 
   # 后端服务
   server:
@@ -35,35 +33,12 @@ services:
       - NODE_ENV=production
       - PORT=${PORT:-8998}
       - CLUSTER_MODE=${CLUSTER_MODE:-true}
-      # 在 Docker 容器中，使用容器内部的挂载路径
       - UPLOAD_DIR=/app/uploads
       - UPLOAD_BASE_URL=/uploads
-      # Redis 配置
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - REDIS_PASSWORD=
-      - REDIS_DB=0
     env_file:
       - .env
     volumes:
-      # 将外接硬盘挂载到容器中，使容器可以访问外接硬盘的 uploads 目录
       - /Volumes/大金刚/uploads:/app/uploads
-    depends_on:
-      - redis
-
-  # Redis 缓存服务
-  redis:
-    image: redis:7-alpine
-    container_name: homepage-redis
-    ports:
-      - "6379:6379"
-    restart: unless-stopped
-    networks:
-      - homepage-network
-    volumes:
-      # 持久化 Redis 数据
-      - redis-data:/data
-    command: redis-server --appendonly yes
 
   # MongoDB 数据库
   # mongodb:
@@ -78,7 +53,6 @@ services:
   #     - MONGO_INITDB_ROOT_USERNAME=${MONGO_USERNAME:-admin}
   #     - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD:-password}
   #   volumes:
-  #     # 持久化数据库数据
   #     - mongodb-data:/data/db
   #     - mongodb-config:/data/configdb
 
@@ -90,6 +64,4 @@ volumes:
   mongodb-data:
     driver: local
   mongodb-config:
-    driver: local
-  redis-data:
     driver: local
