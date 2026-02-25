@@ -56,7 +56,8 @@ class ImageProcessingService {
    * 转换 HEIC 到 JPEG
    * 优先使用 Sharp（可禁用自动旋转），失败时回退到 heic-convert
    */
-  async convertHeicToJpeg(buffer) {
+  async convertHeicToJpeg(buffer, originalBuffer = null) {
+    // 优先使用 Sharp 处理 HEIC，因为可以禁用自动旋转
     try {
       console.log("🔄 使用 Sharp 处理 HEIC 图片...");
       const jpegBuffer = await sharp(buffer, {
@@ -74,6 +75,7 @@ class ImageProcessingService {
       );
     }
 
+    // Sharp 失败，使用 heic-convert（注意：会自动应用 EXIF Orientation）
     try {
       const outputBuffer = await heicConvert({
         buffer,
@@ -180,6 +182,8 @@ class ImageProcessingService {
           console.log("🔄 执行: 旋转 270°");
           image = image.rotate(270);
           break;
+          image = image.rotate(90);
+          break;
         default:
           console.warn(
             `⚠️ 未知的 EXIF Orientation: ${orientNum}，使用原始图像`,
@@ -201,42 +205,6 @@ class ImageProcessingService {
       return buffer;
     }
   }
-  /**
-   * 创建临时文件并写入 buffer
-   */
-  async writeTempFile(buffer, tempDir, filename) {
-    const tempFilePath = path.join(tempDir, `${filename}_${Date.now()}`);
-    await fs.writeFile(tempFilePath, buffer);
-    return tempFilePath;
-  }
-
-  /**
-   * 从 buffer 提取 EXIF（通过临时文件）
-   */
-  async extractExifFromBuffer(buffer, tempDir, originalFileName) {
-    const ext = (originalFileName && path.extname(originalFileName)) || ".jpg";
-    const safeOriginalName = path
-      .basename(originalFileName || "image")
-      .replace(ext, "");
-    const tempFilePath = await this.writeTempFile(
-      buffer,
-      tempDir,
-      `exif_${safeOriginalName}${ext}`,
-    );
-
-    try {
-      return await this.extractExif({
-        filePath: tempFilePath,
-        buffer,
-        inputBuffer: buffer,
-        originalFileName,
-        tempDir,
-      });
-    } finally {
-      await fs.unlink(tempFilePath).catch(() => {});
-    }
-  }
-
   async extractExif({
     filePath,
     buffer,
@@ -246,9 +214,12 @@ class ImageProcessingService {
   }) {
     const readExifFromFile = async (targetPath) => {
       try {
+        // -ee: 读取嵌入数据（如缩略图/子文件）
+        // -n: 以数值输出，便于解析
         const tags = await exiftool.read(targetPath, ["-ee", "-n"]);
         return tags;
       } catch (error) {
+        // 如果 Perl 不可用或其他错误，返回空对象而不是抛出
         if (error.message?.includes("Perl must be installed")) {
           console.warn("⚠️ Perl 未安装，跳过 EXIF 提取");
         } else {
@@ -264,6 +235,7 @@ class ImageProcessingService {
         tags = await readExifFromFile(filePath);
       }
 
+      // 安全地复制所有EXIF字段，跳过二进制/过大的数据
       const skipKeys = [
         "SourceFile",
         "ThumbnailImage",
@@ -279,19 +251,23 @@ class ImageProcessingService {
         const exifData = {};
 
         for (const [key, value] of Object.entries(sourceTags || {})) {
+          // 跳过内部方法和二进制数据
           if (skipKeys.includes(key) || typeof value === "function") {
             continue;
           }
 
+          // 处理Date对象
           if (value instanceof Date) {
             exifData[key] = value.toISOString();
             continue;
           }
 
+          // 处理Buffer（跳过）
           if (Buffer.isBuffer(value)) {
             continue;
           }
 
+          // 检查是否是对象且过大（超过1MB）
           if (typeof value === "object" && value !== null) {
             try {
               const size = JSON.stringify(value).length;
@@ -303,11 +279,13 @@ class ImageProcessingService {
             }
           }
 
+          // 检查字符串是否过长（超过5KB）
           if (typeof value === "string" && value.length > 5120) {
             exifData[key] = value.substring(0, 5120) + "...[截断]";
             continue;
           }
 
+          // 保存该字段
           exifData[key] = value;
         }
 
@@ -325,6 +303,7 @@ class ImageProcessingService {
         );
       }
 
+      // 回退1：如果没有EXIF，且有原始buffer，尝试从原始buffer读
       if (
         (!exifData || Object.keys(exifData).length === 0) &&
         buffer &&
@@ -332,33 +311,49 @@ class ImageProcessingService {
         tempDir
       ) {
         console.log("🔄 尝试从原始 buffer 恢复 EXIF...");
-        if (inputBuffer) {
-          const fallbackData = await this.extractExifFromBuffer(
-            inputBuffer,
-            tempDir,
-            originalFileName,
-          );
-          if (fallbackData && Object.keys(fallbackData).length > 0) {
-            console.log(
-              `✅ 从原始 buffer 恢复了 EXIF 数据 | Orientation: ${fallbackData.Orientation || 1}`,
-            );
-            exifData = fallbackData;
+        const ext =
+          (originalFileName && path.extname(originalFileName)) || ".jpg";
+        const tempFilePath = path.join(tempDir, `exif_raw_${Date.now()}${ext}`);
+        try {
+          // 尝试从原始 inputBuffer 读取EXIF（可能更多EXIF数据）
+          if (inputBuffer) {
+            await fs.writeFile(tempFilePath, inputBuffer);
+            const fallbackTags = await readExifFromFile(tempFilePath);
+            const fallbackData = buildExifData(fallbackTags);
+            if (fallbackData && Object.keys(fallbackData).length > 0) {
+              console.log(
+                `✅ 从原始 buffer 恢复了 EXIF 数据 | Orientation: ${fallbackData.Orientation || 1}`,
+              );
+              exifData = fallbackData;
+            }
           }
+        } catch (err) {
+          console.warn("❌ 从原始 buffer 恢复 EXIF 失败:", err.message);
+        } finally {
+          await fs.unlink(tempFilePath).catch(() => {});
         }
       }
 
+      // 回退2：如果仍然没有EXIF，尝试从处理后的buffer写临时文件再读
       if (
         (!exifData || Object.keys(exifData).length === 0) &&
         buffer &&
         tempDir
       ) {
         console.log("🔄 尝试从处理后 buffer 提取 EXIF...");
-        const fallbackData = await this.extractExifFromBuffer(
-          buffer,
+        const ext =
+          (originalFileName && path.extname(originalFileName)) || ".jpg";
+        const tempFilePath = path.join(
           tempDir,
-          originalFileName,
+          `exif_processed_${Date.now()}${ext}`,
         );
-        exifData = fallbackData;
+        try {
+          await fs.writeFile(tempFilePath, buffer);
+          const fallbackTags = await readExifFromFile(tempFilePath);
+          exifData = buildExifData(fallbackTags);
+        } finally {
+          await fs.unlink(tempFilePath).catch(() => {});
+        }
       }
 
       return exifData;
@@ -369,33 +364,12 @@ class ImageProcessingService {
   }
 
   /**
-   * 计算缩放尺寸（保持宽高比）
-   */
-  calculateResizeDimensions(width, height, maxSize) {
-    if (!width || !height) return { width: maxSize, height: maxSize };
-
-    const aspectRatio = width / height;
-
-    if (aspectRatio > 1) {
-      return {
-        width: maxSize,
-        height: Math.round(maxSize / aspectRatio),
-      };
-    } else {
-      return {
-        height: maxSize,
-        width: Math.round(maxSize * aspectRatio),
-      };
-    }
-  }
-
-  /**
    * 自动检测图片是否需要旋转（基于宽高比）
    * 如果图片的宽高比异常，可能表示需要旋转
    */
   async autoDetectOrientation(buffer) {
     try {
-      const metadata = await this.getImageMetadata(buffer);
+      const metadata = await sharp(buffer).metadata();
       if (!metadata) return null;
 
       const { width, height } = metadata;
@@ -476,51 +450,52 @@ class ImageProcessingService {
    */
   async generateThumbnail(buffer, options = {}) {
     const {
-      width = 600,
-      height = null,
-      fit = "inside",
-      quality = 85,
-      format = "webp",
+      width = 600, // 600px宽度，适合网页显示
+      height = null, // 自动计算高度保持宽高比
+      fit = "inside", // inside模式保持完整内容
+      quality = 85, // WebP质量，平衡大小和画质
+      format = "webp", // 默认使用WebP格式
     } = options;
 
     const sharpInstance = sharp(buffer, {
       failOnError: false,
-      limitInputPixels: false,
-      autoRotate: false,
+      limitInputPixels: false, // 允许大图片
+      autoRotate: false, // 禁用自动旋转，避免重复旋转
     });
 
+    // 配置缩放参数
     const resizeOptions = {
       width,
       height,
       fit,
-      withoutEnlargement: true,
-      kernel: "lanczos3",
+      withoutEnlargement: true, // 防止放大小图片
+      kernel: "lanczos3", // 高质量缩放算法
     };
 
+    // 根据格式输出
     if (format === "webp") {
       const thumbnail = await sharpInstance
         .resize(resizeOptions)
-        .withMetadata({ orientation: 1 })
         .webp({
           quality,
-          effort: 6,
-          smartSubsample: true,
-          nearLossless: false,
-          alphaQuality: 90,
+          effort: 6, // 最大压缩努力程度(0-6)
+          smartSubsample: true, // 智能色度二次采样
+          nearLossless: false, // 有损压缩获得更小体积
+          alphaQuality: 90, // 透明度质量
         })
-        .toBuffer();
+        .toBuffer(); // 移除元数据减小体积
       return thumbnail;
     } else {
+      // JPEG 格式（兼容模式）
       const thumbnail = await sharpInstance
         .resize(resizeOptions)
-        .withMetadata({ orientation: 1 })
         .jpeg({
           quality,
-          mozjpeg: true,
-          progressive: true,
-          optimiseCoding: true,
+          mozjpeg: true, // 使用 MozJPEG 优化器
+          progressive: true, // 渐进式JPEG
+          optimiseCoding: true, // 优化霍夫曼编码
         })
-        .toBuffer();
+        .toBuffer(); // 移除元数据减小体积
       return thumbnail;
     }
   }
@@ -538,22 +513,34 @@ class ImageProcessingService {
         throw new Error("thumbhash.rgbaToThumbHash 不可用");
       }
 
-      const metadata = await this.getImageMetadata(buffer);
-      const { width, height } = metadata;
+      // 生成一个小尺寸的图片用于ThumbHash
+      const image = sharp(buffer);
+      const { width, height } = await image.metadata();
+
+      // 缩放到 100px 宽度，保持宽高比
       const maxSize = 100;
+      const aspectRatio = width / height;
+      let thumbWidth, thumbHeight;
 
-      const { width: thumbWidth, height: thumbHeight } =
-        this.calculateResizeDimensions(width, height, maxSize);
+      if (aspectRatio > 1) {
+        thumbWidth = maxSize;
+        thumbHeight = Math.round(maxSize / aspectRatio);
+      } else {
+        thumbHeight = maxSize;
+        thumbWidth = Math.round(maxSize * aspectRatio);
+      }
 
-      const resized = await sharp(buffer)
+      const resized = await image
         .resize(thumbWidth, thumbHeight, { fit: "inside" })
         .ensureAlpha()
         .raw()
         .toBuffer({ resolveWithObject: true });
 
       const { data, info } = resized;
+      // 使用thumbhash.encode方法
       const thumbHashBuffer = encode(info.width, info.height, data);
 
+      // 转换为 Base64（thumbhash 返回 Uint8Array，需要先转 Buffer）
       return Buffer.from(thumbHashBuffer).toString("base64");
     } catch (error) {
       console.error("ThumbHash 生成错误:", error);
@@ -599,23 +586,25 @@ class ImageProcessingService {
     };
 
     try {
+      // 1. 检测文件类型
       const fileTypeResult = await this.detectFileType(inputBuffer);
       const mimeType = fileTypeResult?.mime || "application/octet-stream";
 
+      // 2. 先从原始文件提取EXIF（在格式转换前，保留原始方向信息）
+      // 这对于HEIC很重要，因为转换后会丢失EXIF
       console.log(`📸 MIME 类型: ${mimeType}`);
       const safeOriginalName = path.basename(originalFileName || "image");
       let tempInputPath = null;
 
+      // 如果是HEIC，先从原始HEIC提取EXIF
       let originalExif = {};
       if (mimeType === "image/heic" || mimeType === "image/heif") {
         console.log("📄 检测到HEIC格式，优先从原始文件提取EXIF...");
-        const ext = path.extname(safeOriginalName) || ".heic";
-        const baseName = safeOriginalName.replace(ext, "");
-        tempInputPath = await this.writeTempFile(
-          inputBuffer,
+        tempInputPath = path.join(
           tempDir,
-          `raw_${baseName}${ext}`,
+          `raw_${Date.now()}_${safeOriginalName}`,
         );
+        await fs.writeFile(tempInputPath, inputBuffer);
 
         originalExif = await this.extractExif({
           filePath: tempInputPath,
@@ -626,16 +615,17 @@ class ImageProcessingService {
         });
 
         console.log(
-        `✅ 从原始HEIC提取EXIF完成，Orientation: ${originalExif.Orientation || 1}`,
-      );
+          `✅ 从原始HEIC提取EXIF完成，Orientation: ${originalExif.Orientation || 1}`,
+        );
       }
 
-      console.log(`🔄 预处理图片（格式转换）...`);
+      // 3. 格式转换（HEIC -> JPEG）
       result.processedBuffer = await this.preprocessImage(
         inputBuffer,
         mimeType,
       );
 
+      // 4. 如果是HEIC且已提取EXIF，直接使用；否则从转换后的文件提取
       if (
         (mimeType === "image/heic" || mimeType === "image/heif") &&
         Object.keys(originalExif).length > 0
@@ -643,16 +633,14 @@ class ImageProcessingService {
         console.log(`♻️ 复用从原始HEIC提取的EXIF数据`);
         result.exif = originalExif;
       } else {
-        console.log(`📋 提取 EXIF 元数据...`);
+        // 从处理后的buffer提取EXIF
         let exifSourcePath = options.sourceFilePath;
         if (!exifSourcePath) {
-          const ext = path.extname(safeOriginalName) || ".jpg";
-          const baseName = safeOriginalName.replace(ext, "");
-          exifSourcePath = await this.writeTempFile(
-            result.processedBuffer,
+          exifSourcePath = path.join(
             tempDir,
-            `processed_${baseName}${ext}`,
+            `processed_${Date.now()}_${safeOriginalName}`,
           );
+          await fs.writeFile(exifSourcePath, result.processedBuffer);
         }
 
         result.exif = await this.extractExif({
@@ -662,49 +650,33 @@ class ImageProcessingService {
           originalFileName,
           tempDir,
         });
-        console.log(`✅ EXIF 提取完成`);
       }
 
+      // 清理临时文件
       if (tempInputPath) {
         await fs.unlink(tempInputPath).catch(() => {});
       }
-      
-      console.log(`📍 解析 GPS 坐标...`);
       result.location = this.parseGPSCoordinates(result.exif);
-      if (result.location) {
-        console.log(`✅ GPS 坐标: ${result.location.latitude}, ${result.location.longitude}`);
-      } else {
-        console.log(`⚠️ 无 GPS 坐标`);
-      }
 
+      // 3.1 不自动旋转图片，保留原始方向
+      // 用户可以在后续使用旋转功能手动调整
       const orientation = result.exif?.Orientation || 1;
       const orientDesc = this.getOrientationDescription(orientation);
       console.log(
-        `📐 EXIF Orientation: ${orientation} (${orientDesc})`,
+        `📐 EXIF Orientation: ${orientation} (${orientDesc}) - 保留原始方向`,
       );
 
-      console.log(`📊 获取图片元数据...`);
+      // 4. 提取元数据
       result.metadata = await this.getImageMetadata(result.processedBuffer);
-      console.log(`✅ 图片尺寸: ${result.metadata.width}x${result.metadata.height}`);
 
-      if (orientation !== 1) {
-        console.log(`🔄 根据 EXIF Orientation ${orientation} 旋转图片到正常方向`);
-        result.processedBuffer = await this.rotateByOrientation(
-          result.processedBuffer,
-          orientation,
-        );
-        console.log(`✅ 图片旋转完成`);
-      }
-
-      console.log(`🖼️ 生成缩略图...`);
+      // 5. 生成缩略图
       result.thumbnail = await this.generateThumbnail(result.processedBuffer, {
         width: 800,
         height: 800,
         quality: 85,
       });
-      console.log(`✅ 缩略图生成完成`);
 
-      console.log(`🔢 生成 ThumbHash...`);
+      // 6. 生成ThumbHash（非关键，失败不中断流程）
       try {
         result.thumbHash = await this.generateThumbHash(result.processedBuffer);
         if (!result.thumbHash && result.thumbnail) {
