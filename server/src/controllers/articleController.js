@@ -179,7 +179,9 @@ class ArticleController extends BaseController {
                 .limit(Number(limit))
                 .lean();
 
-            await cache.set(cacheKey, articles, 300);
+            cache.set(cacheKey, articles, 300).catch(err => {
+                console.error('Cache set error:', err);
+            });
 
             ctx.body = {
                 success: true,

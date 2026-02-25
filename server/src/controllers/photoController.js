@@ -380,7 +380,9 @@ class PhotoController {
         },
       };
 
-      await cache.set(cacheKey, result, 600);
+      cache.set(cacheKey, result, 600).catch(err => {
+        console.error('Cache set error:', err);
+      });
 
       ctx.body = Response.success(result, "获取成功");
     } catch (error) {

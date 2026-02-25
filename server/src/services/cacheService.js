@@ -56,6 +56,12 @@ class CacheService {
             resolve();
           }
         }, 100);
+        
+        const timeout = setTimeout(() => {
+          clearInterval(checkInterval);
+          console.log('Redis connection timeout, proceeding without cache');
+          resolve();
+        }, 3000);
       });
     }
   }
