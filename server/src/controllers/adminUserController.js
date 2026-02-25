@@ -1,303 +1,116 @@
-const User = require('../models/user');
-const crypto = require('crypto');
+const BaseController = require('../utils/baseController');
+const { HttpStatus } = require('../utils/response');
+const userService = require('../services/userService');
 
-const hashPassword = (value) => crypto.createHash('sha256').update(String(value)).digest('hex');
-
-class AdminUserController {
-  // 获取所有用户列表
+class AdminUserController extends BaseController {
   async list(ctx) {
     try {
-      const { page = 1, pageSize = 10, keyword = '' } = ctx.query;
-      const skip = (page - 1) * pageSize;
-
-      const query = {};
-      if (keyword) {
-        query.$or = [
-          { username: { $regex: keyword, $options: 'i' } },
-          { email: { $regex: keyword, $options: 'i' } },
-          { nickname: { $regex: keyword, $options: 'i' } }
-        ];
-      }
-
-      const [data, total] = await Promise.all([
-        User.find(query)
-          .select('-passwordHash')
-          .sort({ createdAt: -1 })
-          .skip(skip)
-          .limit(parseInt(pageSize))
-          .lean(),
-        User.countDocuments(query)
-      ]);
-
-      ctx.body = {
-        success: true,
-        data,
-        pagination: {
-          page: parseInt(page),
-          pageSize: parseInt(pageSize),
-          total
-        }
-      };
+      const { page, pageSize, keyword } = ctx.query;
+      const result = await userService.getUsers({ page, pageSize, keyword });
+      this.paginated(ctx, result.items, result.pagination, '获取用户列表成功');
     } catch (error) {
-      ctx.status = 500;
-      ctx.body = {
-        success: false,
-        message: error.message
-      };
+      this.fail(ctx, error);
     }
   }
 
-  // 获取用户详情
   async detail(ctx) {
     try {
       const { id } = ctx.params;
-      const user = await User.findById(id).select('-passwordHash').lean();
+      const user = await userService.getById(id, { select: '-passwordHash' });
 
       if (!user) {
-        ctx.status = 404;
-        ctx.body = {
-          success: false,
-          message: '用户不存在'
-        };
-        return;
+        this.throwHttpError('用户不存在', HttpStatus.NOT_FOUND);
       }
 
-      ctx.body = {
-        success: true,
-        data: user
-      };
+      this.ok(ctx, user, '获取用户详情成功');
     } catch (error) {
-      ctx.status = 500;
-      ctx.body = {
-        success: false,
-        message: error.message
-      };
+      this.fail(ctx, error);
     }
   }
 
-  // 创建新用户
   async create(ctx) {
     try {
-      const { username, password, email, nickname, role, avatar, phone, gender } = ctx.request.body;
+      const userData = ctx.request.body;
 
-      // 验证必填字段
-      if (!username || !password) {
-        ctx.status = 400;
-        ctx.body = {
-          success: false,
-          message: '用户名和密码必填'
-        };
-        return;
+      if (!userData.username || !userData.password) {
+        this.throwHttpError('用户名和密码必填', HttpStatus.BAD_REQUEST);
       }
 
-      // 检查用户名是否已存在
-      const existingUser = await User.findOne({ username }).lean();
-      if (existingUser) {
-        ctx.status = 400;
-        ctx.body = {
-          success: false,
-          message: '用户名已存在'
-        };
-        return;
+      if (!userService.validatePassword(userData.password)) {
+        this.throwHttpError('密码长度不能少于6位', HttpStatus.BAD_REQUEST);
       }
 
-      // 检查邮箱是否已存在
-      if (email) {
-        const existingEmail = await User.findOne({ email }).lean();
-        if (existingEmail) {
-          ctx.status = 400;
-          ctx.body = {
-            success: false,
-            message: '邮箱已存在'
-          };
-          return;
-        }
-      }
-
-      // 密码加密
-      const passwordHash = hashPassword(password);
-
-      const newUser = new User({
-        username,
-        passwordHash,
-        email: email || undefined,
-        nickname: nickname || username,
-        avatar: avatar || undefined,
-        phone: phone || undefined,
-        gender: gender || 'unknown',
-        role: role || 'user',
-        status: 'active'
-      });
-
-      const savedUser = await newUser.save();
-
-      ctx.status = 201;
-      ctx.body = {
-        success: true,
-        message: '用户创建成功',
-        data: savedUser.toObject({ hide: 'passwordHash' })
-      };
+      const user = await userService.createUser(userData);
+      this.created(ctx, user, '用户创建成功');
     } catch (error) {
-      ctx.status = 500;
-      ctx.body = {
-        success: false,
-        message: error.message
-      };
+      if (error.message.includes('已存在')) {
+        this.throwHttpError(error.message, HttpStatus.BAD_REQUEST);
+      }
+      this.fail(ctx, error);
     }
   }
 
-  // 更新用户信息
   async update(ctx) {
     try {
       const { id } = ctx.params;
-      const { username, email, nickname, role, status, avatar, phone, gender } = ctx.request.body;
+      const updateData = ctx.request.body;
 
-      const user = await User.findById(id).lean();
+      const user = await userService.updateUser(id, updateData);
+
       if (!user) {
-        ctx.status = 404;
-        ctx.body = {
-          success: false,
-          message: '用户不存在'
-        };
-        return;
+        this.throwHttpError('用户不存在', HttpStatus.NOT_FOUND);
       }
 
-      // 检查用户名是否被其他用户占用
-      if (username && username !== user.username) {
-        const existingUser = await User.findOne({ username }).lean();
-        if (existingUser) {
-          ctx.status = 400;
-          ctx.body = {
-            success: false,
-            message: '用户名已存在'
-          };
-          return;
-        }
-      }
-
-      // 检查邮箱是否被其他用户占用
-      if (email && email !== user.email) {
-        const existingEmail = await User.findOne({ email }).lean();
-        if (existingEmail) {
-          ctx.status = 400;
-          ctx.body = {
-            success: false,
-            message: '邮箱已存在'
-          };
-          return;
-        }
-      }
-
-      // 更新用户信息
-      if (username) user.username = username;
-      if (email !== undefined) user.email = email || undefined;
-      if (nickname) user.nickname = nickname;
-      if (role) user.role = role;
-      if (status) user.status = status;
-      if (avatar !== undefined) user.avatar = avatar || undefined;
-      if (phone !== undefined) user.phone = phone || undefined;
-      if (gender) user.gender = gender;
-
-      const updatedUser = await user.save();
-
-      ctx.body = {
-        success: true,
-        message: '用户更新成功',
-        data: updatedUser.toObject({ hide: 'passwordHash' })
-      };
+      this.ok(ctx, user, '用户更新成功');
     } catch (error) {
-      ctx.status = 500;
-      ctx.body = {
-        success: false,
-        message: error.message
-      };
+      if (error.message.includes('已存在')) {
+        this.throwHttpError(error.message, HttpStatus.BAD_REQUEST);
+      }
+      this.fail(ctx, error);
     }
   }
 
-  // 重置密码
   async resetPassword(ctx) {
     try {
       const { id } = ctx.params;
       const { password } = ctx.request.body;
 
       if (!password) {
-        ctx.status = 400;
-        ctx.body = {
-          success: false,
-          message: '新密码必填'
-        };
-        return;
+        this.throwHttpError('新密码必填', HttpStatus.BAD_REQUEST);
       }
 
-      const user = await User.findById(id).lean();
+      if (!userService.validatePassword(password)) {
+        this.throwHttpError('密码长度不能少于6位', HttpStatus.BAD_REQUEST);
+      }
+
+      const user = await userService.resetPassword(id, password);
+
       if (!user) {
-        ctx.status = 404;
-        ctx.body = {
-          success: false,
-          message: '用户不存在'
-        };
-        return;
+        this.throwHttpError('用户不存在', HttpStatus.NOT_FOUND);
       }
 
-      // 密码加密
-      const passwordHash = hashPassword(password);
-
-      user.passwordHash = passwordHash;
-      await user.save();
-
-      ctx.body = {
-        success: true,
-        message: '密码重置成功'
-      };
+      this.ok(ctx, null, '密码重置成功');
     } catch (error) {
-      ctx.status = 500;
-      ctx.body = {
-        success: false,
-        message: error.message
-      };
+      this.fail(ctx, error);
     }
   }
 
-  // 删除用户
   async delete(ctx) {
     try {
       const { id } = ctx.params;
 
-      const user = await User.findById(id).lean();
+      const user = await userService.deleteUser(id);
+
       if (!user) {
-        ctx.status = 404;
-        ctx.body = {
-          success: false,
-          message: '用户不存在'
-        };
-        return;
+        this.throwHttpError('用户不存在', HttpStatus.NOT_FOUND);
       }
 
-      // 防止删除唯一的管理员
-      if (user.role === 'admin') {
-        const adminCount = await User.countDocuments({ role: 'admin' });
-        if (adminCount <= 1) {
-          ctx.status = 400;
-          ctx.body = {
-            success: false,
-            message: '不能删除最后一个管理员'
-          };
-          return;
-        }
-      }
-
-      await User.findByIdAndDelete(id);
-
-      ctx.body = {
-        success: true,
-        message: '用户删除成功'
-      };
+      this.ok(ctx, null, '用户删除成功');
     } catch (error) {
-      ctx.status = 500;
-      ctx.body = {
-        success: false,
-        message: error.message
-      };
+      if (error.message.includes('最后一个管理员')) {
+        this.throwHttpError(error.message, HttpStatus.BAD_REQUEST);
+      }
+      this.fail(ctx, error);
     }
   }
 }

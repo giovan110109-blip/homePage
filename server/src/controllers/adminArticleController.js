@@ -1,10 +1,9 @@
 const BaseController = require('../utils/baseController');
 const { HttpStatus } = require('../utils/response');
-const Article = require('../models/article');
+const articleService = require('../services/articleService');
 const reactionService = require('../services/reactionService');
 
 class AdminArticleController extends BaseController {
-    // 获取所有文章（管理后台）
     async getArticles(ctx) {
         try {
             const { page = 1, limit = 10, status, category, keyword } = ctx.query;
@@ -19,181 +18,122 @@ class AdminArticleController extends BaseController {
                 ];
             }
 
-            const total = await Article.countDocuments(query);
-            const articles = await Article.find(query)
-                .sort({ createdAt: -1 })
-                .skip((page - 1) * limit)
-                .limit(Number(limit))
-                .lean();
+            const result = await articleService.paginate(query, {
+                page,
+                pageSize: limit,
+                sort: { createdAt: -1 }
+            });
 
-            const ids = articles.map(a => String(a._id));
+            const ids = result.items.map(a => String(a._id));
             const countsMap = await reactionService.getCountsMap('article', ids);
-            const merged = articles.map(a => ({
+            result.items = result.items.map(a => ({
                 ...a,
                 reactions: countsMap[String(a._id)] || reactionService.emptyCounts()
             }));
 
-            ctx.body = {
-                success: true,
-                data: {
-                    articles: merged,
-                    pagination: {
-                        total,
-                        page: Number(page),
-                        limit: Number(limit),
-                        pages: Math.ceil(total / limit)
-                    }
-                }
-            };
+            this.paginated(ctx, result.items, result.pagination, '获取文章列表成功');
         } catch (error) {
-            this.throwHttpError(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
+            this.fail(ctx, error);
         }
     }
 
-    // 获取单篇文章详情
     async getArticleById(ctx) {
         try {
             const { id } = ctx.params;
-            const article = await Article.findById(id).lean();
+            const article = await articleService.getById(id);
 
             if (!article) {
                 this.throwHttpError('文章不存在', HttpStatus.NOT_FOUND);
             }
 
-            ctx.body = {
-                success: true,
-                data: article
-            };
+            this.ok(ctx, article, '获取文章详情成功');
         } catch (error) {
-            this.throwHttpError(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
+            this.fail(ctx, error);
         }
     }
 
-    // 创建文章
     async createArticle(ctx) {
         try {
             const articleData = ctx.request.body;
 
-            // 验证必填字段
             if (!articleData.title || !articleData.content) {
                 this.throwHttpError('标题和内容不能为空', HttpStatus.BAD_REQUEST);
             }
 
-            // 从登录用户获取作者信息
             const user = ctx.state.user;
-            articleData.author = {
-                name: user.nickname || user.username,
-                avatar: user.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username}`,
-                bio: 'Giovan'
-            };
+            const article = await articleService.createArticle(articleData, user);
 
-            const article = await Article.create(articleData);
-
-            ctx.body = {
-                success: true,
-                data: article
-            };
+            this.created(ctx, article, '文章创建成功');
         } catch (error) {
-            this.throwHttpError(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
+            this.fail(ctx, error);
         }
     }
 
-    // 更新文章
     async updateArticle(ctx) {
         try {
             const { id } = ctx.params;
             const updateData = ctx.request.body;
 
-            const article = await Article.findByIdAndUpdate(
-                id,
-                updateData,
-                { new: true, runValidators: true }
-            );
+            const article = await articleService.updateById(id, updateData);
 
             if (!article) {
                 this.throwHttpError('文章不存在', HttpStatus.NOT_FOUND);
             }
 
-            ctx.body = {
-                success: true,
-                data: article
-            };
+            this.ok(ctx, article, '文章更新成功');
         } catch (error) {
-            this.throwHttpError(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
+            this.fail(ctx, error);
         }
     }
 
-    // 删除文章
     async deleteArticle(ctx) {
         try {
             const { id } = ctx.params;
 
-            const article = await Article.findByIdAndDelete(id);
+            const article = await articleService.deleteById(id);
 
             if (!article) {
                 this.throwHttpError('文章不存在', HttpStatus.NOT_FOUND);
             }
 
-            ctx.body = {
-                success: true,
-                message: '删除成功'
-            };
+            this.ok(ctx, null, '删除成功');
         } catch (error) {
-            this.throwHttpError(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
+            this.fail(ctx, error);
         }
     }
 
-    // 切换发布状态
     async togglePublish(ctx) {
         try {
             const { id } = ctx.params;
 
-            const article = await Article.findById(id).lean();
+            const article = await articleService.togglePublish(id);
+
             if (!article) {
                 this.throwHttpError('文章不存在', HttpStatus.NOT_FOUND);
             }
 
-            const newStatus = article.status === 'published' ? 'draft' : 'published';
-            const updateData = { status: newStatus };
-
-            if (newStatus === 'published' && !article.publishedAt) {
-                updateData.publishedAt = new Date();
-            }
-
-            await Article.findByIdAndUpdate(id, updateData);
-
-            ctx.body = {
-                success: true,
-                data: { ...article, ...updateData }
-            };
+            this.ok(ctx, article, '状态切换成功');
         } catch (error) {
-            this.throwHttpError(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
+            this.fail(ctx, error);
         }
     }
 
-    // 切换置顶状态
     async toggleTop(ctx) {
         try {
             const { id } = ctx.params;
 
-            const article = await Article.findById(id).lean();
+            const article = await articleService.toggleTop(id);
+
             if (!article) {
                 this.throwHttpError('文章不存在', HttpStatus.NOT_FOUND);
             }
 
-            const newIsTop = !article.isTop;
-            await Article.findByIdAndUpdate(id, { isTop: newIsTop });
-
-            ctx.body = {
-                success: true,
-                data: { ...article, isTop: newIsTop }
-            };
+            this.ok(ctx, article, '置顶状态切换成功');
         } catch (error) {
-            this.throwHttpError(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
+            this.fail(ctx, error);
         }
     }
 
-    // 批量删除文章
     async batchDelete(ctx) {
         try {
             const { ids } = ctx.request.body;
@@ -202,14 +142,11 @@ class AdminArticleController extends BaseController {
                 this.throwHttpError('请提供要删除的文章ID列表', HttpStatus.BAD_REQUEST);
             }
 
-            const result = await Article.deleteMany({ _id: { $in: ids } });
+            const result = await articleService.model.deleteMany({ _id: { $in: ids } });
 
-            ctx.body = {
-                success: true,
-                message: `成功删除 ${result.deletedCount} 篇文章`
-            };
+            this.ok(ctx, { deletedCount: result.deletedCount }, `成功删除 ${result.deletedCount} 篇文章`);
         } catch (error) {
-            this.throwHttpError(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
+            this.fail(ctx, error);
         }
     }
 }

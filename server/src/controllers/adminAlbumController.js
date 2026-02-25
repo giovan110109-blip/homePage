@@ -3,7 +3,6 @@ const { HttpStatus } = require("../utils/response");
 const Album = require("../models/album");
 
 class AdminAlbumController extends BaseController {
-  // GET /api/admin/albums
   async list(ctx) {
     try {
       const { page = 1, pageSize = 20, keyword } = ctx.query;
@@ -40,7 +39,6 @@ class AdminAlbumController extends BaseController {
     }
   }
 
-  // POST /api/admin/albums
   async create(ctx) {
     try {
       const payload = ctx.request.body || {};
@@ -64,7 +62,6 @@ class AdminAlbumController extends BaseController {
     }
   }
 
-  // PUT /api/admin/albums/:id
   async update(ctx) {
     try {
       const payload = ctx.request.body || {};
@@ -93,11 +90,11 @@ class AdminAlbumController extends BaseController {
     }
   }
 
-  // DELETE /api/admin/albums/:id
   async remove(ctx) {
     try {
       const removed = await Album.findByIdAndDelete(ctx.params.id);
       if (!removed) this.throwHttpError("相册未找到", HttpStatus.NOT_FOUND);
+
       this.ok(ctx, removed, "相册删除成功");
     } catch (err) {
       this.fail(ctx, err);

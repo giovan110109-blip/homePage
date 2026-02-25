@@ -327,16 +327,17 @@ const fetchArticles = async (page: number = 1) => {
       }
     })
     
+    const articles = (response as any).data || []
+    const meta = (response as any).meta || {}
+    
     if (page === 1) {
-      // 首次加载，替换列表
-      articleList.value = response.data.articles || []
+      articleList.value = articles
     } else {
-      // 加载更多，追加到列表
-      articleList.value.push(...(response.data.articles || []))
+      articleList.value.push(...articles)
     }
     
-    totalArticles.value = response.data?.pagination?.total || articleList.value.length
-    currentPage.value = page
+    totalArticles.value = meta.total || 0
+    currentPage.value = meta.page || page
   } catch (error: any) {
     ElMessage.error('获取文章列表失败')
     console.error('获取文章失败:', error)

@@ -93,10 +93,26 @@ app.use(
 );
 
 // CORS
+const allowedOrigins = process.env.CORS_ORIGINS
+  ? process.env.CORS_ORIGINS.split(',').map(s => s.trim())
+  : ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:8999'];
+
 app.use(
   cors({
-    origin: "*",
+    origin: (ctx) => {
+      const requestOrigin = ctx.get('Origin');
+      if (!requestOrigin) return '*';
+      if (allowedOrigins.includes(requestOrigin)) {
+        return requestOrigin;
+      }
+      if (process.env.NODE_ENV === 'development') {
+        return requestOrigin;
+      }
+      return allowedOrigins[0];
+    },
     allowHeaders: ["Content-Type", "Authorization", "x-request-timestamp"],
+    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    credentials: true,
   }),
 );
 

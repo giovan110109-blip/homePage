@@ -2,7 +2,6 @@ const Photo = require("../models/photo");
 const Album = require("../models/album");
 const UploadTask = require("../models/uploadTask");
 const uploadQueue = require("../services/uploadQueueManager");
-const cache = require("../services/cacheService");
 const path = require("path");
 const fs = require("fs");
 const fsp = fs.promises;
@@ -403,24 +402,7 @@ class PhotoController {
       }
 
       const skip = (parseInt(page) - 1) * parseInt(limit);
-      const cacheKey = `photos:${JSON.stringify(query)}:${page}:${limit}`;
 
-      const cached = await cache.get(cacheKey);
-      if (cached) {
-        console.log(`[缓存命中] /api/photos?page=${page}&limit=${limit}`);
-        ctx.body = Response.success(
-          {
-            photos: cached.photos,
-            pagination: cached.pagination,
-          },
-          "获取成功（缓存）",
-        );
-        return;
-      }
-
-      console.log(
-        `[缓存未命中] /api/photos?page=${page}&limit=${limit}，查询数据库`,
-      );
       const [photos, total] = await Promise.all([
         Photo.find(query)
           .sort({ sort: -1 })
@@ -442,10 +424,6 @@ class PhotoController {
           pages: Math.ceil(total / parseInt(limit)),
         },
       };
-
-      cache.set(cacheKey, result, 600).catch((err) => {
-        console.error("Cache set error:", err);
-      });
 
       ctx.body = Response.success(result, "获取成功");
     } catch (error) {
@@ -583,10 +561,7 @@ class PhotoController {
       ];
 
       await Promise.all(fileDeletions);
-      await photo.deleteOne();
-
-      await cache.delPattern("photos:*");
-      await cache.del(`photo:${id}`);
+      await Photo.deleteOne({ _id: id });
 
       ctx.body = Response.success(null, "删除成功");
     } catch (error) {
@@ -650,7 +625,6 @@ class PhotoController {
 
       await Promise.all(fileDeletions);
 
-      // 删除数据库记录
       const result = await Photo.deleteMany({ _id: { $in: ids } });
 
       ctx.body = Response.success(

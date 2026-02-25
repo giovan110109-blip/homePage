@@ -2,7 +2,6 @@ const BaseController = require("../utils/baseController");
 const SiteInfo = require("../models/siteInfo");
 
 class SiteInfoController extends BaseController {
-  // GET /api/site-info
   async getPublic(ctx) {
     try {
       const doc = await SiteInfo.findOne().lean();
@@ -12,7 +11,6 @@ class SiteInfoController extends BaseController {
     }
   }
 
-  // GET /api/admin/site-info
   async getAdmin(ctx) {
     try {
       const doc = await SiteInfo.findOne().lean();
@@ -22,7 +20,6 @@ class SiteInfoController extends BaseController {
     }
   }
 
-  // PUT /api/admin/site-info
   async upsert(ctx) {
     try {
       const payload = ctx.request.body || {};
@@ -32,6 +29,7 @@ class SiteInfoController extends BaseController {
         setDefaultsOnInsert: true,
         lean: true,
       });
+
       this.ok(ctx, doc, "站点信息保存成功");
     } catch (err) {
       this.fail(ctx, err);
