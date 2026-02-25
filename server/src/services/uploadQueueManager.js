@@ -102,6 +102,8 @@ class UploadQueueManager extends EventEmitter {
         { status: "processing", attempts: { $inc: 1 } },
       );
 
+      await this.updateTaskProgress(task.id, 5, "upload");
+
       this.emit("taskStarted", task);
 
       const filePath = path.join(this.uploadDir, task.storageKey);
@@ -113,6 +115,8 @@ class UploadQueueManager extends EventEmitter {
         await this.handleVideoTask(task, filePath, derivedBaseName);
         return;
       }
+
+      await this.updateTaskProgress(task.id, 8, "live_photo_detection");
 
       const fileBuffer = await fs.readFile(filePath);
 
@@ -197,7 +201,7 @@ class UploadQueueManager extends EventEmitter {
 
   async handleVideoTask(task, filePath, derivedBaseName) {
     console.log(`🎬 开始处理视频: ${task.originalFileName}`);
-    await this.updateTaskProgress(task.id, 20, "format_conversion");
+    await this.updateTaskProgress(task.id, 15, "format_conversion");
 
     const videoExt = path.extname(task.storageKey).toLowerCase();
     let optimizedVideoKey = task.storageKey;
@@ -224,7 +228,7 @@ class UploadQueueManager extends EventEmitter {
       }
     }
 
-    await this.updateTaskProgress(task.id, 60, "database_save");
+    await this.updateTaskProgress(task.id, 85, "database_save");
     const existingPhoto = await this.findExistingPhoto(derivedBaseName);
 
     if (existingPhoto) {
@@ -309,7 +313,7 @@ class UploadQueueManager extends EventEmitter {
 
   async handleImageTask(task, fileBuffer, tempDir, filePath, derivedBaseName) {
     console.log(`📸 开始处理图片: ${task.originalFileName}`);
-    await this.updateTaskProgress(task.id, 10, "format_conversion");
+    await this.updateTaskProgress(task.id, 15, "format_conversion");
 
     const processed = await imageProcessing.processImage(
       fileBuffer,
@@ -319,7 +323,7 @@ class UploadQueueManager extends EventEmitter {
     );
 
     console.log(`🔄 处理 HEIC 转换...`);
-    await this.updateTaskProgress(task.id, 30, "metadata_extraction");
+    await this.updateTaskProgress(task.id, 35, "metadata_extraction");
     const { finalStorageKey, finalMimeType } = await this.handleHeicConversion(
       task,
       processed.processedBuffer,
@@ -327,7 +331,7 @@ class UploadQueueManager extends EventEmitter {
     );
 
     console.log(`💾 保存原始图片: ${finalStorageKey}`);
-    await this.updateTaskProgress(task.id, 40, "thumbnail_generation");
+    await this.updateTaskProgress(task.id, 45, "thumbnail_generation");
     await this.saveOriginalFile(
       finalStorageKey,
       processed.processedBuffer,
@@ -342,11 +346,11 @@ class UploadQueueManager extends EventEmitter {
     );
 
     console.log(`🌍 获取地理位置信息...`);
-    await this.updateTaskProgress(task.id, 60, "location_lookup");
+    await this.updateTaskProgress(task.id, 65, "location_lookup");
     const geoinfo = await this.getGeoInfo(processed.location);
 
     console.log(`🏷️ 识别图片标签...`);
-    await this.updateTaskProgress(task.id, 70, "tag_recognition");
+    await this.updateTaskProgress(task.id, 75, "tag_recognition");
     const imageTags = await this.getImageTags(processed.processedBuffer);
 
     console.log(`🎥 检查 LivePhoto 视频...`);
@@ -356,7 +360,7 @@ class UploadQueueManager extends EventEmitter {
     );
 
     console.log(`📦 构建图片数据...`);
-    await this.updateTaskProgress(task.id, 80, "database_save");
+    await this.updateTaskProgress(task.id, 85, "database_save");
     const photoData = this.buildPhotoData(
       task,
       derivedBaseName,
