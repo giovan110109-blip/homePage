@@ -31,7 +31,7 @@ class AdminAuthController extends BaseController {
       }
 
       // 从数据库查询用户（支持任何 role=admin 的用户）
-      let user = await User.findOne({ username, role: 'admin' }).lean();
+      let user = await User.findOne({ username, role: 'admin' });
       
       if (!user) {
         this.throwHttpError('账号或密码错误', HttpStatus.UNAUTHORIZED);

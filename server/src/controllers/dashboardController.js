@@ -15,52 +15,75 @@ class DashboardController extends BaseController {
       const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
       const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-      // 并发获取各种统计数据
+      // 使用聚合管道合并查询
       const [
-        totalMessages,
-        newMessages,
-        totalArticles,
-        publishedArticles,
+        messageStats,
+        articleStats,
+        photoStats,
+        accessStats,
         newReactions,
-        totalPhotos,
-        newPhotos,
-        totalAccessLogs,
-        newAccessLogs,
-        totalAccessCount,
-        newAccessCount,
         reactionStats,
       ] = await Promise.all([
         // 留言统计
-        Message.countDocuments({}),
-        Message.countDocuments({ createdAt: { $gte: oneWeekAgo } }),
+        Message.aggregate([
+          {
+            $facet: {
+              total: [{ $count: "count" }],
+              new: [
+                { $match: { createdAt: { $gte: oneWeekAgo } } },
+                { $count: "count" }
+              ]
+            }
+          }
+        ]),
 
         // 文章统计
-        Article.countDocuments({}),
-        Article.countDocuments({ status: "published" }),
+        Article.aggregate([
+          {
+            $facet: {
+              total: [{ $count: "count" }],
+              published: [
+                { $match: { status: "published" } },
+                { $count: "count" }
+              ]
+            }
+          }
+        ]),
+
+        // 图片统计
+        Photo.aggregate([
+          {
+            $facet: {
+              total: [
+                { $match: { status: "completed" } },
+                { $count: "count" }
+              ],
+              new: [
+                { $match: { status: "completed", createdAt: { $gte: oneWeekAgo } } },
+                { $count: "count" }
+              ]
+            }
+          }
+        ]),
+
+        // 访问日志统计
+        AccessLog.aggregate([
+          {
+            $facet: {
+              total: [{ $count: "count" }],
+              new: [
+                { $match: { createdAt: { $gte: oneWeekAgo } } },
+                { $count: "count" }
+              ]
+            }
+          }
+        ]),
 
         // 反应（近一周增量：文章 + 留言）
         ReactionLog.countDocuments({
           targetType: { $in: ["article", "message"] },
           createdAt: { $gte: oneWeekAgo },
         }),
-
-        // 图片统计
-        Photo.countDocuments({ status: "completed" }),
-        Photo.countDocuments({
-          status: "completed",
-          createdAt: { $gte: oneWeekAgo },
-        }),
-
-        // 访问日志总数
-        AccessLog.countDocuments({}),
-        AccessLog.countDocuments({ createdAt: { $gte: oneWeekAgo } }),
-
-        // 访问数统计
-        AccessLog.aggregate([{ $group: { _id: null, total: { $sum: 1 } } }]),
-        AccessLog.aggregate([
-          { $match: { createdAt: { $gte: oneWeekAgo } } },
-          { $group: { _id: null, total: { $sum: 1 } } },
-        ]),
 
         // 统计各类型反应（文章 + 留言）
         ReactionModel.aggregate([
@@ -75,6 +98,18 @@ class DashboardController extends BaseController {
           },
         ]),
       ]);
+
+      const totalMessages = messageStats[0]?.total[0]?.count || 0;
+      const newMessages = messageStats[0]?.new[0]?.count || 0;
+
+      const totalArticles = articleStats[0]?.total[0]?.count || 0;
+      const publishedArticles = articleStats[0]?.published[0]?.count || 0;
+
+      const totalPhotos = photoStats[0]?.total[0]?.count || 0;
+      const newPhotos = photoStats[0]?.new[0]?.count || 0;
+
+      const totalAccessLogs = accessStats[0]?.total[0]?.count || 0;
+      const newAccessLogs = accessStats[0]?.new[0]?.count || 0;
 
       const reactionMap = {};
       let totalReactions = 0;
@@ -99,9 +134,8 @@ class DashboardController extends BaseController {
       const prevWeekPhotos = totalPhotos - newPhotos;
       const photoGrowth = calcGrowth(currentWeekPhotos, prevWeekPhotos);
 
-      const currentWeekAccess = newAccessCount[0]?.total || 0;
-      const prevWeekAccess =
-        (totalAccessCount[0]?.total || 0) - currentWeekAccess;
+      const currentWeekAccess = newAccessLogs;
+      const prevWeekAccess = totalAccessLogs - newAccessLogs;
       const accessGrowth = calcGrowth(currentWeekAccess, prevWeekAccess);
 
       const currentWeekReactions = newReactions;
@@ -143,7 +177,7 @@ class DashboardController extends BaseController {
           byType: reactionMap,
         },
         access: {
-          total: totalAccessCount[0]?.total || 0,
+          total: totalAccessLogs,
           new: currentWeekAccess,
           growth:
             accessGrowth >= 0
