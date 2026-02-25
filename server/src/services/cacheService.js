@@ -1,11 +1,21 @@
 const redis = require('redis');
 
 const client = redis.createClient({
-  host: process.env.REDIS_HOST || 'localhost',
-  port: parseInt(process.env.REDIS_PORT || 6379),
+  socket: {
+    host: process.env.REDIS_HOST || 'localhost',
+    port: parseInt(process.env.REDIS_PORT || 6379),
+    reconnectStrategy: (retries) => {
+      if (retries > 10) {
+        console.error('Redis 重连次数过多，停止重连');
+        return new Error('Redis 重连失败');
+      }
+      const delay = Math.min(retries * 100, 3000);
+      console.log(`Redis 重连中... (第 ${retries} 次，延迟 ${delay}ms)`);
+      return delay;
+    },
+  },
   password: process.env.REDIS_PASSWORD || undefined,
-  db: parseInt(process.env.REDIS_DB || 0),
-  retry_strategy: require('redis').RetryStrategies.FOREVER,
+  database: parseInt(process.env.REDIS_DB || 0),
 });
 
 let isConnected = false;
