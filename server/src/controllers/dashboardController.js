@@ -28,6 +28,7 @@ class DashboardController extends BaseController {
         newAccessLogs,
         totalAccessCount,
         newAccessCount,
+        reactionStats,
       ] = await Promise.all([
         // 留言统计
         Message.countDocuments({}),
@@ -60,19 +61,19 @@ class DashboardController extends BaseController {
           { $match: { createdAt: { $gte: oneWeekAgo } } },
           { $group: { _id: null, total: { $sum: 1 } } },
         ]),
-      ]);
 
-      // 统计各类型反应（文章 + 留言）
-      const reactionStats = await ReactionModel.aggregate([
-        { $match: { targetType: { $in: ["article", "message"] } } },
-        { $project: { counts: { $objectToArray: "$counts" } } },
-        { $unwind: "$counts" },
-        {
-          $group: {
-            _id: "$counts.k",
-            count: { $sum: "$counts.v" },
+        // 统计各类型反应（文章 + 留言）
+        ReactionModel.aggregate([
+          { $match: { targetType: { $in: ["article", "message"] } } },
+          { $project: { counts: { $objectToArray: "$counts" } } },
+          { $unwind: "$counts" },
+          {
+            $group: {
+              _id: "$counts.k",
+              count: { $sum: "$counts.v" },
+            },
           },
-        },
+        ]),
       ]);
 
       const reactionMap = {};

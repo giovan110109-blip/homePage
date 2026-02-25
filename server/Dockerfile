@@ -27,7 +27,8 @@ WORKDIR /app/server
 EXPOSE 8998
 
 # 可通过环境变量 PORT 覆盖
-CMD ["node", "src/app.js"]
+# 可通过环境变量 CLUSTER_MODE 启用 Cluster 模式
+CMD sh -c "if [ \"$CLUSTER_MODE\" = \"true\" ]; then node src/cluster.js; else node src/app.js; fi"
 
 # find . -name '._*' -delete
 # docker build -t koa-app .

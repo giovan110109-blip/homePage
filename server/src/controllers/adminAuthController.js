@@ -19,7 +19,7 @@ class AdminAuthController extends BaseController {
       }
 
       // 确保默认管理员用户存在（首次启动自动创建）
-      let defaultAdmin = await User.findOne({ username: adminUser, role: 'admin' });
+      let defaultAdmin = await User.findOne({ username: adminUser, role: 'admin' }).lean();
       if (!defaultAdmin) {
         defaultAdmin = await User.create({
           username: adminUser,
@@ -31,7 +31,7 @@ class AdminAuthController extends BaseController {
       }
 
       // 从数据库查询用户（支持任何 role=admin 的用户）
-      let user = await User.findOne({ username, role: 'admin' });
+      let user = await User.findOne({ username, role: 'admin' }).lean();
       
       if (!user) {
         this.throwHttpError('账号或密码错误', HttpStatus.UNAUTHORIZED);

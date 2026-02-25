@@ -120,6 +120,9 @@ photoSchema.index({ status: 1 });
 photoSchema.index({ visibility: 1 });
 photoSchema.index({ createdAt: -1 });
 photoSchema.index({ albums: 1 });
-photoSchema.index({ sort: -1 }); // 排序字段索引
+photoSchema.index({ sort: -1 });
+photoSchema.index({ status: 1, visibility: 1 });
+photoSchema.index({ status: 1, createdAt: -1 });
+photoSchema.index({ status: 1, visibility: 1, createdAt: -1 });
 
 module.exports = mongoose.model("Photo", photoSchema);

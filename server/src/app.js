@@ -39,10 +39,34 @@ const uploadQueue = require('./services/uploadQueueManager');
 // 连接数据库
 connectDB();
 
-// 启动上传队列管理器
-uploadQueue.start().catch(err => {
-  console.error('Failed to start upload queue:', err);
-});
+// CDN 配置
+const CDN_ENABLED = process.env.CDN_ENABLED === 'true';
+const CDN_BASE_URL = process.env.CDN_BASE_URL || '';
+const LOCAL_BASE_URL = process.env.LOCAL_BASE_URL || process.env.UPLOAD_BASE_URL || '/uploads';
+
+console.log(`CDN 配置: ${CDN_ENABLED ? '启用' : '禁用'}`);
+if (CDN_ENABLED) {
+  console.log(`CDN 基础 URL: ${CDN_BASE_URL}`);
+} else {
+  console.log(`本地资源 URL: ${LOCAL_BASE_URL}`);
+}
+
+// 获取资源 URL 的辅助函数
+const getResourceUrl = (relativePath) => {
+  if (CDN_ENABLED && CDN_BASE_URL) {
+    return `${CDN_BASE_URL}${relativePath}`;
+  }
+  return `${LOCAL_BASE_URL}${relativePath}`;
+};
+
+// 仅在第一个 Worker 进程中启动上传队列管理器
+if (process.env.WORKER_ID === '0') {
+  uploadQueue.start().catch(err => {
+    console.error('Failed to start upload queue:', err);
+  });
+} else {
+  console.log(`Worker ${process.pid} skipping upload queue startup (managed by Worker 0)`);
+}
 
 const app = new Koa();
 const port = process.env.PORT || 3000;
@@ -75,8 +99,9 @@ const uploadBaseUrl = process.env.UPLOAD_BASE_URL || '/uploads';
 // 为视频文件添加缓存头
 const videoCache = (ctx, next) => {
   if (ctx.path.endsWith('.mov') || ctx.path.endsWith('.mp4') || ctx.path.endsWith('.m4v')) {
-    // 视频文件：24小时缓存
-    ctx.set('Cache-Control', 'public, max-age=86400, immutable');
+    // 视频文件：24小时缓存，支持 CDN
+    ctx.set('Cache-Control', 'public, max-age=86400, s-maxage=86400');
+    ctx.set('Expires', new Date(Date.now() + 86400000).toUTCString());
     ctx.set('ETag', `"${Date.now()}"`);
   }
   return next();
@@ -93,11 +118,13 @@ const photoCache = async (ctx, next) => {
     if (isImage) {
       // 如果URL中有时间戳参数（如 ?t=xxx），说明是更新后的版本，可以长期缓存
       if (ctx.query.t) {
-        // 带时间戳的图片：1年缓存（因为URL变了就是新版本）
-        ctx.set('Cache-Control', 'public, max-age=31536000, immutable');
+        // 带时间戳的图片：1年缓存（因为URL变了就是新版本），支持 CDN
+        ctx.set('Cache-Control', 'public, max-age=31536000, s-maxage=31536000, immutable');
+        ctx.set('Expires', new Date(Date.now() + 31536000000).toUTCString());
       } else {
-        // 没有时间戳：短期缓存，允许重新验证
-        ctx.set('Cache-Control', 'public, max-age=300, must-revalidate');
+        // 没有时间戳：短期缓存，允许重新验证，支持 CDN
+        ctx.set('Cache-Control', 'public, max-age=300, s-maxage=3600, must-revalidate');
+        ctx.set('Expires', new Date(Date.now() + 300000).toUTCString());
       }
     }
   }
@@ -119,6 +146,16 @@ app.use(mount('/uploads/photos-webp', koaStatic(webpDir, {
 app.use(logger);
 app.use(requestInfo);
 app.use(errorHandler);
+
+// CDN 配置中间件
+app.use(async (ctx, next) => {
+  ctx.state.cdnEnabled = CDN_ENABLED;
+  ctx.state.cdnBaseUrl = CDN_BASE_URL;
+  ctx.state.localBaseUrl = LOCAL_BASE_URL;
+  ctx.state.getResourceUrl = getResourceUrl;
+  await next();
+});
+
 app.use(rateLimitTimestamp({
   windowMs: Number(process.env.RATE_LIMIT_WINDOW_MS) || 10 * 1000,
   max: Number(process.env.RATE_LIMIT_MAX) || 20,

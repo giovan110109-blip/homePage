@@ -5,6 +5,8 @@
     "start": "node src/app.js",
     "dev": "nodemon src/app.js",
     "start:prod": "NODE_ENV=production node src/app.js",
+    "start:cluster": "node src/cluster.js",
+    "start:cluster:prod": "NODE_ENV=production node src/cluster.js",
     "seed:sponsors": "node src/scripts/seedSponsors.js"
   },
   "dependencies": {
@@ -24,6 +26,7 @@
     "md5": "^2.3.0",
     "mongoose": "^8.1.1",
     "nodemailer": "^8.0.1",
+    "redis": "^4.6.13",
     "sharp": "^0.33.2",
     "thumbhash": "^0.1.1"
   },

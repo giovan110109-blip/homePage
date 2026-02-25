@@ -8,6 +8,7 @@ const imageProcessing = require("./imageProcessing");
 const videoOptimizer = require("./videoOptimizer");
 const geocoding = require("./geocoding");
 const imageTagService = require("./imageTagService");
+const queueService = require("./queueService");
 const { execFile } = require("child_process");
 const { promisify } = require("util");
 
@@ -55,19 +56,15 @@ const isLikelyLiveVideo = async (videoPath, imageDateTaken, taskCreatedAt) => {
   }
 };
 
-/**
- * 上传任务队列管理器
- * 负责处理照片上传任务的排队、处理和状态管理
- */
+const QUEUE_NAME = 'upload:queue';
+
 class UploadQueueManager extends EventEmitter {
   constructor() {
     super();
     this.isRunning = false;
-    // 并发数：可根据服务器性能调整，默认4（适合M系列芯片）
-    // CPU密集型任务（Sharp、EXIF提取）占用较多，M4芯片建议4-6
     this.concurrency = parseInt(process.env.UPLOAD_CONCURRENCY || "4");
     this.activeWorkers = 0;
-    this.pollInterval = null;
+    this.consumerId = null;
     const baseUploadDir =
       process.env.UPLOAD_DIR || path.join(process.cwd(), "uploads");
     this.uploadDir =
@@ -78,13 +75,10 @@ class UploadQueueManager extends EventEmitter {
     this.uploadBaseUrl = rawBaseUrl.replace(/\/$/, "");
 
     console.log(
-      `⚙️  上传队列配置 - 并发数: ${this.concurrency}, 轮询间隔: 5秒`,
+      `⚙️  上传队列配置 - 并发数: ${this.concurrency}, 模式: 消息队列`,
     );
   }
 
-  /**
-   * 启动队列管理器
-   */
   async start() {
     if (this.isRunning) {
       console.log("队列管理器已在运行");
@@ -92,88 +86,60 @@ class UploadQueueManager extends EventEmitter {
     }
 
     this.isRunning = true;
-    console.log("🚀 上传队列管理器已启动");
+    console.log("🚀 上传队列管理器已启动（消息队列模式）");
 
-    // 每5秒检查一次队列
-    this.pollInterval = setInterval(() => {
-      this.processQueue().catch((err) => {
-        console.error("处理队列出错:", err);
-      });
-    }, 5000);
+    this.consumerId = `consumer-${Date.now()}`;
 
-    // 立即处理一次
-    await this.processQueue();
+    while (this.isRunning) {
+      try {
+        const tasks = await queueService.getPendingTasks(QUEUE_NAME, this.concurrency);
+
+        if (tasks.length === 0) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          continue;
+        }
+
+        console.log(`📋 获取到 ${tasks.length} 个待处理任务`);
+
+        for (const task of tasks) {
+          if (this.activeWorkers >= this.concurrency) {
+            console.log(`⏸️  已达到最大并发数 ${this.concurrency}，等待中...`);
+            break;
+          }
+
+          this.processTask(task).catch((err) => {
+            console.error(`任务 ${task.id} 处理失败:`, err);
+            queueService.failTask(QUEUE_NAME, task.id, err);
+          });
+        }
+      } catch (error) {
+        console.error("处理队列出错:", error);
+        await new Promise(resolve => setTimeout(resolve, 5000));
+      }
+    }
   }
 
-  /**
-   * 停止队列管理器
-   */
   stop() {
-    if (this.pollInterval) {
-      clearInterval(this.pollInterval);
-      this.pollInterval = null;
-    }
     this.isRunning = false;
     console.log("⏹️  上传队列管理器已停止");
   }
 
-  /**
-   * 处理队列
-   */
-  async processQueue() {
-    if (this.activeWorkers >= this.concurrency) {
-      return;
-    }
-
-    try {
-      // 获取待处理的任务
-      const tasks = await UploadTask.find({
-        status: { $in: ["pending", "failed"] },
-        $expr: { $lt: ["$attempts", "$maxAttempts"] },
-      })
-        .sort({ priority: -1, createdAt: 1 })
-        .limit(this.concurrency - this.activeWorkers);
-
-      if (tasks.length === 0) {
-        return;
-      }
-
-      // 处理每个任务
-      for (const task of tasks) {
-        this.processTask(task).catch((err) => {
-          console.error(`任务 ${task.taskId} 处理失败:`, err);
-        });
-      }
-    } catch (error) {
-      console.error("获取任务列表失败:", error);
-    }
-  }
-
-  /**
-   * 处理单个任务
-   */
   async processTask(task) {
     this.activeWorkers++;
     const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "upload-"));
 
     try {
-      console.log(`开始处理任务: ${task.taskId}`);
+      console.log(`开始处理任务: ${task.id}`);
 
-      // 更新状态为处理中
-      task.status = "processing";
-      task.attempts += 1;
-      await task.save();
+      await UploadTask.findOneAndUpdate(
+        { taskId: task.id },
+        { status: 'processing', attempts: { $inc: 1 } }
+      );
 
       this.emit("taskStarted", task);
 
-      // 阶段1: 读取文件
-      task.stage = "upload";
-      task.progress = 10;
-      await task.save();
-
       const filePath = path.join(this.uploadDir, task.storageKey);
 
-      // 统一计算 baseName（优先任务字段，其次从 storageKey/原始文件名派生）
       const derivedBaseName =
         task.baseName ||
         (task.storageKey
@@ -185,7 +151,6 @@ class UploadQueueManager extends EventEmitter {
           ? task.originalFileName.replace(/\.[^/.]+$/, "")
           : "");
 
-      // 检查是否为视频文件（mimeType 为空时用扩展名兜底）
       const videoExts = [".mp4", ".mov", ".avi", ".mkv", ".m4v"];
       const imageExts = [
         ".jpg",
@@ -210,15 +175,12 @@ class UploadQueueManager extends EventEmitter {
       const isVideo =
         task.mimeType?.startsWith("video/") || (isVideoByExt && !isImage);
 
-      // 如果是视频文件，进行优化处理
       if (isVideo) {
         console.log(`检测到视频文件: ${task.storageKey}，开始优化处理`);
 
-        // 尝试优化视频
         const videoExt = path.extname(task.storageKey).toLowerCase();
         let optimizedVideoKey = task.storageKey;
 
-        // 对 MOV 文件进行优化
         if (videoExt === ".mov") {
           const baseName = path.parse(task.storageKey).name;
           const optimizedPath = path.join(
@@ -234,17 +196,13 @@ class UploadQueueManager extends EventEmitter {
             });
 
           if (result.success) {
-            // 删除原始 MOV 文件
             await fs.unlink(filePath).catch(() => {});
-
-            // 更新存储路径
             optimizedVideoKey = `${baseName}_optimized.mp4`;
             task.storageKey = optimizedVideoKey;
             console.log(`✅ 视频已优化: ${optimizedVideoKey}`);
           }
         }
 
-        // 查找或更新已存在的 Photo 记录（可能是之前上传的图片）
         let existingPhoto = null;
         if (derivedBaseName) {
           existingPhoto = await Photo.findOne({
@@ -257,7 +215,6 @@ class UploadQueueManager extends EventEmitter {
         }
 
         if (existingPhoto) {
-          // 更新现有记录，添加视频信息
           existingPhoto.isLive = true;
           existingPhoto.videoUrl = `${this.uploadBaseUrl}/photos/${optimizedVideoKey}`;
           existingPhoto.videoKey = optimizedVideoKey;
@@ -266,16 +223,14 @@ class UploadQueueManager extends EventEmitter {
           }
           await existingPhoto.save();
 
-          task.status = "completed";
-          task.progress = 100;
-          task.photoId = existingPhoto._id;
-          task.completedAt = new Date();
-          await task.save();
+          await queueService.completeTask(QUEUE_NAME, task.id, {
+            photoId: existingPhoto._id,
+            status: 'completed',
+          });
 
           console.log(`✅ 视频文件已关联到照片: ${existingPhoto._id}`);
           this.emit("taskCompleted", task, existingPhoto);
         } else {
-          // 没有找到匹配的图片，创建或更新占位记录等待后续图片合并
           const placeholder = await Photo.findOneAndUpdate(
             { storageKey: optimizedVideoKey },
             {
@@ -302,11 +257,10 @@ class UploadQueueManager extends EventEmitter {
             },
           );
 
-          task.status = "completed";
-          task.progress = 100;
-          task.photoId = placeholder._id;
-          task.completedAt = new Date();
-          await task.save();
+          await queueService.completeTask(QUEUE_NAME, task.id, {
+            photoId: placeholder._id,
+            status: 'completed',
+          });
 
           console.log(`✅ 视频文件已保存，创建占位记录 ${placeholder._id}`);
           this.emit("taskCompleted", task, placeholder);
@@ -317,7 +271,6 @@ class UploadQueueManager extends EventEmitter {
 
       const fileBuffer = await fs.readFile(filePath);
 
-      // 基于文件内容再次检测类型，确保视频不会进入图片处理流程
       try {
         const fileType = await import("file-type");
         const { fileTypeFromBuffer } = fileType;
@@ -336,7 +289,6 @@ class UploadQueueManager extends EventEmitter {
             `检测到视频文件(内容识别): ${task.storageKey}，跳过图片处理流程`,
           );
 
-          // 复用视频处理逻辑
           let existingPhoto = null;
           if (derivedBaseName) {
             existingPhoto = await Photo.findOne({
@@ -357,11 +309,10 @@ class UploadQueueManager extends EventEmitter {
             }
             await existingPhoto.save();
 
-            task.status = "completed";
-            task.progress = 100;
-            task.photoId = existingPhoto._id;
-            task.completedAt = new Date();
-            await task.save();
+            await queueService.completeTask(QUEUE_NAME, task.id, {
+              photoId: existingPhoto._id,
+              status: 'completed',
+            });
 
             console.log(`✅ 视频文件已关联到照片: ${existingPhoto._id}`);
             this.emit("taskCompleted", task, existingPhoto);
@@ -392,11 +343,10 @@ class UploadQueueManager extends EventEmitter {
               },
             );
 
-            task.status = "completed";
-            task.progress = 100;
-            task.photoId = placeholder._id;
-            task.completedAt = new Date();
-            await task.save();
+            await queueService.completeTask(QUEUE_NAME, task.id, {
+              photoId: placeholder._id,
+              status: 'completed',
+            });
 
             console.log(`✅ 视频文件已保存，创建占位记录 ${placeholder._id}`);
             this.emit("taskCompleted", task, placeholder);
@@ -408,11 +358,6 @@ class UploadQueueManager extends EventEmitter {
         console.error("内容类型检测失败，继续走原逻辑:", err);
       }
 
-      // 阶段2: 格式转换（HEIC/BMP → JPEG）
-      task.stage = "format_conversion";
-      task.progress = 20;
-      await task.save();
-
       const processed = await imageProcessing.processImage(
         fileBuffer,
         task.originalFileName,
@@ -420,12 +365,6 @@ class UploadQueueManager extends EventEmitter {
         { sourceFilePath: filePath },
       );
 
-      // 阶段3: EXIF 元数据提取
-      task.stage = "metadata_extraction";
-      task.progress = 35;
-      await task.save();
-
-      // 若原图为 HEIC/HEIF，转存为 JPG 以便浏览器访问
       let finalStorageKey = task.storageKey;
       let finalMimeType = task.mimeType;
       if (["image/heic", "image/heif"].includes(task.mimeType)) {
@@ -437,8 +376,6 @@ class UploadQueueManager extends EventEmitter {
         await fs.unlink(filePath).catch(() => {});
       }
 
-      // 保存原始文件（完整的原始上传文件，无任何处理）
-      // HEIC 文件已转换为 JPG，使用 processed.processedBuffer
       let originalStorageKey = finalStorageKey;
       const originalPath = path.join(this.uploadDir, originalStorageKey);
       const originalBuffer = ["image/heic", "image/heif"].includes(task.mimeType)
@@ -446,7 +383,6 @@ class UploadQueueManager extends EventEmitter {
         : fileBuffer;
       await fs.writeFile(originalPath, originalBuffer);
 
-      // 生成 WebP 缩略图版本（600px宽，高质量压缩）
       const webpFileName = `${path.parse(finalStorageKey).name}.webp`;
       const webpPath = path.join(this.webpDir, webpFileName);
       await fs.mkdir(path.dirname(webpPath), { recursive: true });
@@ -454,27 +390,26 @@ class UploadQueueManager extends EventEmitter {
       const sharp = require("sharp");
       const imageInfo = await sharp(processed.processedBuffer).metadata();
 
-      // 600px 宽度的WebP缩略图，体积比JPEG小30-50%
       const targetWidth = 600;
 
       const webpBuffer = await sharp(processed.processedBuffer, {
         failOnError: false,
         limitInputPixels: false,
-        autoRotate: false, // 禁用 Sharp 的自动旋转，避免与 EXIF 处理冲突
+        autoRotate: false,
       })
         .resize(targetWidth, null, {
-          fit: "inside", // 保持宽高比
-          withoutEnlargement: true, // 小图不放大
-          kernel: "lanczos3", // 高质量缩放
+          fit: "inside",
+          withoutEnlargement: true,
+          kernel: "lanczos3",
         })
         .webp({
-          quality: 85, // 高质量
-          effort: 6, // 最大压缩努力
-          smartSubsample: true, // 智能色度采样
-          nearLossless: false, // 有损压缩获得更小体积
-          alphaQuality: 90, // 透明度质量
+          quality: 85,
+          effort: 6,
+          smartSubsample: true,
+          nearLossless: false,
+          alphaQuality: 90,
         })
-        .toBuffer(); // 自动剥离元数据减小体积
+        .toBuffer();
 
       await fs.writeFile(webpPath, webpBuffer);
 
@@ -486,16 +421,6 @@ class UploadQueueManager extends EventEmitter {
         `WebP 缩略图: ${imageInfo.width}x${imageInfo.height} -> 600px宽, ${(webpBuffer.length / 1024).toFixed(1)}KB (压缩${compressionRatio}%)`,
       );
 
-      // 阶段4: 生成缩略图
-      task.stage = "thumbnail_generation";
-      task.progress = 55;
-      await task.save();
-
-      // 阶段5: 反向地理编码
-      task.stage = "location_lookup";
-      task.progress = 75;
-      await task.save();
-
       let geoinfo = null;
       if (processed.location) {
         geoinfo = await geocoding.reverseGeocode(
@@ -504,19 +429,6 @@ class UploadQueueManager extends EventEmitter {
         );
       }
 
-      // 阶段6: 保存到数据库
-      task.stage = "database_save";
-      task.progress = 90;
-      await task.save();
-
-      // 提取拍摄日期
-      const dateTaken = processed.exif.DateTimeOriginal
-        ? new Date(processed.exif.DateTimeOriginal)
-        : new Date();
-
-      // 阶段6.5: 图片标签识别
-      task.stage = "tag_recognition";
-      task.progress = 95;
       let imageTags = [];
       try {
         const tagResult = await imageTagService.analyze(
@@ -529,12 +441,10 @@ class UploadQueueManager extends EventEmitter {
         console.warn("⚠️ 图片标签识别失败，继续处理:", tagError.message);
       }
 
-      // Live Photo 处理：检查是否有配对的视频文件
       let isLive = false;
       let videoUrl = null;
       let videoKey = null;
 
-      // 方式1：通过 task.pairedFile（上传时检测到的）
       if (task.isLivePhoto && task.pairedFile) {
         const pairedExt = path.extname(task.pairedFile).toLowerCase();
         const videoExts = [".mp4", ".mov", ".avi", ".mkv", ".m4v"];
@@ -543,7 +453,7 @@ class UploadQueueManager extends EventEmitter {
           const pairedPath = path.join(this.uploadDir, task.pairedFile);
           const valid = await isLikelyLiveVideo(
             pairedPath,
-            dateTaken,
+            task.dateTaken,
             task.createdAt,
           );
           if (valid) {
@@ -554,20 +464,17 @@ class UploadQueueManager extends EventEmitter {
         }
       }
 
-      // 方式2：如果上传时未检测到，现在再次检查文件系统
       if (!isLive && derivedBaseName) {
         try {
           const uploadedFiles = await fs.readdir(this.uploadDir);
           const videoExts = [".mp4", ".mov", ".avi", ".mkv", ".m4v"];
 
           for (const file of uploadedFiles) {
-            // 提取文件的 baseName（去掉结尾的 _时间戳 和扩展名）
             const fileBaseName = file
               .replace(/_\d{13}(?=\.[^.]+$)/, "")
               .replace(/\.[^.]+$/, "");
             const fileExt = path.extname(file).toLowerCase();
 
-            // 找到同名视频文件
             if (
               fileBaseName === derivedBaseName &&
               videoExts.includes(fileExt)
@@ -575,7 +482,7 @@ class UploadQueueManager extends EventEmitter {
               const videoPath = path.join(this.uploadDir, file);
               const valid = await isLikelyLiveVideo(
                 videoPath,
-                dateTaken,
+                task.dateTaken,
                 task.createdAt,
               );
               if (valid) {
@@ -592,7 +499,6 @@ class UploadQueueManager extends EventEmitter {
         }
       }
 
-      // 方式3：如果数据库中已有同 baseName 的记录（含视频占位），优先合并
       let existingByBase = null;
       if (derivedBaseName) {
         existingByBase = await Photo.findOne({ baseName: derivedBaseName });
@@ -605,206 +511,80 @@ class UploadQueueManager extends EventEmitter {
                     new Date(task.createdAt).getTime(),
                 )
               : 0;
-          if (timeDiff <= LIVEPHOTO_MAX_TIME_DIFF_MS) {
-            isLive = true;
-            videoKey = existingByBase.videoKey;
-            videoUrl = existingByBase.videoUrl;
+
+          if (timeDiff > LIVEPHOTO_MAX_TIME_DIFF_MS) {
+            console.log(
+              `⏸️  检测到同名 LivePhoto 已过期 (${Math.round(timeDiff / 60000)}分钟），创建新记录`,
+            );
+            existingByBase = null;
           }
         }
       }
 
-      // 获取当前最大的 sort 值
-      const maxSortPhoto = await Photo.findOne()
-        .sort({ sort: -1 })
-        .select("sort");
-      const nextSort = (maxSortPhoto?.sort || 0) + 1;
-
-      // 创建或更新Photo记录（避免重复 key）
       const photoData = {
-        title: task.originalFileName.replace(/\.[^/.]+$/, ""),
+        title:
+          derivedBaseName || task.originalFileName.replace(/\.[^/.]+$/, ""),
         originalFileName: task.originalFileName,
         baseName: derivedBaseName,
         storageKey: finalStorageKey,
-        originalKey: originalStorageKey, // 原始文件的 storage key
-        thumbnailKey: webpFileName, // 缩略图文件名
-        fileSize: task.fileSize,
         mimeType: finalMimeType,
-
-        width: processed.metadata.width,
-        height: processed.metadata.height,
-        aspectRatio: processed.metadata.width / processed.metadata.height,
-
-        originalUrl: `${this.uploadBaseUrl}/photos-webp/${webpFileName}`, // WebP 缩略图
-        originalFileUrl: `${this.uploadBaseUrl}/photos/${originalStorageKey}`, // 原始高分辨率文件
-        thumbnailUrl: processed.thumbHashDataURL, // thumbHash data URL（可直接用于 img src）
-        thumbnailHash: processed.thumbHash, // thumbHash base64（备用）
-
-        // Live Photo
+        fileSize: processed.fileSize,
+        width: processed.width,
+        height: processed.height,
+        aspectRatio: processed.aspectRatio,
+        dateTaken: processed.exif?.DateTimeOriginal
+          ? new Date(processed.exif.DateTimeOriginal)
+          : new Date(),
+        location: processed.location,
+        geoinfo: geoinfo,
+        camera: processed.camera,
+        exif: processed.exif,
+        tags: imageTags,
         isLive,
         videoUrl,
         videoKey,
-
-        exif: processed.exif,
-        dateTaken,
-
-        location: processed.location
-          ? {
-              latitude: processed.location.latitude,
-              longitude: processed.location.longitude,
-              altitude: processed.location.altitude,
-              coordinates: [
-                processed.location.longitude,
-                processed.location.latitude,
-              ],
-            }
-          : undefined,
-
-        geoinfo,
-
-        // 排序字段 - 按上传顺序递增
-        sort: nextSort,
-
-        camera: {
-          make: processed.exif.Make,
-          model: processed.exif.Model,
-          lens: processed.exif.LensModel,
-          focalLength: processed.exif.FocalLength,
-          aperture: processed.exif.FNumber,
-          shutterSpeed: processed.exif.ExposureTime,
-          iso: processed.exif.ISO,
-          flash: processed.exif.Flash,
-          exposureProgram: processed.exif.ExposureProgram,
-        },
-
-        tags: imageTags,
-
-        status: "completed",
+        status: existingByBase ? "processing" : "completed",
         uploadedBy: task.uploadedBy,
       };
 
-      // 对于 Live Photo，使用 baseName 作为唯一标识，合并视频和图片为一条记录
-      let query;
-      if (existingByBase?._id) {
-        query = { _id: existingByBase._id };
-      } else if (isLive && derivedBaseName) {
-        // 查找同 baseName 的现有记录
-        query = {
-          $or: [
-            { storageKey: finalStorageKey },
-            { baseName: derivedBaseName },
-            { originalFileName: { $regex: `^${derivedBaseName}\\.` } },
-            { storageKey: { $regex: `^${derivedBaseName}_` } },
-          ],
-        };
+      let photo = null;
+      if (existingByBase) {
+        existingByBase.isLive = true;
+        existingByBase.videoUrl = videoUrl;
+        existingByBase.videoKey = videoKey;
+        if (!existingByBase.baseName && derivedBaseName) {
+          existingByBase.baseName = derivedBaseName;
+        }
+        await existingByBase.save();
+
+        photo = existingByBase;
+
+        await queueService.completeTask(QUEUE_NAME, task.id, {
+          photoId: existingByBase._id,
+          status: 'completed',
+        });
+
+        console.log(`✅ 图片信息已更新到 LivePhoto: ${existingByBase._id}`);
       } else {
-        query = derivedBaseName
-          ? {
-              $or: [
-                { storageKey: finalStorageKey },
-                { baseName: derivedBaseName },
-              ],
-            }
-          : { storageKey: finalStorageKey };
+        photo = await Photo.create(photoData);
+
+        await queueService.completeTask(QUEUE_NAME, task.id, {
+          photoId: photo._id,
+          status: 'completed',
+        });
+
+        console.log(`✅ 新照片已创建: ${photo._id}`);
       }
 
-      const photo = await Photo.findOneAndUpdate(
-        query,
-        { $set: photoData },
-        {
-          new: true,
-          upsert: true,
-          setDefaultsOnInsert: true,
-          timestamps: true,
-        },
-      );
-
-      // 完成任务
-      task.storageKey = finalStorageKey;
-      task.mimeType = finalMimeType;
-      task.status = "completed";
-      task.progress = 100;
-      task.photoId = photo._id;
-      task.completedAt = new Date();
-      await task.save();
-
-      console.log(`✅ 任务完成: ${task.taskId} -> Photo ${photo._id}`);
       this.emit("taskCompleted", task, photo);
     } catch (error) {
-      console.error(`❌ 任务失败: ${task.taskId}`, error);
+      console.error(`任务 ${task.id} 处理失败:`, error);
 
-      task.status = task.attempts >= task.maxAttempts ? "failed" : "pending";
-      task.error = {
-        message: error.message,
-        stack: error.stack,
-        stage: task.stage,
-      };
-      if (task.status === "failed") {
-        task.failedAt = new Date();
-      }
-      await task.save();
-
-      this.emit("taskFailed", task, error);
+      await queueService.failTask(QUEUE_NAME, task.id, error);
     } finally {
       this.activeWorkers--;
-
-      // 清理临时目录
-      await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
     }
-  }
-
-  /**
-   * 创建新任务
-   */
-  async createTask(fileData) {
-    const task = new UploadTask({
-      taskId: `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      originalFileName: fileData.originalFileName,
-      fileSize: fileData.fileSize,
-      mimeType: fileData.mimeType,
-      storageKey: fileData.storageKey,
-      uploadedBy: fileData.uploadedBy,
-      status: "pending",
-      priority: fileData.priority || 0,
-    });
-
-    await task.save();
-    console.log(`📝 创建新任务: ${task.taskId}`);
-
-    // 立即触发处理
-    setImmediate(() => this.processQueue());
-
-    return task;
-  }
-
-  /**
-   * 获取任务状态
-   */
-  async getTaskStatus(taskId) {
-    return await UploadTask.findOne({ taskId });
-  }
-
-  /**
-   * 获取队列统计信息
-   */
-  async getStats() {
-    const [pending, processing, completed, failed] = await Promise.all([
-      UploadTask.countDocuments({ status: "pending" }),
-      UploadTask.countDocuments({ status: "processing" }),
-      UploadTask.countDocuments({ status: "completed" }),
-      UploadTask.countDocuments({ status: "failed" }),
-    ]);
-
-    return {
-      pending,
-      processing,
-      completed,
-      failed,
-      activeWorkers: this.activeWorkers,
-      concurrency: this.concurrency,
-    };
   }
 }
 
-// 导出单例
-const queueManager = new UploadQueueManager();
-module.exports = queueManager;
+module.exports = new UploadQueueManager();

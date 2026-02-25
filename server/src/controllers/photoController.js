@@ -2,6 +2,7 @@ const Photo = require("../models/photo");
 const Album = require("../models/album");
 const UploadTask = require("../models/uploadTask");
 const uploadQueue = require("../services/uploadQueueManager");
+const cache = require("../services/cacheService");
 const path = require("path");
 const fs = require("fs");
 const fsp = fs.promises;
@@ -187,7 +188,7 @@ class PhotoController {
         return;
       }
 
-      const tasks = await UploadTask.find({ taskId: { $in: taskIds } });
+      const tasks = await UploadTask.find({ taskId: { $in: taskIds } }).lean();
 
       const data = taskIds.map((id) => {
         const task = tasks.find((t) => t.taskId === id);
@@ -240,7 +241,8 @@ class PhotoController {
         UploadTask.find({ status: "failed" })
           .sort({ updatedAt: -1 })
           .skip(skip)
-          .limit(limitNum),
+          .limit(limitNum)
+          .lean(),
         UploadTask.countDocuments({ status: "failed" }),
       ]);
 
@@ -278,7 +280,7 @@ class PhotoController {
   async retryTask(ctx) {
     try {
       const { taskId } = ctx.params;
-      const task = await UploadTask.findOne({ taskId });
+      const task = await UploadTask.findOne({ taskId }).lean();
 
       if (!task) {
         ctx.body = Response.error("任务不存在", HttpStatus.NOT_FOUND);
@@ -344,28 +346,43 @@ class PhotoController {
       }
 
       const skip = (parseInt(page) - 1) * parseInt(limit);
+      const cacheKey = `photos:${JSON.stringify(query)}:${page}:${limit}`;
+
+      const cached = await cache.get(cacheKey);
+      if (cached) {
+        ctx.body = Response.success(
+          {
+            photos: cached.photos,
+            pagination: cached.pagination,
+          },
+          "获取成功（缓存）",
+        );
+        return;
+      }
 
       const [photos, total] = await Promise.all([
         Photo.find(query)
-          .sort({ sort: -1 }) // 按 sort 字段降序排序，保持稳定布局
+          .sort({ sort: -1 })
           .skip(skip)
           .limit(parseInt(limit))
-          .select("-exif"), // 不返回完整EXIF，但保留 updatedAt 用于缓存清除
+          .select("-exif")
+          .lean(),
         Photo.countDocuments(query),
       ]);
 
-      ctx.body = Response.success(
-        {
-          photos,
-          pagination: {
-            total,
-            page: parseInt(page),
-            limit: parseInt(limit),
-            pages: Math.ceil(total / parseInt(limit)),
-          },
+      const result = {
+        photos,
+        pagination: {
+          total,
+          page: parseInt(page),
+          limit: parseInt(limit),
+          pages: Math.ceil(total / parseInt(limit)),
         },
-        "获取成功",
-      );
+      };
+
+      await cache.set(cacheKey, result, 600);
+
+      ctx.body = Response.success(result, "获取成功");
     } catch (error) {
       ctx.body = Response.error(error.message, HttpStatus.INTERNAL_ERROR);
     }
@@ -377,16 +394,14 @@ class PhotoController {
   async getPhotoDetail(ctx) {
     try {
       const { id } = ctx.params;
-      const photo = await Photo.findById(id);
+      const photo = await Photo.findById(id).lean();
 
       if (!photo) {
         ctx.body = Response.error("照片不存在", HttpStatus.NOT_FOUND);
         return;
       }
 
-      // 增加浏览量
-      photo.views += 1;
-      await photo.save();
+      await Photo.findByIdAndUpdate(id, { $inc: { views: 1 } });
 
       ctx.body = Response.success(photo, "获取成功");
     } catch (error) {
@@ -407,7 +422,8 @@ class PhotoController {
         .select(
           "_id title thumbnailUrl originalUrl location geoinfo dateTaken width height thumbHash",
         )
-        .sort({ dateTaken: -1 });
+        .sort({ dateTaken: -1 })
+        .lean();
 
       // 按坐标点聚合（精度到小数点后3位，约100米）
       const locationGroups = {};
@@ -461,7 +477,7 @@ class PhotoController {
   async deletePhoto(ctx) {
     try {
       const { id } = ctx.params;
-      const photo = await Photo.findById(id);
+      const photo = await Photo.findById(id).lean();
 
       if (!photo) {
         ctx.body = Response.error("照片不存在", HttpStatus.NOT_FOUND);
@@ -504,6 +520,9 @@ class PhotoController {
       await Promise.all(fileDeletions);
       await photo.deleteOne();
 
+      await cache.delPattern('photos:*');
+      await cache.del(`photo:${id}`);
+
       ctx.body = Response.success(null, "删除成功");
     } catch (error) {
       ctx.body = Response.error(error.message, HttpStatus.INTERNAL_ERROR);
@@ -527,7 +546,7 @@ class PhotoController {
 
       console.log(`[BATCH DELETE] 开始批量删除 ${ids.length} 张照片`);
 
-      const photos = await Photo.find({ _id: { $in: ids } });
+      const photos = await Photo.find({ _id: { $in: ids } }).lean();
 
       if (photos.length === 0) {
         ctx.body = Response.error("未找到要删除的照片", HttpStatus.NOT_FOUND);
@@ -631,7 +650,7 @@ class PhotoController {
         return;
       }
 
-      const photo = await Photo.findById(id);
+      const photo = await Photo.findById(id).lean();
       if (!photo) {
         ctx.body = Response.error("照片不存在", HttpStatus.NOT_FOUND);
         return;
@@ -683,7 +702,7 @@ class PhotoController {
   async refreshPhotoGeoinfo(ctx) {
     try {
       const { id } = ctx.params;
-      const photo = await Photo.findById(id);
+      const photo = await Photo.findById(id).lean();
 
       if (!photo) {
         ctx.body = Response.error("照片不存在", HttpStatus.NOT_FOUND);
@@ -716,7 +735,7 @@ class PhotoController {
   async refreshPhotoExif(ctx) {
     try {
       const { id } = ctx.params;
-      const photo = await Photo.findById(id);
+      const photo = await Photo.findById(id).lean();
 
       if (!photo) {
         ctx.body = Response.error("照片不存在", HttpStatus.NOT_FOUND);
@@ -808,7 +827,7 @@ class PhotoController {
         return;
       }
 
-      const photo = await Photo.findById(id);
+      const photo = await Photo.findById(id).lean();
       if (!photo) {
         ctx.body = Response.error("照片不存在", HttpStatus.NOT_FOUND);
         return;

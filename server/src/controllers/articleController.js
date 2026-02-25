@@ -4,6 +4,7 @@ const Article = require('../models/article');
 const reactionService = require('../services/reactionService');
 const ReactionLog = require('../models/reactionLog');
 const { getClientInfo } = require('../utils/requestInfo');
+const cache = require('../services/cacheService');
 
 class ArticleController extends BaseController {
     // 获取已发布文章列表（前台展示）
@@ -54,15 +55,13 @@ class ArticleController extends BaseController {
     async getArticleDetail(ctx) {
         try {
             const { id } = ctx.params;
-            const article = await Article.findOne({ _id: id, status: 'published' });
+            const article = await Article.findOne({ _id: id, status: 'published' }).lean();
 
             if (!article) {
                 this.throwHttpError('文章不存在或未发布', HttpStatus.NOT_FOUND);
             }
 
-            // 增加浏览次数
-            article.views += 1;
-            await article.save();
+            await Article.findByIdAndUpdate(id, { $inc: { views: 1 } });
 
             ctx.body = {
                 success: true,
@@ -79,7 +78,7 @@ class ArticleController extends BaseController {
             const { id } = ctx.params;
             const clientIp = ctx.ip || ctx.request.ip;
 
-            const article = await Article.findOne({ _id: id, status: 'published' });
+            const article = await Article.findOne({ _id: id, status: 'published' }).lean();
             if (!article) {
                 this.throwHttpError('文章不存在或未发布', HttpStatus.NOT_FOUND);
             }
@@ -88,20 +87,15 @@ class ArticleController extends BaseController {
             let liked = true;
 
             if (likedIndex > -1) {
-                // 已点赞则取消点赞
-                article.likedBy.splice(likedIndex, 1);
-                article.likes = Math.max(0, article.likes - 1);
+                await Article.findByIdAndUpdate(id, { $inc: { likes: -1 }, $pull: { likedBy: clientIp } });
                 liked = false;
             } else {
-                article.likes += 1;
-                article.likedBy.push(clientIp);
+                await Article.findByIdAndUpdate(id, { $inc: { likes: 1 }, $push: { likedBy: clientIp } });
             }
-
-            await article.save();
 
             ctx.body = {
                 success: true,
-                data: { likes: article.likes, liked }
+                data: { likes: article.likes + (liked ? 1 : -1), liked }
             };
         } catch (error) {
             this.throwHttpError(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
@@ -168,11 +162,24 @@ class ArticleController extends BaseController {
     async getHotArticles(ctx) {
         try {
             const { limit = 5 } = ctx.query;
+            const cacheKey = `articles:hot:${limit}`;
+
+            const cached = await cache.get(cacheKey);
+            if (cached) {
+                ctx.body = {
+                    success: true,
+                    data: cached
+                };
+                return;
+            }
 
             const articles = await Article.find({ status: 'published' })
                 .select('title coverImage views likes publishedAt')
                 .sort({ views: -1, likes: -1 })
-                .limit(Number(limit));
+                .limit(Number(limit))
+                .lean();
+
+            await cache.set(cacheKey, articles, 300);
 
             ctx.body = {
                 success: true,

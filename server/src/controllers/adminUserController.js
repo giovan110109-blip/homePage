@@ -24,7 +24,8 @@ class AdminUserController {
           .select('-passwordHash')
           .sort({ createdAt: -1 })
           .skip(skip)
-          .limit(parseInt(pageSize)),
+          .limit(parseInt(pageSize))
+          .lean(),
         User.countDocuments(query)
       ]);
 
@@ -50,7 +51,7 @@ class AdminUserController {
   async detail(ctx) {
     try {
       const { id } = ctx.params;
-      const user = await User.findById(id).select('-passwordHash');
+      const user = await User.findById(id).select('-passwordHash').lean();
 
       if (!user) {
         ctx.status = 404;
@@ -90,7 +91,7 @@ class AdminUserController {
       }
 
       // 检查用户名是否已存在
-      const existingUser = await User.findOne({ username });
+      const existingUser = await User.findOne({ username }).lean();
       if (existingUser) {
         ctx.status = 400;
         ctx.body = {
@@ -102,7 +103,7 @@ class AdminUserController {
 
       // 检查邮箱是否已存在
       if (email) {
-        const existingEmail = await User.findOne({ email });
+        const existingEmail = await User.findOne({ email }).lean();
         if (existingEmail) {
           ctx.status = 400;
           ctx.body = {
@@ -151,7 +152,7 @@ class AdminUserController {
       const { id } = ctx.params;
       const { username, email, nickname, role, status, avatar, phone, gender } = ctx.request.body;
 
-      const user = await User.findById(id);
+      const user = await User.findById(id).lean();
       if (!user) {
         ctx.status = 404;
         ctx.body = {
@@ -163,7 +164,7 @@ class AdminUserController {
 
       // 检查用户名是否被其他用户占用
       if (username && username !== user.username) {
-        const existingUser = await User.findOne({ username });
+        const existingUser = await User.findOne({ username }).lean();
         if (existingUser) {
           ctx.status = 400;
           ctx.body = {
@@ -176,7 +177,7 @@ class AdminUserController {
 
       // 检查邮箱是否被其他用户占用
       if (email && email !== user.email) {
-        const existingEmail = await User.findOne({ email });
+        const existingEmail = await User.findOne({ email }).lean();
         if (existingEmail) {
           ctx.status = 400;
           ctx.body = {
@@ -228,7 +229,7 @@ class AdminUserController {
         return;
       }
 
-      const user = await User.findById(id);
+      const user = await User.findById(id).lean();
       if (!user) {
         ctx.status = 404;
         ctx.body = {
@@ -262,7 +263,7 @@ class AdminUserController {
     try {
       const { id } = ctx.params;
 
-      const user = await User.findById(id);
+      const user = await User.findById(id).lean();
       if (!user) {
         ctx.status = 404;
         ctx.body = {

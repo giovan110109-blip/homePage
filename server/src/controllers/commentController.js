@@ -109,7 +109,8 @@ class CommentController extends BaseController {
       const items = await Comment.find(filter)
         .sort({ createdAt: -1 })
         .skip((page - 1) * pageSize)
-        .limit(Number(pageSize));
+        .limit(Number(pageSize))
+        .lean();
       this.paginated(ctx, items, { page, pageSize, total }, "获取评论列表成功");
     } catch (err) {
       this.fail(ctx, err);

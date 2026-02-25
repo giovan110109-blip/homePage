@@ -24,7 +24,8 @@ class AdminAlbumController extends BaseController {
           .populate({
             path: "coverPhoto",
             select: "thumbnailUrl originalUrl title",
-          }),
+          })
+          .lean(),
         Album.countDocuments(query),
       ]);
 

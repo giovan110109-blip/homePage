@@ -11,8 +11,8 @@ class ProfileController extends BaseController {
     try {
       const currentUser = ctx.state.user;
       const user = currentUser._id 
-        ? await User.findById(currentUser._id).select('-passwordHash -wechatSessionKey')
-        : await User.findOne({ username: currentUser.username }).select('-passwordHash -wechatSessionKey');
+        ? await User.findById(currentUser._id).select('-passwordHash -wechatSessionKey').lean()
+        : await User.findOne({ username: currentUser.username }).select('-passwordHash -wechatSessionKey').lean();
       
       if (!user) {
         this.throwHttpError('用户不存在', HttpStatus.NOT_FOUND);
@@ -45,11 +45,13 @@ class ProfileController extends BaseController {
       } = ctx.request.body;
 
       const user = currentUser._id
-        ? await User.findById(currentUser._id)
-        : await User.findOne({ username: currentUser.username });
+        ? await User.findById(currentUser._id).lean()
+        : await User.findOne({ username: currentUser.username }).lean();
       if (!user) {
         this.throwHttpError('用户不存在', HttpStatus.NOT_FOUND);
       }
+
+      const updateData = {};
 
       // 如果要修改密码
       if (oldPassword && newPassword) {
@@ -64,26 +66,31 @@ class ProfileController extends BaseController {
           this.throwHttpError('新密码长度不能少于6位', HttpStatus.BAD_REQUEST);
         }
 
-        // 更新密码
-        user.passwordHash = hashPassword(newPassword);
+        updateData.passwordHash = hashPassword(newPassword);
       }
 
       // 更新其他信息
-      if (nickname !== undefined) user.nickname = nickname;
-      if (realName !== undefined) user.realName = realName;
-      if (avatar !== undefined) user.avatar = avatar;
-      if (email !== undefined) user.email = email;
-      if (phone !== undefined) user.phone = phone;
-      if (gender !== undefined) user.gender = gender;
-      if (birthday !== undefined) user.birthday = birthday;
-      if (location !== undefined) user.location = location;
+      if (nickname !== undefined) updateData.nickname = nickname;
+      if (realName !== undefined) updateData.realName = realName;
+      if (avatar !== undefined) updateData.avatar = avatar;
+      if (email !== undefined) updateData.email = email;
+      if (phone !== undefined) updateData.phone = phone;
+      if (gender !== undefined) updateData.gender = gender;
+      if (birthday !== undefined) updateData.birthday = birthday;
+      if (location !== undefined) updateData.location = location;
 
-      await user.save();
+      if (Object.keys(updateData).length > 0) {
+        if (currentUser._id) {
+          await User.findByIdAndUpdate(currentUser._id, updateData);
+        } else {
+          await User.findOneAndUpdate({ username: currentUser.username }, updateData);
+        }
+      }
 
       // 返回更新后的用户信息（不包含密码）
       const updatedUser = currentUser._id
-        ? await User.findById(currentUser._id).select('-passwordHash -wechatSessionKey')
-        : await User.findOne({ username: currentUser.username }).select('-passwordHash -wechatSessionKey');
+        ? await User.findById(currentUser._id).select('-passwordHash -wechatSessionKey').lean()
+        : await User.findOne({ username: currentUser.username }).select('-passwordHash -wechatSessionKey').lean();
 
       ctx.body = {
         success: true,

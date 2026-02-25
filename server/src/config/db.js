@@ -33,7 +33,14 @@ const connectDB = async () => {
             uri = `mongodb://${username}:${password}@${host}:${port}/${db}?authSource=${authSource}`;
         }
 
-        const conn = await mongoose.connect(uri);
+        const conn = await mongoose.connect(uri, {
+            maxPoolSize: 100,
+            minPoolSize: 10,
+            socketTimeoutMS: 45000,
+            serverSelectionTimeoutMS: 5000,
+            connectTimeoutMS: 10000,
+            maxIdleTimeMS: 30000,
+        });
         console.log(`MongoDB 已连接: ${conn.connection.host}`);
 
         mongoose.connection.on('error', (err) => {

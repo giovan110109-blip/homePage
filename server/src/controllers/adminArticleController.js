@@ -54,7 +54,7 @@ class AdminArticleController extends BaseController {
     async getArticleById(ctx) {
         try {
             const { id } = ctx.params;
-            const article = await Article.findById(id);
+            const article = await Article.findById(id).lean();
 
             if (!article) {
                 this.throwHttpError('文章不存在', HttpStatus.NOT_FOUND);
@@ -148,24 +148,23 @@ class AdminArticleController extends BaseController {
         try {
             const { id } = ctx.params;
 
-            const article = await Article.findById(id);
+            const article = await Article.findById(id).lean();
             if (!article) {
                 this.throwHttpError('文章不存在', HttpStatus.NOT_FOUND);
             }
 
-            // 切换状态
-            article.status = article.status === 'published' ? 'draft' : 'published';
+            const newStatus = article.status === 'published' ? 'draft' : 'published';
+            const updateData = { status: newStatus };
 
-            // 如果是发布，设置发布时间
-            if (article.status === 'published' && !article.publishedAt) {
-                article.publishedAt = new Date();
+            if (newStatus === 'published' && !article.publishedAt) {
+                updateData.publishedAt = new Date();
             }
 
-            await article.save();
+            await Article.findByIdAndUpdate(id, updateData);
 
             ctx.body = {
                 success: true,
-                data: article
+                data: { ...article, ...updateData }
             };
         } catch (error) {
             this.throwHttpError(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
@@ -177,19 +176,17 @@ class AdminArticleController extends BaseController {
         try {
             const { id } = ctx.params;
 
-            const article = await Article.findById(id);
+            const article = await Article.findById(id).lean();
             if (!article) {
                 this.throwHttpError('文章不存在', HttpStatus.NOT_FOUND);
             }
 
-            // 切换置顶状态
-            article.isTop = !article.isTop;
-
-            await article.save();
+            const newIsTop = !article.isTop;
+            await Article.findByIdAndUpdate(id, { isTop: newIsTop });
 
             ctx.body = {
                 success: true,
-                data: article
+                data: { ...article, isTop: newIsTop }
             };
         } catch (error) {
             this.throwHttpError(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
