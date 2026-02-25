@@ -1,50 +1,52 @@
 // 优先加载仓库根 .env，其次回退到 server/.env，最后默认加载环境
-const path = require('path');
-const fs = require('fs');
-const dotenv = require('dotenv');
+const path = require("path");
+const fs = require("fs");
+const dotenv = require("dotenv");
 
 (() => {
-  const rootEnv = path.resolve(__dirname, '../../.env');
-  const serverEnv = path.resolve(__dirname, '../.env');
+  const rootEnv = path.resolve(__dirname, "../../.env");
+  const serverEnv = path.resolve(__dirname, "../.env");
   if (fs.existsSync(rootEnv)) {
     dotenv.config({ path: rootEnv });
-    console.log('Loaded env from project root .env');
+    console.log("Loaded env from project root .env");
     return;
   }
   if (fs.existsSync(serverEnv)) {
     dotenv.config({ path: serverEnv });
-    console.log('Loaded env from server/.env');
+    console.log("Loaded env from server/.env");
     return;
   }
   dotenv.config();
-  console.log('Loaded env from process environment');
+  console.log("Loaded env from process environment");
 })();
 
-const Koa = require('koa');
-const koaBody = require('koa-body');
-const cors = require('@koa/cors');
-const koaStatic = require('koa-static');
-const mount = require('koa-mount');
-const mongoose = require('mongoose');
-const registerRoutes = require('./routes');
-const connectDB = require('./config/db');
-const logger = require('./middleware/logger');
-const errorHandler = require('./middleware/errorHandler');
-const requestInfo = require('./middleware/requestInfo');
-const rateLimitTimestamp = require('./middleware/rateLimitTimestamp');
-const adminAuth = require('./middleware/adminAuth');
-const accessLogger = require('./middleware/accessLogger');
-const uploadQueue = require('./services/uploadQueueManager');
+const Koa = require("koa");
+const koaBody = require("koa-body");
+const cors = require("@koa/cors");
+const koaStatic = require("koa-static");
+const mount = require("koa-mount");
+const mongoose = require("mongoose");
+const registerRoutes = require("./routes");
+const connectDB = require("./config/db");
+const logger = require("./middleware/logger");
+const errorHandler = require("./middleware/errorHandler");
+const requestInfo = require("./middleware/requestInfo");
+const rateLimitTimestamp = require("./middleware/rateLimitTimestamp");
+const adminAuth = require("./middleware/adminAuth");
+const accessLogger = require("./middleware/accessLogger");
+const uploadQueue = require("./services/uploadQueueManager");
+const timeoutMiddleware = require("./middleware/timeout");
 
 // 连接数据库
 connectDB();
 
 // CDN 配置
-const CDN_ENABLED = process.env.CDN_ENABLED === 'true';
-const CDN_BASE_URL = process.env.CDN_BASE_URL || '';
-const LOCAL_BASE_URL = process.env.LOCAL_BASE_URL || process.env.UPLOAD_BASE_URL || '/uploads';
+const CDN_ENABLED = process.env.CDN_ENABLED === "true";
+const CDN_BASE_URL = process.env.CDN_BASE_URL || "";
+const LOCAL_BASE_URL =
+  process.env.LOCAL_BASE_URL || process.env.UPLOAD_BASE_URL || "/uploads";
 
-console.log(`CDN 配置: ${CDN_ENABLED ? '启用' : '禁用'}`);
+console.log(`CDN 配置: ${CDN_ENABLED ? "启用" : "禁用"}`);
 if (CDN_ENABLED) {
   console.log(`CDN 基础 URL: ${CDN_BASE_URL}`);
 } else {
@@ -60,49 +62,59 @@ const getResourceUrl = (relativePath) => {
 };
 
 // 仅在第一个 Worker 进程中启动上传队列管理器
-if (process.env.WORKER_ID === '0') {
-  uploadQueue.start().catch(err => {
-    console.error('Failed to start upload queue:', err);
+if (process.env.WORKER_ID === "0") {
+  uploadQueue.start().catch((err) => {
+    console.error("Failed to start upload queue:", err);
   });
 } else {
-  console.log(`Worker ${process.pid} skipping upload queue startup (managed by Worker 0)`);
+  console.log(
+    `Worker ${process.pid} skipping upload queue startup (managed by Worker 0)`,
+  );
 }
 
 const app = new Koa();
 const port = process.env.PORT || 3000;
 
 // 解析 JSON、表单和文件上传（统一使用 koa-body，避免重复消费请求流）
-app.use(koaBody({
-  multipart: true,
-  urlencoded: true,
-  json: true,
-  text: true,
-  formidable: {
-    maxFileSize: 200 * 1024 * 1024, // 200MB
-    maxFields: 1000,
-    maxFieldsSize: 2 * 1024 * 1024, // 2MB per field
-    keepExtensions: true,
-    allowEmptyFiles: false
-  }
-}));
+app.use(
+  koaBody({
+    multipart: true,
+    urlencoded: true,
+    json: true,
+    text: true,
+    formidable: {
+      maxFileSize: 200 * 1024 * 1024, // 200MB
+      maxFields: 1000,
+      maxFieldsSize: 2 * 1024 * 1024, // 2MB per field
+      keepExtensions: true,
+      allowEmptyFiles: false,
+    },
+  }),
+);
 
 // CORS
-app.use(cors({
-  origin: '*',
-  allowHeaders: ['Content-Type', 'Authorization', 'x-request-timestamp'],
-}));
+app.use(
+  cors({
+    origin: "*",
+    allowHeaders: ["Content-Type", "Authorization", "x-request-timestamp"],
+  }),
+);
 
 // 静态文件：对外暴露 uploads 目录（放在限流前，避免静态资源被时间戳校验拦截）
-const uploadDir = process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads');
-const uploadBaseUrl = process.env.UPLOAD_BASE_URL || '/uploads';
+const uploadDir = process.env.UPLOAD_DIR || path.join(process.cwd(), "uploads");
+const uploadBaseUrl = process.env.UPLOAD_BASE_URL || "/uploads";
 
 // 为视频文件添加缓存头
 const videoCache = (ctx, next) => {
-  if (ctx.path.endsWith('.mov') || ctx.path.endsWith('.mp4') || ctx.path.endsWith('.m4v')) {
+  if (
+    ctx.path.endsWith(".mov") ||
+    ctx.path.endsWith(".mp4") ||
+    ctx.path.endsWith(".m4v")
+  ) {
     // 视频文件：24小时缓存，支持 CDN
-    ctx.set('Cache-Control', 'public, max-age=86400, s-maxage=86400');
-    ctx.set('Expires', new Date(Date.now() + 86400000).toUTCString());
-    ctx.set('ETag', `"${Date.now()}"`);
+    ctx.set("Cache-Control", "public, max-age=86400, s-maxage=86400");
+    ctx.set("Expires", new Date(Date.now() + 86400000).toUTCString());
+    ctx.set("ETag", `"${Date.now()}"`);
   }
   return next();
 };
@@ -110,21 +122,30 @@ const videoCache = (ctx, next) => {
 // 为图片文件添加缓存控制（支持查询参数区分版本）
 const photoCache = async (ctx, next) => {
   await next();
-  
+
   // 匹配图片路径
-  if (ctx.path.startsWith('/uploads/photos/') || ctx.path.startsWith('/uploads/photos-webp/')) {
+  if (
+    ctx.path.startsWith("/uploads/photos/") ||
+    ctx.path.startsWith("/uploads/photos-webp/")
+  ) {
     const isImage = /\.(jpg|jpeg|png|webp|gif|heic)$/i.test(ctx.path);
-    
+
     if (isImage) {
       // 如果URL中有时间戳参数（如 ?t=xxx），说明是更新后的版本，可以长期缓存
       if (ctx.query.t) {
         // 带时间戳的图片：1年缓存（因为URL变了就是新版本），支持 CDN
-        ctx.set('Cache-Control', 'public, max-age=31536000, s-maxage=31536000, immutable');
-        ctx.set('Expires', new Date(Date.now() + 31536000000).toUTCString());
+        ctx.set(
+          "Cache-Control",
+          "public, max-age=31536000, s-maxage=31536000, immutable",
+        );
+        ctx.set("Expires", new Date(Date.now() + 31536000000).toUTCString());
       } else {
         // 没有时间戳：短期缓存，允许重新验证，支持 CDN
-        ctx.set('Cache-Control', 'public, max-age=300, s-maxage=3600, must-revalidate');
-        ctx.set('Expires', new Date(Date.now() + 300000).toUTCString());
+        ctx.set(
+          "Cache-Control",
+          "public, max-age=300, s-maxage=3600, must-revalidate",
+        );
+        ctx.set("Expires", new Date(Date.now() + 300000).toUTCString());
       }
     }
   }
@@ -132,15 +153,26 @@ const photoCache = async (ctx, next) => {
 
 app.use(videoCache);
 app.use(photoCache);
-app.use(mount(uploadBaseUrl, koaStatic(uploadDir, {
-  maxage: 0, // 禁用默认缓存，由中间件控制
-})));
+app.use(
+  mount(
+    uploadBaseUrl,
+    koaStatic(uploadDir, {
+      maxage: 0, // 禁用默认缓存，由中间件控制
+    }),
+  ),
+);
 
 // 对外暴露 WebP 目录
-const webpDir = process.env.UPLOAD_WEBP_DIR || path.join(uploadDir, 'photos-webp');
-app.use(mount('/uploads/photos-webp', koaStatic(webpDir, {
-  maxage: 0, // 禁用默认缓存，由中间件控制
-})));
+const webpDir =
+  process.env.UPLOAD_WEBP_DIR || path.join(uploadDir, "photos-webp");
+app.use(
+  mount(
+    "/uploads/photos-webp",
+    koaStatic(webpDir, {
+      maxage: 0, // 禁用默认缓存，由中间件控制
+    }),
+  ),
+);
 
 // 全局中间件：日志、请求信息、错误处理
 app.use(logger);
@@ -153,14 +185,20 @@ app.use(async (ctx, next) => {
   ctx.state.cdnBaseUrl = CDN_BASE_URL;
   ctx.state.localBaseUrl = LOCAL_BASE_URL;
   ctx.state.getResourceUrl = getResourceUrl;
+
   await next();
 });
 
-app.use(rateLimitTimestamp({
-  windowMs: Number(process.env.RATE_LIMIT_WINDOW_MS) || 10 * 1000,
-  max: Number(process.env.RATE_LIMIT_MAX) || 20,
-  maxSkewMs: Number(process.env.RATE_LIMIT_SKEW_MS) || 5 * 60 * 1000,
-}));
+// 请求超时中间件
+app.use(timeoutMiddleware);
+
+app.use(
+  rateLimitTimestamp({
+    windowMs: Number(process.env.RATE_LIMIT_WINDOW_MS) || 10 * 1000,
+    max: Number(process.env.RATE_LIMIT_MAX) || 20,
+    maxSkewMs: Number(process.env.RATE_LIMIT_SKEW_MS) || 5 * 60 * 1000,
+  }),
+);
 app.use(accessLogger);
 app.use(adminAuth);
 
@@ -187,17 +225,17 @@ if (server.requestTimeout !== undefined) {
 const shutdown = async (signal) => {
   console.log(`Received ${signal}, closing gracefully...`);
   server.close(() => {
-    console.log('HTTP server closed');
+    console.log("HTTP server closed");
   });
   await mongoose.connection.close();
-  console.log('MongoDB connection closed');
+  console.log("MongoDB connection closed");
   process.exit(0);
 };
 
-['SIGINT', 'SIGTERM'].forEach((sig) => {
+["SIGINT", "SIGTERM"].forEach((sig) => {
   process.on(sig, () => {
     shutdown(sig).catch((err) => {
-      console.error('Error during shutdown', err);
+      console.error("Error during shutdown", err);
       process.exit(1);
     });
   });

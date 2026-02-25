@@ -10,6 +10,65 @@ const { HttpStatus, Response } = require("../utils/response");
 
 class PhotoController {
   /**
+   * 替换图片 URL 为 CDN 或本地 URL
+   */
+  replacePhotoUrls(photos, ctx) {
+    const cdnEnabled = ctx.state.cdnEnabled || false;
+    const cdnBaseUrl = ctx.state.cdnBaseUrl || "";
+    const localBaseUrl =
+      ctx.state.localBaseUrl || "https://serve.giovan.cn/uploads";
+
+    if (!cdnEnabled || !cdnBaseUrl) {
+      return photos;
+    }
+
+    const baseUrl = cdnBaseUrl;
+
+    return photos.map((photo) => {
+      const updatedPhoto = { ...photo };
+
+      if (updatedPhoto.originalUrl) {
+        const oldUrl = updatedPhoto.originalUrl;
+        if (oldUrl.includes("/uploads/photos-webp/")) {
+          updatedPhoto.originalUrl = oldUrl.replace(
+            /https?:\/\/[^\/]+/,
+            baseUrl,
+          );
+        }
+      }
+
+      if (updatedPhoto.thumbnailUrl) {
+        const oldUrl = updatedPhoto.thumbnailUrl;
+        if (oldUrl.includes("/uploads/photos-webp/")) {
+          updatedPhoto.thumbnailUrl = oldUrl.replace(
+            /https?:\/\/[^\/]+/,
+            baseUrl,
+          );
+        }
+      }
+
+      if (updatedPhoto.videoUrl) {
+        const oldUrl = updatedPhoto.videoUrl;
+        if (oldUrl.includes("/uploads/photos/")) {
+          updatedPhoto.videoUrl = oldUrl.replace(/https?:\/\/[^\/]+/, baseUrl);
+        }
+      }
+
+      if (updatedPhoto.originalFileUrl) {
+        const oldUrl = updatedPhoto.originalFileUrl;
+        if (oldUrl.includes("/uploads/photos/")) {
+          updatedPhoto.originalFileUrl = oldUrl.replace(
+            /https?:\/\/[^\/]+/,
+            baseUrl,
+          );
+        }
+      }
+
+      return updatedPhoto;
+    });
+  }
+
+  /**
    * 上传照片
    */
   async upload(ctx) {
@@ -48,8 +107,6 @@ class PhotoController {
       await fsp.copyFile(tempPath, filePath);
       // 删除临时文件
       await fsp.unlink(tempPath).catch(() => {});
-
-      console.log(`文件已保存: ${filePath}`);
 
       // Live Photo 检测：检查是否有同名的视频/图片文件
       const mimeType = file.mimetype || file.type || file.mimeType || "";
@@ -350,6 +407,7 @@ class PhotoController {
 
       const cached = await cache.get(cacheKey);
       if (cached) {
+        console.log(`[缓存命中] /api/photos?page=${page}&limit=${limit}`);
         ctx.body = Response.success(
           {
             photos: cached.photos,
@@ -360,6 +418,9 @@ class PhotoController {
         return;
       }
 
+      console.log(
+        `[缓存未命中] /api/photos?page=${page}&limit=${limit}，查询数据库`,
+      );
       const [photos, total] = await Promise.all([
         Photo.find(query)
           .sort({ sort: -1 })
@@ -370,8 +431,10 @@ class PhotoController {
         Photo.countDocuments(query),
       ]);
 
+      const updatedPhotos = this.replacePhotoUrls(photos, ctx);
+
       const result = {
-        photos,
+        photos: updatedPhotos,
         pagination: {
           total,
           page: parseInt(page),
@@ -380,8 +443,8 @@ class PhotoController {
         },
       };
 
-      cache.set(cacheKey, result, 600).catch(err => {
-        console.error('Cache set error:', err);
+      cache.set(cacheKey, result, 600).catch((err) => {
+        console.error("Cache set error:", err);
       });
 
       ctx.body = Response.success(result, "获取成功");
@@ -522,7 +585,7 @@ class PhotoController {
       await Promise.all(fileDeletions);
       await photo.deleteOne();
 
-      await cache.delPattern('photos:*');
+      await cache.delPattern("photos:*");
       await cache.del(`photo:${id}`);
 
       ctx.body = Response.success(null, "删除成功");
@@ -545,8 +608,6 @@ class PhotoController {
         );
         return;
       }
-
-      console.log(`[BATCH DELETE] 开始批量删除 ${ids.length} 张照片`);
 
       const photos = await Photo.find({ _id: { $in: ids } }).lean();
 
@@ -592,13 +653,11 @@ class PhotoController {
       // 删除数据库记录
       const result = await Photo.deleteMany({ _id: { $in: ids } });
 
-      console.log(`[BATCH DELETE] 成功删除 ${result.deletedCount} 张照片`);
       ctx.body = Response.success(
         { deletedCount: result.deletedCount },
         `成功删除 ${result.deletedCount} 张照片`,
       );
     } catch (error) {
-      console.error("[BATCH DELETE] 批量删除失败:", error);
       ctx.body = Response.error(
         error.message || "批量删除失败",
         HttpStatus.INTERNAL_ERROR,
@@ -676,17 +735,10 @@ class PhotoController {
           if (geoinfo) {
             photo.geoinfo = geoinfo;
             await photo.save();
-            console.log(
-              `✅ 照片 ${photo._id} 地理信息已更新:`,
-              geoinfo.formatted,
-            );
           }
         })
         .catch((geoError) => {
-          console.warn(
-            `⚠️  照片 ${photo._id} 反向地理编码失败:`,
-            geoError.message,
-          );
+          console.warn("反向地理编码失败:", geoError.message);
         });
 
       ctx.body = Response.success(
@@ -842,8 +894,6 @@ class PhotoController {
       const fileKey = photo.originalKey || photo.storageKey;
       const filePath = path.join(uploadDir, fileKey);
 
-      console.log(`[ROTATE] 文件路径: ${filePath}`);
-
       // 检查文件是否存在
       if (
         !(await fsp
@@ -851,12 +901,9 @@ class PhotoController {
           .then(() => true)
           .catch(() => false))
       ) {
-        console.log(`[ROTATE] ❌ 文件不存在`);
         ctx.body = Response.error("原始文件不存在", HttpStatus.NOT_FOUND);
         return;
       }
-
-      console.log(`[ROTATE] ✓ 文件存在`);
 
       const sharp = require("sharp");
       const fileExt = path.extname(fileKey).toLowerCase();
@@ -864,9 +911,6 @@ class PhotoController {
       // 获取当前图片信息
       let image = sharp(filePath);
       const metadata = await image.metadata();
-      console.log(
-        `[ROTATE] 原始尺寸: ${metadata.width}x${metadata.height}, 格式: ${metadata.format}`,
-      );
 
       let newWidth = metadata.width;
       let newHeight = metadata.height;
@@ -931,10 +975,8 @@ class PhotoController {
 
         // 删除备份文件
         await fsp.unlink(backupPath).catch(() => {});
-
-        console.log("[ROTATE] ✓ 文件旋转成功");
       } catch (rotateError) {
-        console.error("[ROTATE] ❌ 旋转失败:", rotateError.message);
+        console.error("旋转失败:", rotateError.message);
         // 恢复备份
         await fsp.rename(backupPath, filePath).catch(() => {});
         throw rotateError;
@@ -953,7 +995,6 @@ class PhotoController {
           .catch(() => false)
       ) {
         try {
-          console.log(`[ROTATE] 旋转 WebP: ${webpPath}`);
           const webpBackupPath = webpPath + ".backup";
           await fsp.copyFile(webpPath, webpBackupPath);
 
@@ -972,9 +1013,8 @@ class PhotoController {
 
           await fsp.rename(webpPath + ".rotated", webpPath);
           await fsp.unlink(webpBackupPath).catch(() => {});
-          console.log("[ROTATE] ✓ WebP 旋转成功");
         } catch (webpError) {
-          console.warn("[ROTATE] ⚠️ WebP 旋转失败:", webpError.message);
+          console.warn("WebP 旋转失败:", webpError.message);
           await fsp.rename(webpPath + ".backup", webpPath).catch(() => {});
         }
       }
@@ -992,31 +1032,28 @@ class PhotoController {
           .catch(() => false)
       ) {
         try {
-          console.log(`[ROTATE] 重新生成缩略图: ${thumbnailPath}`);
           await sharp(filePath)
             .resize(400, 400, { fit: "inside", withoutEnlargement: true })
             .jpeg({ quality: 85 })
             .toFile(thumbnailPath + ".rotated");
 
           await fsp.rename(thumbnailPath + ".rotated", thumbnailPath);
-          console.log("[ROTATE] ✓ 缩略图生成成功");
         } catch (thumbError) {
-          console.warn("[ROTATE] ⚠️ 重新生成缩略图失败:", thumbError.message);
+          console.warn("重新生成缩略图失败:", thumbError.message);
         }
       }
 
       // 重新生成 ThumbHash（用于模糊占位图）
       try {
-        console.log("[ROTATE] 重新生成 ThumbHash...");
         const imageProcessing = require("../services/imageProcessing");
         const rotatedBuffer = await fsp.readFile(filePath);
-        const newThumbHash = await imageProcessing.generateThumbHash(rotatedBuffer);
+        const newThumbHash =
+          await imageProcessing.generateThumbHash(rotatedBuffer);
         if (newThumbHash) {
           photo.thumbnailHash = newThumbHash;
-          console.log("[ROTATE] ✓ ThumbHash 生成成功");
         }
       } catch (thumbHashError) {
-        console.warn("[ROTATE] ⚠️ ThumbHash 生成失败:", thumbHashError.message);
+        console.warn("ThumbHash 生成失败:", thumbHashError.message);
       }
 
       // 更新数据库中的尺寸信息
@@ -1033,12 +1070,9 @@ class PhotoController {
 
       await photo.save();
 
-      console.log(
-        `[ROTATE] ✓ 数据库已更新: ${newWidth}x${newHeight}, updatedAt: ${photo.updatedAt}`,
-      );
       ctx.body = Response.success(photo, "图片旋转成功");
     } catch (error) {
-      console.error("[ROTATE] ❌ 旋转图片失败:", error);
+      console.error("旋转图片失败:", error);
       ctx.body = Response.error(
         error.message || "旋转图片失败",
         HttpStatus.INTERNAL_ERROR,

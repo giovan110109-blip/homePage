@@ -48,6 +48,10 @@ if (CACHE_ENABLED) {
     console.log("Redis Client Reconnecting...");
     isConnected = false;
   });
+
+  client.connect().catch((err) => {
+    console.error("Redis 连接失败:", err);
+  });
 } else {
   console.log("缓存已禁用（CACHE_ENABLED=false）");
 }
