@@ -40,27 +40,6 @@ const timeoutMiddleware = require("./middleware/timeout");
 // 连接数据库
 connectDB();
 
-// CDN 配置
-const CDN_ENABLED = process.env.CDN_ENABLED === "true";
-const CDN_BASE_URL = process.env.CDN_BASE_URL || "";
-const LOCAL_BASE_URL =
-  process.env.LOCAL_BASE_URL || process.env.UPLOAD_BASE_URL || "/uploads";
-
-console.log(`CDN 配置: ${CDN_ENABLED ? "启用" : "禁用"}`);
-if (CDN_ENABLED) {
-  console.log(`CDN 基础 URL: ${CDN_BASE_URL}`);
-} else {
-  console.log(`本地资源 URL: ${LOCAL_BASE_URL}`);
-}
-
-// 获取资源 URL 的辅助函数
-const getResourceUrl = (relativePath) => {
-  if (CDN_ENABLED && CDN_BASE_URL) {
-    return `${CDN_BASE_URL}${relativePath}`;
-  }
-  return `${LOCAL_BASE_URL}${relativePath}`;
-};
-
 // 仅在第一个 Worker 进程中启动上传队列管理器
 if (process.env.WORKER_ID === "0") {
   uploadQueue.start().catch((err) => {
@@ -194,16 +173,6 @@ app.use(
 app.use(logger);
 app.use(requestInfo);
 app.use(errorHandler);
-
-// CDN 配置中间件
-app.use(async (ctx, next) => {
-  ctx.state.cdnEnabled = CDN_ENABLED;
-  ctx.state.cdnBaseUrl = CDN_BASE_URL;
-  ctx.state.localBaseUrl = LOCAL_BASE_URL;
-  ctx.state.getResourceUrl = getResourceUrl;
-
-  await next();
-});
 
 // 请求超时中间件
 app.use(timeoutMiddleware);

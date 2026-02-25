@@ -8,34 +8,9 @@ const fsp = fs.promises;
 const { HttpStatus, Response } = require("../utils/response");
 
 class PhotoController {
-  /**
-   * 替换图片 URL 为 CDN 或本地 URL
-   */
-  replacePhotoUrls(photos, ctx) {
-    const cdnEnabled = ctx.state.cdnEnabled || false;
-    const cdnBaseUrl = ctx.state.cdnBaseUrl || "";
-    const localBaseUrl =
-      ctx.state.localBaseUrl || "https://serve.giovan.cn/uploads";
-
-    const baseUrl = cdnEnabled && cdnBaseUrl ? cdnBaseUrl : null;
-
+  processPhotos(photos) {
     return photos.map((photo) => {
       const updatedPhoto = { ...photo };
-
-      if (baseUrl) {
-        if (updatedPhoto.originalUrl && updatedPhoto.originalUrl.includes("/uploads/photos-webp/")) {
-          updatedPhoto.originalUrl = updatedPhoto.originalUrl.replace(/https?:\/\/[^\/]+/, baseUrl);
-        }
-        if (updatedPhoto.thumbnailUrl && updatedPhoto.thumbnailUrl.includes("/uploads/photos-webp/")) {
-          updatedPhoto.thumbnailUrl = updatedPhoto.thumbnailUrl.replace(/https?:\/\/[^\/]+/, baseUrl);
-        }
-        if (updatedPhoto.videoUrl && updatedPhoto.videoUrl.includes("/uploads/photos/")) {
-          updatedPhoto.videoUrl = updatedPhoto.videoUrl.replace(/https?:\/\/[^\/]+/, baseUrl);
-        }
-        if (updatedPhoto.originalFileUrl && updatedPhoto.originalFileUrl.includes("/uploads/photos/")) {
-          updatedPhoto.originalFileUrl = updatedPhoto.originalFileUrl.replace(/https?:\/\/[^\/]+/, baseUrl);
-        }
-      }
 
       if (updatedPhoto.location) {
         const hasValidCoords = updatedPhoto.location.latitude != null && 
@@ -395,7 +370,7 @@ class PhotoController {
         Photo.countDocuments(query),
       ]);
 
-      const updatedPhotos = this.replacePhotoUrls(photos, ctx);
+      const updatedPhotos = this.processPhotos(photos);
 
       const result = {
         photos: updatedPhotos,
