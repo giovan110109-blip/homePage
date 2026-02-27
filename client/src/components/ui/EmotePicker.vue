@@ -35,7 +35,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from "vue";
+import { ref, computed, onMounted, onUnmounted, nextTick } from "vue";
 import { useEmotes } from "@/composables/useEmotes";
 
 const emit = defineEmits<{
@@ -53,8 +53,12 @@ const props = withDefaults(
   },
 );
 
-const { emoteGroups, activeGroup, filteredEmotes, setActiveGroup } =
-  useEmotes();
+const {
+  emoteGroups,
+  activeGroup,
+  filteredEmotes,
+  setActiveGroup: setActiveGroupOriginal,
+} = useEmotes();
 
 const gridRef = ref<HTMLElement | null>(null);
 const emoteRefs = ref<(HTMLElement | null)[]>([]);
@@ -63,6 +67,16 @@ const loadedEmotes = ref<Set<string>>(new Set());
 
 const VISIBLE_THRESHOLD = 20;
 const PRELOAD_COUNT = 10;
+
+const setActiveGroup = (groupName: string) => {
+  setActiveGroupOriginal(groupName);
+  nextTick(() => {
+    updateVisibleEmotes();
+    if (gridRef.value) {
+      gridRef.value.scrollTop = 0;
+    }
+  });
+};
 
 const shouldLazyLoad = (emote: any, index: number) => {
   return index >= VISIBLE_THRESHOLD;
@@ -77,12 +91,8 @@ const setEmoteRef = (el: any, index: number) => {
 };
 
 const updateVisibleEmotes = () => {
-  if (!gridRef.value) return;
-
-  const { scrollTop, scrollHeight, clientHeight } = gridRef.value;
-  const startIndex = Math.floor(scrollTop / 80);
   const endIndex = Math.min(
-    startIndex + VISIBLE_THRESHOLD + PRELOAD_COUNT,
+    VISIBLE_THRESHOLD + PRELOAD_COUNT,
     filteredEmotes.value.length,
   );
 
