@@ -1,14 +1,5 @@
 <template>
   <div class="emote-picker">
-    <!-- <div class="emote-picker-header">
-      <input
-        v-model="searchQuery"
-        type="text"
-        placeholder="搜索表情包..."
-        class="emote-search-input"
-      />
-    </div> -->
-
     <div class="emote-groups">
       <button
         v-for="group in emoteGroups"
@@ -20,17 +11,18 @@
       </button>
     </div>
 
-    <div class="emote-grid">
+    <div ref="gridRef" class="emote-grid" @scroll="handleScroll">
       <div
-        v-for="emote in filteredEmotes"
+        v-for="(emote, index) in visibleEmotes"
         :key="emote.name"
+        :ref="(el) => setEmoteRef(el, index)"
         class="emote-item"
         @click="selectEmote(emote)"
       >
         <img
           :src="emote.url"
           :alt="emote.name"
-          loading="lazy"
+          :loading="shouldLazyLoad(emote, index) ? 'lazy' : 'eager'"
           class="emote-image"
         />
       </div>
@@ -43,32 +35,83 @@
 </template>
 
 <script setup lang="ts">
-import { useEmotes } from '@/composables/useEmotes'
+import { ref, computed, onMounted, onUnmounted } from "vue";
+import { useEmotes } from "@/composables/useEmotes";
 
 const emit = defineEmits<{
-  (e: 'select', emote: string): void
-  (e: 'update:modelValue', value: string): void
-}>()
+  (e: "select", emote: string): void;
+  (e: "update:modelValue", value: string): void;
+}>();
 
-const props = withDefaults(defineProps<{
-  modelValue?: string
-  disabled?: boolean
-}>(), {
-  disabled: false
-})
+const props = withDefaults(
+  defineProps<{
+    modelValue?: string;
+    disabled?: boolean;
+  }>(),
+  {
+    disabled: false,
+  },
+);
 
-const {
-  emoteGroups,
-  activeGroup,
-  filteredEmotes,
-  setActiveGroup
-} = useEmotes()
+const { emoteGroups, activeGroup, filteredEmotes, setActiveGroup } =
+  useEmotes();
+
+const gridRef = ref<HTMLElement | null>(null);
+const emoteRefs = ref<(HTMLElement | null)[]>([]);
+const visibleEmotes = ref<any[]>([]);
+const loadedEmotes = ref<Set<string>>(new Set());
+
+const VISIBLE_THRESHOLD = 20;
+const PRELOAD_COUNT = 10;
+
+const shouldLazyLoad = (emote: any, index: number) => {
+  return index >= VISIBLE_THRESHOLD;
+};
+
+const setEmoteRef = (el: any, index: number) => {
+  if (emoteRefs.value.length <= index) {
+    emoteRefs.value.push(el);
+  } else {
+    emoteRefs.value[index] = el;
+  }
+};
+
+const updateVisibleEmotes = () => {
+  if (!gridRef.value) return;
+
+  const { scrollTop, scrollHeight, clientHeight } = gridRef.value;
+  const startIndex = Math.floor(scrollTop / 80);
+  const endIndex = Math.min(
+    startIndex + VISIBLE_THRESHOLD + PRELOAD_COUNT,
+    filteredEmotes.value.length,
+  );
+
+  visibleEmotes.value = filteredEmotes.value.slice(0, endIndex);
+};
+
+const handleScroll = () => {
+  updateVisibleEmotes();
+};
 
 const selectEmote = (emote: any) => {
-  if (props.disabled) return
-  emit('select', emote.name)
-  emit('update:modelValue', emote.name)
-}
+  if (props.disabled) return;
+  loadedEmotes.value.add(emote.name);
+  emit("select", emote.name);
+  emit("update:modelValue", emote.name);
+};
+
+onMounted(() => {
+  updateVisibleEmotes();
+  if (gridRef.value) {
+    gridRef.value.addEventListener("scroll", handleScroll);
+  }
+});
+
+onUnmounted(() => {
+  if (gridRef.value) {
+    gridRef.value.removeEventListener("scroll", handleScroll);
+  }
+});
 </script>
 
 <style scoped>
