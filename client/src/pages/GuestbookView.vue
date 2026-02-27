@@ -228,7 +228,7 @@
             <p
               class="text-gray-700 dark:text-gray-300 text-[15px] leading-6 m-0 break-words"
             >
-              <EmoteRenderer :text="message.content" :size="48" />
+              <EmoteRenderer :text="message.content" :size="100" />
             </p>
             <div class="flex justify-between items-center">
               <div class="flex flex-wrap gap-2 my-3">

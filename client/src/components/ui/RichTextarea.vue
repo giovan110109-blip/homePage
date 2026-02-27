@@ -274,20 +274,18 @@ defineExpose({
   height: auto;
 }
 
-@media (prefers-color-scheme: dark) {
-  .rich-editor {
-    background: #1f2937;
-    border-color: #4b5563;
-    color: #e5e7eb;
-  }
+.dark .rich-editor {
+  background: #1f2937;
+  border-color: #4b5563;
+  color: #e5e7eb;
+}
 
-  .rich-editor:focus {
-    border-color: #3b82f6;
-  }
+.dark .rich-editor:focus {
+  border-color: #3b82f6;
+}
 
-  .rich-editor:empty:before {
-    color: #6b7280;
-  }
+.dark .rich-editor:empty:before {
+  color: #6b7280;
 }
 </style>
 

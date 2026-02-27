@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-black">
+  <div class="min-h-screen bg-black" ref="containerRef">
     <!-- 居中 loading -->
     <div
       v-if="loading"
@@ -7,10 +7,10 @@
     >
       <Loading />
     </div>
-    <div class="w-full h-full">
+    <div v-else class="w-full h-full">
       <!-- 瀑布流照片墙 -->
       <MasonryWall
-        v-if="!loading && photos.length > 0"
+        v-if="photos.length > 0"
         :items="photos"
         :column-width="columnWidth"
         :gap="gridGap"
@@ -74,10 +74,7 @@
       :modelValue="photoDialogVisible"
       :photos="photos"
       :currentPhoto="currentPhoto"
-      :hasMore="hasMore"
-      :loadingMore="loadingMore"
       @update:modelValue="photoDialogVisible = $event"
-      @loadMore="loadPhotos(false)"
     />
   </div>
 </template>
@@ -97,16 +94,14 @@ interface PhotoWithLoaded extends Photo {
 
 const photos = ref<PhotoWithLoaded[]>([]);
 const loading = ref(false);
-const loadingMore = ref(false);
 const photoDialogVisible = ref(false);
 const currentPhoto = ref<PhotoWithLoaded | null>(null);
+const containerRef = ref<HTMLElement | null>(null);
 
-// LivePhoto 预加载
 const { preloadVideosInViewport } = useLivePhotoCache();
 
 const windowWidth = ref(window.innerWidth);
 
-// ✅ 性能优化：合并响应式计算
 const gridConfig = computed(() => {
   const width = windowWidth.value;
 
@@ -127,12 +122,10 @@ const minColumns = computed(() => gridConfig.value.minColumns);
 const maxColumns = computed(() => gridConfig.value.maxColumns);
 const gridGap = computed(() => gridConfig.value.gap);
 
-// 检测是否是移动端
 const isMobile = computed(() => {
   return windowWidth.value < 768;
 });
 
-// ✅ 性能优化：缓存格式化日期结果
 const formattedDateCache = new Map<string, string>();
 
 const formatDate = (date: string): string => {
@@ -154,36 +147,20 @@ const formatDate = (date: string): string => {
 
 const keyMapper = (item: PhotoWithLoaded) => item._id;
 
-const pagination = reactive({
-  page: 1,
-  limit: 10000, // 一次性加载所有
-  total: 0,
-  pages: 1,
-});
-
-const hasMore = ref(true);
-
-const loadPhotos = async (reset = true) => {
-  if (reset) {
-    pagination.page = 1;
-    photos.value = [];
-    formattedDateCache.clear();
-  }
-
-  loading.value = reset;
-  loadingMore.value = !reset;
+const loadPhotos = async () => {
+  loading.value = true;
+  formattedDateCache.clear();
 
   try {
     const params: any = {
-      page: pagination.page,
-      limit: pagination.limit,
+      limit: 10000,
       visibility: "public",
     };
 
     const res: any = await request.get("/photos", { params });
 
     if (res?.data) {
-      const newPhotos = res.data.photos
+      photos.value = res.data.photos
         .map((p: Photo) => {
           const photo = {
             ...p,
@@ -200,51 +177,37 @@ const loadPhotos = async (reset = true) => {
           );
         });
 
-      photos.value = newPhotos;
-      Object.assign(pagination, res.data.pagination);
-      hasMore.value = false;
+      if (photos.value.length > 0) {
+        const livePhotos = photos.value
+          .filter((p: PhotoWithLoaded) => p.isLive && p.videoUrl)
+          .map((p: PhotoWithLoaded) => ({
+            id: p._id,
+            videoUrl: p.videoUrl,
+            isVisible: false,
+          }));
 
-      // 预加载 LivePhoto
-      const livePhotos = newPhotos
-        .filter((p: PhotoWithLoaded) => p.isLive && p.videoUrl)
-        .map((p: PhotoWithLoaded) => ({
-          id: p._id,
-          videoUrl: p.videoUrl,
-          isVisible: false,
-        }));
-
-      if (livePhotos.length > 0) {
-        console.log(`📷 预加载 ${livePhotos.length} 个 LivePhoto 视频...`);
-        preloadVideosInViewport(livePhotos, {
-          maxConcurrent: 1,
-          prioritizeVisible: false,
-          prefetchDistance: 2,
-        }).catch((err) => {
-          console.warn("⚠️ LivePhoto 预加载出错:", err);
-        });
+        if (livePhotos.length > 0) {
+          console.log(`📷 预加载 ${livePhotos.length} 个 LivePhoto 视频...`);
+          preloadVideosInViewport(livePhotos, {
+            maxConcurrent: 1,
+            prioritizeVisible: false,
+            prefetchDistance: 2,
+          }).catch((err) => {
+            console.warn("⚠️ LivePhoto 预加载出错:", err);
+          });
+        }
       }
     }
   } catch (error: any) {
     console.error("加载照片失败:", error);
   } finally {
     loading.value = false;
-    loadingMore.value = false;
   }
 };
 
 const viewPhoto = async (photo: Photo) => {
   currentPhoto.value = photo;
   photoDialogVisible.value = true;
-
-  // 拉取完整详情（包含完整 EXIF）
-  // try {
-  //   const res: any = await request.get(`/photos/${photo._id}`);
-  //   if (res?.success && res.data) {
-  //     currentPhoto.value = { ...photo, ...res.data };
-  //   }
-  // } catch {
-  //   // 忽略详情加载失败，保留列表数据
-  // }
 };
 
 const handleResize = () => {

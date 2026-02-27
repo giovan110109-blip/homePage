@@ -1,14 +1,14 @@
 const mongoose = require('mongoose');
 
 const CommentSchema = new mongoose.Schema({
-  targetId: { type: String, required: true }, // 关联对象，如文章ID、留言板ID
-  parentId: { type: String, default: null }, // 主评论为null，回复为评论ID
+  targetId: { type: String, required: true },
+  parentId: { type: String, default: null },
   name: { type: String, required: true },
   email: { type: String, required: true },
   website: { type: String },
   avatar: { type: String },
   content: { type: String, required: true },
-  status: { type: String, default: 'approved' }, // 状态：approved, pending, deleted
+  status: { type: String, default: 'approved' },
   ip: { type: String },
   userAgent: { type: String },
   browser: { type: String },
@@ -21,5 +21,9 @@ const CommentSchema = new mongoose.Schema({
 }, {
   timestamps: true,
 });
+
+CommentSchema.index({ targetId: 1, status: 1, createdAt: -1 });
+CommentSchema.index({ parentId: 1 });
+CommentSchema.index({ status: 1, createdAt: -1 });
 
 module.exports = mongoose.model('Comment', CommentSchema);

@@ -67,7 +67,7 @@
           </div>
           <div class="bg-green-100 rounded-lg p-6 flex flex-col items-center gap-2.5 text-sm text-green-900 dark:bg-green-600/15 dark:text-green-200">
             <div class="relative w-36 h-36 rounded-lg bg-white p-1.5 flex items-center justify-center">
-              <img 
+              <!-- <img 
                 v-if="qrCodeUrl" 
                 :src="qrCodeUrl" 
                 alt="小程序二维码" 
@@ -77,7 +77,7 @@
               <div v-else class="flex flex-col items-center gap-2 text-gray-400">
                 <RefreshCw class="w-8 h-8" />
                 <span class="text-xs">加载中...</span>
-              </div>
+              </div> -->
               <!-- 二维码过期遮罩 -->
               <div 
                 v-if="qrExpired" 

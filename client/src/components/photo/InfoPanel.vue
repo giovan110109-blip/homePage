@@ -488,7 +488,7 @@ const formatExifValue = (value: any): string => {
           {{ displayPhoto.description }}
         </div>
         <!-- 位置信息 Section -->
-        <div v-if="displayPhoto.location" class="space-y-3">
+        <div v-if="displayPhoto.location?.latitude && displayPhoto.location?.longitude" class="space-y-3">
           <!-- 地图 -->
           <div
             class="h-40 rounded-lg overflow-hidden bg-slate-900/50 border border-slate-700/40 shadow-inner"

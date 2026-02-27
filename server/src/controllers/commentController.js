@@ -6,6 +6,7 @@ const { getClientInfo } = require("../utils/requestInfo");
 const { getLocationByIp } = require("../utils/ipLocator");
 const { getAvatarByEmail } = require("../utils/emailAvatar");
 const { sendEmail } = require("../utils/sendEmail");
+const { containsSensitiveWords, filterSensitiveWords } = require("../utils/sensitiveWords");
 
 class CommentController extends BaseController {
   async create(ctx) {
@@ -23,11 +24,21 @@ class CommentController extends BaseController {
         );
       }
 
+      const sensitiveCheck = containsSensitiveWords(payload.content);
+      if (sensitiveCheck.hasSensitive) {
+        this.throwHttpError(
+          "评论内容包含敏感词，请修改后重试",
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
       const client = ctx.state.clientInfo || getClientInfo(ctx);
       const location = await getLocationByIp(client.ip);
       const avatar = payload.isAdmin 
         ? payload.avatar 
         : (getAvatarByEmail(payload.email) || payload.avatar);
+
+      const filteredContent = filterSensitiveWords(payload.content);
 
       const doc = await Comment.create({
         targetId: payload.targetId,
@@ -36,7 +47,7 @@ class CommentController extends BaseController {
         email: payload.email,
         website: payload.website,
         avatar,
-        content: payload.content,
+        content: filteredContent,
         status: "approved",
         ip: client.ip,
         userAgent: client.userAgent,
@@ -48,7 +59,6 @@ class CommentController extends BaseController {
         location,
       });
 
-      // 发送邮件通知
       this.sendCommentNotification(payload, doc).catch(err => {
         console.error("发送评论通知邮件失败:", err);
       });

@@ -28,4 +28,8 @@ const AccessLogSchema = new mongoose.Schema({
   location: LocationSchema,
 }, { timestamps: true });
 
+AccessLogSchema.index({ createdAt: -1 });
+AccessLogSchema.index({ ip: 1 });
+AccessLogSchema.index({ path: 1 });
+
 module.exports = mongoose.model('AccessLog', AccessLogSchema);

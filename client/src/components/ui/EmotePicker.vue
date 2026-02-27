@@ -17,7 +17,7 @@
         :key="emote.name"
         :ref="(el) => setEmoteRef(el, index)"
         class="emote-item"
-        @click="selectEmote(emote)"
+        @click="previewEmote(emote)"
       >
         <img
           :src="emote.url"
@@ -31,6 +31,16 @@
     <div v-if="filteredEmotes.length === 0" class="emote-empty">
       没有找到表情包
     </div>
+
+    <Teleport to="body">
+      <Transition name="fade">
+        <div v-if="showPreview" class="emote-preview-overlay" @click="closePreview">
+          <div class="emote-preview-modal" @click="confirmSelect">
+            <img :src="previewUrl" :alt="previewName" class="emote-preview-image" />
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
@@ -65,6 +75,11 @@ const emoteRefs = ref<(HTMLElement | null)[]>([]);
 const visibleEmotes = ref<any[]>([]);
 const loadedEmotes = ref<Set<string>>(new Set());
 
+const showPreview = ref(false);
+const previewUrl = ref("");
+const previewName = ref("");
+const currentEmote = ref<any>(null);
+
 const VISIBLE_THRESHOLD = 20;
 const PRELOAD_COUNT = 10;
 
@@ -98,11 +113,26 @@ const handleScroll = () => {
   updateVisibleEmotes();
 };
 
-const selectEmote = (emote: any) => {
+const previewEmote = (emote: any) => {
   if (props.disabled) return;
-  loadedEmotes.value.add(emote.name);
-  emit("select", emote.name);
-  emit("update:modelValue", emote.name);
+  currentEmote.value = emote;
+  previewUrl.value = emote.url;
+  previewName.value = emote.name;
+  showPreview.value = true;
+};
+
+const closePreview = () => {
+  showPreview.value = false;
+  currentEmote.value = null;
+};
+
+const confirmSelect = () => {
+  if (currentEmote.value && !props.disabled) {
+    loadedEmotes.value.add(currentEmote.value.name);
+    emit("select", currentEmote.value.name);
+    emit("update:modelValue", currentEmote.value.name);
+  }
+  closePreview();
 };
 
 onMounted(() => {
@@ -134,23 +164,9 @@ onUnmounted(() => {
   flex-direction: column;
 }
 
-.emote-picker-header {
-  padding: 12px 16px;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.emote-search-input {
-  width: 100%;
-  padding: 8px 12px;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  font-size: 14px;
-  outline: none;
-  transition: border-color 0.2s;
-}
-
-.emote-search-input:focus {
-  border-color: #3b82f6;
+.dark .emote-picker {
+  background: #1e293b;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
 }
 
 .emote-groups {
@@ -161,19 +177,33 @@ onUnmounted(() => {
   overflow-x: auto;
 }
 
+.dark .emote-groups {
+  border-bottom-color: #334155;
+}
+
 .emote-group-tab {
   padding: 6px 16px;
   border: none;
   background: #f3f4f6;
   border-radius: 20px;
   font-size: 14px;
+  color: #374151;
   cursor: pointer;
   transition: all 0.2s;
   white-space: nowrap;
 }
 
+.dark .emote-group-tab {
+  background: #334155;
+  color: #e5e7eb;
+}
+
 .emote-group-tab:hover {
   background: #e5e7eb;
+}
+
+.dark .emote-group-tab:hover {
+  background: #475569;
 }
 
 .emote-group-tab.active {
@@ -183,10 +213,10 @@ onUnmounted(() => {
 
 .emote-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 12px;
   padding: 16px;
-  max-height: 400px;
+  max-height: 450px;
   overflow-y: auto;
   flex: 1;
   min-height: 0;
@@ -201,12 +231,20 @@ onUnmounted(() => {
   cursor: pointer;
   transition: all 0.2s;
   background: #f9fafb;
-  padding: 6px;
+  padding: 8px;
+}
+
+.dark .emote-item {
+  background: #334155;
 }
 
 .emote-item:hover {
   background: #e5e7eb;
-  transform: scale(1.05);
+  transform: scale(1.08);
+}
+
+.dark .emote-item:hover {
+  background: #475569;
 }
 
 .emote-image {
@@ -223,6 +261,59 @@ onUnmounted(() => {
   font-size: 14px;
 }
 
+.dark .emote-empty {
+  color: #64748b;
+}
+
+.emote-preview-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 99999;
+  padding: 20px;
+}
+
+.emote-preview-modal {
+  background: white;
+  border-radius: 16px;
+  padding: 20px;
+  max-width: 90vw;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  cursor: pointer;
+}
+
+.dark .emote-preview-modal {
+  background: #1e293b;
+}
+
+.emote-preview-image {
+  max-width: 300px;
+  max-height: 300px;
+  object-fit: contain;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
 @media (max-width: 640px) {
   .emote-picker {
     max-width: calc(100vw - 32px);
@@ -230,8 +321,8 @@ onUnmounted(() => {
   }
 
   .emote-grid {
-    grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
-    gap: 8px;
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: 10px;
     padding: 12px;
     max-height: calc(70vh - 80px);
   }
@@ -243,6 +334,11 @@ onUnmounted(() => {
   .emote-group-tab {
     padding: 5px 12px;
     font-size: 13px;
+  }
+
+  .emote-preview-image {
+    max-width: 200px;
+    max-height: 200px;
   }
 }
 </style>

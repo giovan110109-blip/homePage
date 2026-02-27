@@ -38,7 +38,7 @@
       <div
         class="text-gray-700 dark:text-gray-300 text-[13px] leading-5 m-0 break-words mb-1"
       >
-        <EmoteRenderer :text="comment.content" :size="20" />
+        <EmoteRenderer :text="comment.content" :size="100" />
       </div>
       <div class="flex justify-between items-center">
         <div class="flex flex-wrap gap-2">

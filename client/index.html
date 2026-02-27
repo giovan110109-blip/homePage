@@ -1,10 +1,66 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/public/img/logo_c.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>%VITE_SITE_TITLE%</title>
+    <meta name="description" content="%VITE_SITE_DESCRIPTION%" />
+    <meta name="keywords" content="Giovan,个人博客,技术博客,前端开发,Vue,React,JavaScript,TypeScript" />
+    <meta name="author" content="Giovan" />
+    <meta name="robots" content="index, follow" />
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://giovan.cn/" />
+    <meta property="og:title" content="%VITE_SITE_TITLE%" />
+    <meta property="og:description" content="%VITE_SITE_DESCRIPTION%" />
+    <meta property="og:image" content="https://giovan.cn/public/img/logo_c.png" />
+    <meta property="og:site_name" content="Giovan" />
+    <meta property="og:locale" content="zh_CN" />
+    
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="https://giovan.cn/" />
+    <meta name="twitter:title" content="%VITE_SITE_TITLE%" />
+    <meta name="twitter:description" content="%VITE_SITE_DESCRIPTION%" />
+    <meta name="twitter:image" content="https://giovan.cn/public/img/logo_c.png" />
+    
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://giovan.cn/" />
+    
+    <!-- Preconnect to external resources -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    
+    <!-- Theme Color -->
+    <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    
+    <!-- Apple Mobile Web App -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Giovan" />
+    
+    <!-- Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "Giovan",
+      "url": "https://giovan.cn/",
+      "description": "%VITE_SITE_DESCRIPTION%",
+      "author": {
+        "@type": "Person",
+        "name": "Giovan"
+      },
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "https://giovan.cn/search?q={search_term_string}",
+        "query-input": "required name=search_term_string"
+      }
+    }
+    </script>
   </head>
   <body>
     <div id="app"></div>

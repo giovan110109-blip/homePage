@@ -249,6 +249,7 @@ import request from '@/api/request'
 import html2canvas from 'html2canvas'
 import hljs from 'highlight.js'
 import markdownit from 'markdown-it'
+import { useArticleSeo } from '@/composables/useSeo'
 
 const route = useRoute()
 const router = useRouter()
@@ -277,6 +278,13 @@ const loading = ref(false)
 const hasLiked = ref(false)
 const showShareModal = ref(false)
 const showCardPreview = ref(false)
+
+useArticleSeo(computed(() => article.value ? {
+  title: article.value.title,
+  summary: article.value.summary,
+  coverImage: article.value.coverImage,
+  tags: article.value.tags
+} : {}))
 
 const md = markdownit({
   html: false,

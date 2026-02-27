@@ -7,8 +7,9 @@ const reactionService = require("../services/reactionService");
 const ReactionLog = require("../models/reactionLog");
 const { getAvatarByEmail } = require("../utils/emailAvatar");
 const { sendEmail } = require("../utils/sendEmail");
+const { containsSensitiveWords, filterSensitiveWords } = require("../utils/sensitiveWords");
+
 class MessageController extends BaseController {
-  // POST /api/messages  创建留言
   async create(ctx) {
     try {
       const payload = ctx.request.body || {};
@@ -16,20 +17,27 @@ class MessageController extends BaseController {
         this.throwHttpError("名称、邮箱和内容为必填项", HttpStatus.BAD_REQUEST);
       }
 
-      // 获取客户端信息和地理位置
+      const sensitiveCheck = containsSensitiveWords(payload.content);
+      if (sensitiveCheck.hasSensitive) {
+        this.throwHttpError(
+          "留言内容包含敏感词，请修改后重试",
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
       const client = ctx.state.clientInfo || getClientInfo(ctx);
       const location = await getLocationByIp(client.ip);
-      // 使用邮箱生成头像
       const emailAvatar = getAvatarByEmail(payload.email);
 
       const avatar = emailAvatar ? emailAvatar : payload.avatar;
+      const filteredContent = filterSensitiveWords(payload.content);
+
       const doc = await messageService.create({
         name: payload.name,
         email: payload.email,
         website: payload.website,
         avatar,
-        content: payload.content,
-        // 暂时取消人工审核，直接标记为通过
+        content: filteredContent,
         status: "approved",
         ip: client.ip,
         userAgent: client.userAgent,
@@ -40,19 +48,18 @@ class MessageController extends BaseController {
         language: client.language,
         location,
       });
-      //发送邮件
+
       await sendEmail({
         email: payload.email,
         type: 5,
         name: payload.name,
-        content: payload.content,
+        content: filteredContent,
       });
-      //通知我有新的留言
       await sendEmail({
-        email: "14945447@qq.com",
+        email: process.env.ADMIN_EMAIL || process.env.EMAIL_USER,
         type: 10,
         name: payload.name,
-        content: payload.content,
+        content: filteredContent,
       });
 
       this.created(ctx, doc, "留言成功");

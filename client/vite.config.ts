@@ -83,9 +83,9 @@ export default defineConfig(({ mode }) => {
       splitVendorChunkPlugin(),
       AutoImport({
         imports: [
-          "vue", // 自动导入vue的ref、reactive、computed等
-          "vue-router", // 可选：自动导入vue-router的useRoute、useRouter等
-          "pinia", // 可选：自动导入pinia的useStore等
+          "vue",
+          "vue-router",
+          "pinia",
         ],
         resolvers: [ElementPlusResolver()],
         dts: path.resolve(__dirname, "src/auto-imports.d.ts"),

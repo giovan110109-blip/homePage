@@ -222,18 +222,9 @@ import {
   LogOut,
   Image,
 } from "lucide-vue-next";
-import { ref, computed, onMounted, watch } from "vue";
+import { ref, computed, onMounted, watch, defineAsyncComponent } from "vue";
 import AppButton from "@/components/ui/AppButton.vue";
 import ThemeToggle from "@/components/ui/ThemeToggle.vue";
-import DashboardPage from "./components/DashboardPage.vue";
-import UsersPage from "./components/UsersPage.vue";
-import MessagesPage from "./components/MessagesPage.vue";
-import AccessLogsPage from "./components/AccessLogsPage.vue";
-import SettingsPage from "./components/SettingsPage.vue";
-import SponsorsPage from "./components/SponsorsPage.vue";
-import FriendLinksPage from "./components/FriendLinksPage.vue";
-import ArticlesPage from "./components/ArticlesPage.vue";
-import PhotosPage from "./components/PhotosPage.vue";
 import ProfileDialog from "./components/ProfileDialog.vue";
 import UploadQueueFloat from "@/components/admin/UploadQueueFloat.vue";
 import { useAuthStore } from "@/stores/auth";
@@ -259,17 +250,16 @@ const menuItems = [
   { id: "settings", label: "系统设置", icon: Settings },
 ];
 
-// 动态组件映射
 const componentMap: Record<string, any> = {
-  dashboard: DashboardPage,
-  users: UsersPage,
-  messages: MessagesPage,
-  articles: ArticlesPage,
-  photos: PhotosPage,
-  friendLinks: FriendLinksPage,
-  accessLogs: AccessLogsPage,
-  sponsors: SponsorsPage,
-  settings: SettingsPage,
+  dashboard: defineAsyncComponent(() => import("./components/DashboardPage.vue")),
+  users: defineAsyncComponent(() => import("./components/UsersPage.vue")),
+  messages: defineAsyncComponent(() => import("./components/MessagesPage.vue")),
+  articles: defineAsyncComponent(() => import("./components/ArticlesPage.vue")),
+  photos: defineAsyncComponent(() => import("./components/PhotosPage.vue")),
+  friendLinks: defineAsyncComponent(() => import("./components/FriendLinksPage.vue")),
+  accessLogs: defineAsyncComponent(() => import("./components/AccessLogsPage.vue")),
+  sponsors: defineAsyncComponent(() => import("./components/SponsorsPage.vue")),
+  settings: defineAsyncComponent(() => import("./components/SettingsPage.vue")),
 };
 
 const getInitialMenu = () => {
@@ -286,7 +276,7 @@ const activeMenu = ref(getInitialMenu());
 
 // 根据activeMenu返回对应的组件
 const currentComponent = computed(() => {
-  return componentMap[activeMenu.value] || DashboardPage;
+  return componentMap[activeMenu.value] || componentMap.dashboard;
 });
 
 const syncActiveMenu = (value: string) => {
