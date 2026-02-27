@@ -224,11 +224,23 @@ const updateEmotePickerPosition = () => {
   if (!emoteButtonRef.value) return;
 
   const rect = emoteButtonRef.value.getBoundingClientRect();
-  const pickerHeight = 450;
+  const pickerWidth = Math.min(window.innerWidth - 32, 600);
+  const pickerHeight = Math.min(window.innerHeight - 32, 450);
+
+  let top = rect.top - pickerHeight - 8;
+  let right = window.innerWidth - rect.right;
+
+  if (top < 16) {
+    top = rect.bottom + 8;
+  }
+
+  if (right < 16) {
+    right = 16;
+  }
 
   emotePickerPosition.value = {
-    top: rect.top - pickerHeight,
-    right: window.innerWidth - rect.right,
+    top,
+    right,
   };
 };
 

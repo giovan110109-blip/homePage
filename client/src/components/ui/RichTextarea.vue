@@ -53,33 +53,26 @@ const insertEmote = (emoteName: string, emoteUrl: string) => {
 
   editorRef.value.focus();
 
-  const img = document.createElement("img");
-  img.src = emoteUrl;
-  img.alt = emoteName;
-  img.className = "inline-emote";
-  img.style.width = "48px";
-  img.style.height = "48px";
-  img.style.verticalAlign = "middle";
-  img.style.display = "inline-block";
-  img.setAttribute("data-emote-name", emoteName);
+  const emoteText = `{{${emoteName}}}`;
 
   const selection = window.getSelection();
   if (selection && selection.rangeCount > 0) {
     const range = selection.getRangeAt(0);
 
     if (editorRef.value.contains(range.commonAncestorContainer)) {
+      const textNode = document.createTextNode(emoteText);
       range.deleteContents();
-      range.insertNode(img);
-      range.setStartAfter(img);
-      range.setEndAfter(img);
+      range.insertNode(textNode);
+      range.setStartAfter(textNode);
+      range.setEndAfter(textNode);
       selection.removeAllRanges();
       selection.addRange(range);
     } else {
-      editorRef.value.appendChild(img);
+      editorRef.value.appendChild(document.createTextNode(emoteText));
       editorRef.value.focus();
     }
   } else {
-    editorRef.value.appendChild(img);
+    editorRef.value.appendChild(document.createTextNode(emoteText));
     editorRef.value.focus();
   }
 

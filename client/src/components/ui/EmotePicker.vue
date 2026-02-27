@@ -128,12 +128,15 @@ onUnmounted(() => {
 .emote-picker {
   width: 100%;
   max-width: 600px;
+  max-height: 80vh;
   background: white;
   border-radius: 12px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
   overflow: hidden;
   position: relative;
   z-index: 9999;
+  display: flex;
+  flex-direction: column;
 }
 
 .emote-picker-header {
@@ -190,6 +193,8 @@ onUnmounted(() => {
   padding: 16px;
   max-height: 400px;
   overflow-y: auto;
+  flex: 1;
+  min-height: 0;
 }
 
 .emote-item {
@@ -224,14 +229,25 @@ onUnmounted(() => {
 }
 
 @media (max-width: 640px) {
-  .emote-grid {
-    grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
-    gap: 8px;
-    padding: 12px;
+  .emote-picker {
+    max-width: calc(100vw - 32px);
+    max-height: 70vh;
   }
 
-  .emote-picker {
-    max-width: 100%;
+  .emote-grid {
+    grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+    gap: 8px;
+    padding: 12px;
+    max-height: calc(70vh - 80px);
+  }
+
+  .emote-groups {
+    padding: 10px 12px;
+  }
+
+  .emote-group-tab {
+    padding: 5px 12px;
+    font-size: 13px;
   }
 }
 </style>

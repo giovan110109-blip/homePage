@@ -9,7 +9,7 @@ export const EMOTE_GROUPS: EmoteGroup[] = [
       const isJpg = [16, 33, 40, 56].includes(index);
       const ext = isJpg ? "jpg" : "gif";
       return {
-        name: `${paddedIndex}-阿米嘎蒂朵喵喵表情包`,
+        name: `${paddedIndex}-阿米嘎蒂朵喵喵表情包.${ext}`,
         url: `/emote/咪咪/${paddedIndex}-阿米嘎蒂朵喵喵表情包.${ext}`,
         group: "咪咪",
       };
