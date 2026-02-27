@@ -91,12 +91,7 @@ const setEmoteRef = (el: any, index: number) => {
 };
 
 const updateVisibleEmotes = () => {
-  const endIndex = Math.min(
-    VISIBLE_THRESHOLD + PRELOAD_COUNT,
-    filteredEmotes.value.length,
-  );
-
-  visibleEmotes.value = filteredEmotes.value.slice(0, endIndex);
+  visibleEmotes.value = filteredEmotes.value;
 };
 
 const handleScroll = () => {
