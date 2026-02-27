@@ -98,13 +98,52 @@
               >
                 留言内容 <span class="text-red-500">*</span>
               </label>
-              <textarea
-                v-model="formData.message"
-                required
-                rows="5"
-                class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white/50 dark:bg-white/5 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all resize-none"
-                placeholder="请输入你的留言..."
-              ></textarea>
+              <div class="relative">
+                <RichTextarea
+                  v-model="formData.message"
+                  placeholder="请输入你的留言..."
+                  ref="messageRichTextareaRef"
+                  customClass="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white/50 dark:bg-white/5 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                />
+                <button
+                  type="button"
+                  @click.stop="toggleEmotePicker"
+                  class="absolute right-3 bottom-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors z-10"
+                  title="插入表情包"
+                  ref="messageEmoteButtonRef"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
+                    <line x1="9" y1="9" x2="9.01" y2="9"></line>
+                    <line x1="15" y1="9" x2="15.01" y2="9"></line>
+                  </svg>
+                </button>
+                <transition
+                  enter-active-class="transition-all duration-200 ease-out"
+                  leave-active-class="transition-all duration-150 ease-in"
+                  enter-from-class="opacity-0 scale-95"
+                  enter-to-class="opacity-100 scale-100"
+                  leave-from-class="opacity-100 scale-100"
+                  leave-to-class="opacity-0 scale-95"
+                >
+                  <Teleport to="body">
+                    <div 
+                      v-if="showEmotePicker" 
+                      class="fixed"
+                      :style="{ 
+                        top: messageEmotePickerPosition.top + 'px',
+                        right: messageEmotePickerPosition.right + 'px',
+                        zIndex: 99999
+                      }"
+                      ref="messageEmotePickerRef"
+                      @click.stop
+                    >
+                      <EmotePicker @select="insertEmote" />
+                    </div>
+                  </Teleport>
+                </transition>
+              </div>
             </div>
 
             <div class="flex items-center justify-end space-x-4">
@@ -189,7 +228,7 @@
             <p
               class="text-gray-700 dark:text-gray-300 text-[15px] leading-6 m-0 break-words"
             >
-              {{ message.content }}
+              <EmoteRenderer :text="message.content" :size="48" />
             </p>
             <div class="flex justify-between items-center">
               <div class="flex flex-wrap gap-2 my-3">
@@ -284,6 +323,7 @@
 </template>
 
 <script setup lang="ts">
+import { ref, computed, nextTick, onMounted, onUnmounted } from "vue";
 import {
   ExternalLink,
   Apple,
@@ -298,9 +338,13 @@ import { ElMessage } from "element-plus";
 import AppButton from "@/components/ui/AppButton.vue";
 import Loading from "@/components/ui/Loading.vue";
 import CommentBox from "@/components/ui/CommentBox.vue";
+import EmotePicker from "@/components/ui/EmotePicker.vue";
+import EmoteRenderer from "@/components/ui/EmoteRenderer.vue";
+import RichTextarea from "@/components/ui/RichTextarea.vue";
 import request from "@/api/request";
 import { buildAvatarSvg } from "@/utils/avatarSvg";
 import { getExternalLinkRedirectUrl } from "@/utils/external-link";
+import { useEmotes } from "@/composables/useEmotes";
 
 interface MessageItem {
   id: string;
@@ -341,11 +385,81 @@ const pageSize = 10;
 const isLoading = ref(false);
 const submitting = ref(false);
 const messageListRef = ref<HTMLElement>();
+const showEmotePicker = ref(false);
+const messageRichTextareaRef = ref<InstanceType<typeof RichTextarea> | null>(null);
+const messageEmotePickerRef = ref<HTMLDivElement | null>(null);
+const messageEmoteButtonRef = ref<HTMLButtonElement | null>(null);
+const messageEmotePickerPosition = ref({ top: 0, right: 0 });
+
+const { getEmoteUrl } = useEmotes();
 
 const displayedMessages = computed(() => messages.value);
 const hasMoreMessages = computed(
   () => messages.value.length < totalMessages.value,
 );
+
+const updateMessageEmotePickerPosition = () => {
+  if (!messageEmoteButtonRef.value) return;
+  
+  const rect = messageEmoteButtonRef.value.getBoundingClientRect();
+  const pickerHeight = 450;
+  
+  messageEmotePickerPosition.value = {
+    top: rect.top - pickerHeight,
+    right: window.innerWidth - rect.right
+  };
+};
+
+const toggleEmotePicker = () => {
+  showEmotePicker.value = !showEmotePicker.value;
+  if (showEmotePicker.value) {
+    nextTick(() => {
+      updateMessageEmotePickerPosition();
+    });
+  }
+};
+
+const insertEmote = (emoteName: string) => {
+  const emoteUrl = getEmoteUrl(emoteName);
+  if (messageRichTextareaRef.value && emoteUrl) {
+    messageRichTextareaRef.value.insertEmote(emoteName, emoteUrl);
+  }
+  showEmotePicker.value = false;
+};
+
+const handleClickOutside = (event: MouseEvent) => {
+  const target = event.target as Node;
+  if (messageEmotePickerRef.value && !messageEmotePickerRef.value.contains(target)) {
+    showEmotePicker.value = false;
+  }
+};
+
+const handleScroll = () => {
+  if (showEmotePicker.value) {
+    updateMessageEmotePickerPosition();
+  }
+};
+
+const handleScrollForLoadMore = () => {
+  const { scrollTop, scrollHeight, clientHeight } = document.documentElement;
+  if (scrollHeight - scrollTop - clientHeight < 300) {
+    loadMoreMessages();
+  }
+};
+
+onMounted(() => {
+  nextTick(() => {
+    document.addEventListener('click', handleClickOutside);
+    window.addEventListener('scroll', handleScroll, true);
+    window.addEventListener('resize', handleScroll);
+  });
+});
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside);
+  window.removeEventListener('scroll', handleScroll, true);
+  window.removeEventListener('resize', handleScroll);
+});
 
 const mapMessage = (item: any): MessageItem | null => {
   const id = String(item?._id ?? item?.id ?? "");
@@ -435,20 +549,13 @@ const loadMoreMessages = () => {
   fetchMessages();
 };
 
-const handleScroll = () => {
-  const { scrollTop, scrollHeight, clientHeight } = document.documentElement;
-  if (scrollHeight - scrollTop - clientHeight < 300) {
-    loadMoreMessages();
-  }
-};
-
 onMounted(async () => {
   fetchMessages(true);
-  window.addEventListener("scroll", handleScroll);
+  window.addEventListener("scroll", handleScrollForLoadMore);
 });
 
 onUnmounted(() => {
-  window.removeEventListener("scroll", handleScroll);
+  window.removeEventListener("scroll", handleScrollForLoadMore);
 });
 
 const submitMessage = async () => {

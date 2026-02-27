@@ -16,9 +16,7 @@
             <div class="font-medium text-gray-900 dark:text-white">
               {{ userName }}
             </div>
-            <div class="text-xs text-gray-500 dark:text-gray-400">
-              楼主
-            </div>
+            <div class="text-xs text-gray-500 dark:text-gray-400">楼主</div>
           </div>
         </div>
         <!-- 未登录：显示输入框 -->
@@ -46,13 +44,60 @@
             autocomplete="url"
           />
         </div>
-        <textarea
-          v-model="form.content"
-          required
-          rows="2"
-          class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus:border-blue-500 outline-none transition-all resize-none text-sm"
-          placeholder="请输入评论..."
-        ></textarea>
+        <div class="relative">
+          <RichTextarea
+            v-model="form.content"
+            placeholder="请输入评论..."
+            ref="richTextareaRef"
+          />
+          <button
+            type="button"
+            @click.stop="toggleEmotePicker"
+            class="absolute right-2 bottom-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors z-10"
+            title="插入表情包"
+            ref="emoteButtonRef"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="h-5 w-5"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <circle cx="12" cy="12" r="10"></circle>
+              <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
+              <line x1="9" y1="9" x2="9.01" y2="9"></line>
+              <line x1="15" y1="9" x2="15.01" y2="9"></line>
+            </svg>
+          </button>
+          <transition
+            enter-active-class="transition-all duration-200 ease-out"
+            leave-active-class="transition-all duration-150 ease-in"
+            enter-from-class="opacity-0 scale-95"
+            enter-to-class="opacity-100 scale-100"
+            leave-from-class="opacity-100 scale-100"
+            leave-to-class="opacity-0 scale-95"
+          >
+            <Teleport to="body">
+              <div
+                v-if="showEmotePicker"
+                class="fixed"
+                :style="{
+                  top: emotePickerPosition.top + 'px',
+                  right: emotePickerPosition.right + 'px',
+                  zIndex: 99999,
+                }"
+                ref="emotePickerRef"
+                @click.stop
+              >
+                <EmotePicker @select="insertEmote" />
+              </div>
+            </Teleport>
+          </transition>
+        </div>
         <div class="flex items-center justify-end space-x-2">
           <AppButton
             variant="primary"
@@ -102,6 +147,9 @@ import { buildAvatarSvg } from "@/utils/avatarSvg";
 import { useAuthStore } from "@/stores/auth";
 import AppButton from "@/components/ui/AppButton.vue";
 import CommentItem from "@/components/ui/CommentItem.vue";
+import EmotePicker from "@/components/ui/EmotePicker.vue";
+import RichTextarea from "@/components/ui/RichTextarea.vue";
+import { useEmotes } from "@/composables/useEmotes";
 
 interface CommentType {
   id: string;
@@ -129,7 +177,9 @@ const emit = defineEmits<{
 
 const authStore = useAuthStore();
 const isLoggedIn = computed(() => authStore.isLoggedIn);
-const userName = computed(() => authStore.user?.nickname || authStore.user?.username || "管理员");
+const userName = computed(
+  () => authStore.user?.nickname || authStore.user?.username || "管理员",
+);
 const userEmail = computed(() => authStore.user?.email || "");
 const userAvatar = computed(() => authStore.user?.avatar || "");
 
@@ -147,11 +197,14 @@ const loadFormCache = () => {
 
 const saveFormCache = () => {
   if (!isLoggedIn.value) {
-    localStorage.setItem(COMMENT_FORM_KEY, JSON.stringify({
-      name: form.value.name,
-      email: form.value.email,
-      website: form.value.website,
-    }));
+    localStorage.setItem(
+      COMMENT_FORM_KEY,
+      JSON.stringify({
+        name: form.value.name,
+        email: form.value.email,
+        website: form.value.website,
+      }),
+    );
   }
 };
 
@@ -159,6 +212,69 @@ const form = ref(loadFormCache());
 const submitting = ref(false);
 const loading = ref(false);
 const comments = ref<CommentType[]>([]);
+const showEmotePicker = ref(false);
+const richTextareaRef = ref<InstanceType<typeof RichTextarea> | null>(null);
+const emotePickerRef = ref<HTMLDivElement | null>(null);
+const emoteButtonRef = ref<HTMLButtonElement | null>(null);
+const emotePickerPosition = ref({ top: 0, right: 0 });
+
+const { getEmoteUrl } = useEmotes();
+
+const updateEmotePickerPosition = () => {
+  if (!emoteButtonRef.value) return;
+
+  const rect = emoteButtonRef.value.getBoundingClientRect();
+  const pickerHeight = 450;
+
+  emotePickerPosition.value = {
+    top: rect.top - pickerHeight,
+    right: window.innerWidth - rect.right,
+  };
+};
+
+const toggleEmotePicker = () => {
+  showEmotePicker.value = !showEmotePicker.value;
+  if (showEmotePicker.value) {
+    nextTick(() => {
+      updateEmotePickerPosition();
+    });
+  }
+};
+
+const insertEmote = (emoteName: string) => {
+  const emoteUrl = getEmoteUrl(emoteName);
+  if (richTextareaRef.value && emoteUrl) {
+    richTextareaRef.value.insertEmote(emoteName, emoteUrl);
+  }
+  showEmotePicker.value = false;
+};
+
+const handleClickOutside = (event: MouseEvent) => {
+  const target = event.target as Node;
+  if (emotePickerRef.value && !emotePickerRef.value.contains(target)) {
+    showEmotePicker.value = false;
+  }
+};
+
+const handleScroll = () => {
+  if (showEmotePicker.value) {
+    updateEmotePickerPosition();
+  }
+};
+
+onMounted(() => {
+  nextTick(() => {
+    document.addEventListener("click", handleClickOutside);
+    window.addEventListener("scroll", handleScroll, true);
+    window.addEventListener("resize", handleScroll);
+  });
+});
+
+onUnmounted(() => {
+  document.removeEventListener("click", handleClickOutside);
+  window.removeEventListener("scroll", handleScroll, true);
+  window.removeEventListener("resize", handleScroll);
+});
 
 const fetchComments = async () => {
   if (!props.targetId) return;
@@ -177,7 +293,9 @@ const fetchComments = async () => {
   }
 };
 
-const mapComment = (item: any): (CommentType & { parentId?: string | null }) | null => {
+const mapComment = (
+  item: any,
+): (CommentType & { parentId?: string | null }) | null => {
   const id = String(item?._id ?? item?.id ?? "");
   if (!id) return null;
   const location = (() => {
@@ -205,7 +323,9 @@ const mapComment = (item: any): (CommentType & { parentId?: string | null }) | n
   };
 };
 
-const buildCommentTree = (flatComments: (CommentType & { parentId?: string | null })[]): CommentType[] => {
+const buildCommentTree = (
+  flatComments: (CommentType & { parentId?: string | null })[],
+): CommentType[] => {
   const commentMap = new Map<string, CommentType>();
   const rootComments: CommentType[] = [];
 
@@ -236,7 +356,7 @@ const buildCommentTree = (flatComments: (CommentType & { parentId?: string | nul
 const onSubmit = async () => {
   const name = isLoggedIn.value ? userName.value : form.value.name;
   const email = isLoggedIn.value ? userEmail.value : form.value.email;
-  
+
   if (!form.value.content) {
     ElMessage.warning("请输入评论内容");
     return;
@@ -251,9 +371,10 @@ const onSubmit = async () => {
   }
   submitting.value = true;
   try {
-    const avatar = isLoggedIn.value && userAvatar.value 
-      ? userAvatar.value 
-      : await buildAvatarSvg();
+    const avatar =
+      isLoggedIn.value && userAvatar.value
+        ? userAvatar.value
+        : await buildAvatarSvg();
     await request.post("/comments", {
       targetId: props.targetId,
       name: name || "楼主",
@@ -270,7 +391,8 @@ const onSubmit = async () => {
     emit("commented");
   } catch (error) {
     console.error("评论失败:", error);
-    const msg = (error as any)?.response?.data?.message || "评论失败，请稍后再试";
+    const msg =
+      (error as any)?.response?.data?.message || "评论失败，请稍后再试";
     ElMessage.error(msg);
   } finally {
     submitting.value = false;
@@ -284,6 +406,6 @@ watch(
       fetchComments();
     }
   },
-  { immediate: true }
+  { immediate: true },
 );
 </script>

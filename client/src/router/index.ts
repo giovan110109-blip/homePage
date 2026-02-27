@@ -110,6 +110,14 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/emote-test',
+    name: 'emote-test',
+    component: () => import('@/pages/EmoteTestView.vue'),
+    meta: {
+      title: '表情包测试'
+    }
+  },
+  {
     path: '/:pathMatch(.*)*',
     name: 'not-found',
     component: () => import('@/pages/HomeView.vue'),

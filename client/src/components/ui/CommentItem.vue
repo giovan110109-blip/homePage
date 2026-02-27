@@ -38,7 +38,7 @@
       <div
         class="text-gray-700 dark:text-gray-300 text-[13px] leading-5 m-0 break-words mb-1"
       >
-        {{ comment.content }}
+        <EmoteRenderer :text="comment.content" :size="20" />
       </div>
       <div class="flex justify-between items-center">
         <div class="flex flex-wrap gap-2">
@@ -139,13 +139,51 @@
                 autocomplete="url"
               />
             </div>
-            <textarea
-              v-model="replyForm.content"
-              required
-              rows="2"
-              class="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus:border-blue-500 outline-none transition-all resize-none"
-              placeholder="请输入回复..."
-            ></textarea>
+            <div class="relative">
+              <RichTextarea
+                v-model="replyForm.content"
+                placeholder="请输入回复..."
+                ref="replyRichTextareaRef"
+              />
+              <button
+                type="button"
+                @click.stop="toggleReplyEmotePicker"
+                class="absolute right-2 bottom-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors z-10"
+                title="插入表情包"
+                ref="replyEmoteButtonRef"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
+                  <line x1="9" y1="9" x2="9.01" y2="9"></line>
+                  <line x1="15" y1="9" x2="15.01" y2="9"></line>
+                </svg>
+              </button>
+              <transition
+                enter-active-class="transition-all duration-200 ease-out"
+                leave-active-class="transition-all duration-150 ease-in"
+                enter-from-class="opacity-0 scale-95"
+                enter-to-class="opacity-100 scale-100"
+                leave-from-class="opacity-100 scale-100"
+                leave-to-class="opacity-0 scale-95"
+              >
+                <Teleport to="body">
+                  <div 
+                    v-if="showReplyEmotePicker" 
+                    class="fixed"
+                    :style="{ 
+                      top: replyEmotePickerPosition.top + 'px',
+                      right: replyEmotePickerPosition.right + 'px',
+                      zIndex: 99999
+                    }"
+                    ref="replyEmotePickerRef"
+                    @click.stop
+                  >
+                    <EmotePicker @select="insertReplyEmote" />
+                  </div>
+                </Teleport>
+              </transition>
+            </div>
             <div class="flex justify-end">
               <AppButton
                 variant="primary"
@@ -184,6 +222,7 @@
 </template>
 
 <script setup lang="ts">
+import { ref, computed, nextTick, onMounted, onUnmounted } from "vue";
 import {
   ExternalLink,
   Trash2,
@@ -200,6 +239,10 @@ import request from "@/api/request";
 import { buildAvatarSvg } from "@/utils/avatarSvg";
 import { getExternalLinkRedirectUrl } from "@/utils/external-link";
 import AppButton from "@/components/ui/AppButton.vue";
+import EmotePicker from "@/components/ui/EmotePicker.vue";
+import EmoteRenderer from "@/components/ui/EmoteRenderer.vue";
+import RichTextarea from "@/components/ui/RichTextarea.vue";
+import { useEmotes } from "@/composables/useEmotes";
 
 interface CommentType {
   id: string;
@@ -256,10 +299,73 @@ const saveFormCache = () => {
 const showReplyForm = ref(false);
 const submitting = ref(false);
 const replyForm = ref(loadFormCache());
+const showReplyEmotePicker = ref(false);
+const replyRichTextareaRef = ref<InstanceType<typeof RichTextarea> | null>(null);
+const replyEmotePickerRef = ref<HTMLDivElement | null>(null);
+const replyEmoteButtonRef = ref<HTMLButtonElement | null>(null);
+const replyEmotePickerPosition = ref({ top: 0, right: 0 });
+
+const { getEmoteUrl } = useEmotes();
+
+const updateReplyEmotePickerPosition = () => {
+  if (!replyEmoteButtonRef.value) return;
+  
+  const rect = replyEmoteButtonRef.value.getBoundingClientRect();
+  const pickerHeight = 450;
+  
+  replyEmotePickerPosition.value = {
+    top: rect.top - pickerHeight,
+    right: window.innerWidth - rect.right
+  };
+};
 
 const toggleReply = () => {
   showReplyForm.value = !showReplyForm.value;
 };
+
+const toggleReplyEmotePicker = () => {
+  showReplyEmotePicker.value = !showReplyEmotePicker.value;
+  if (showReplyEmotePicker.value) {
+    nextTick(() => {
+      updateReplyEmotePickerPosition();
+    });
+  }
+};
+
+const insertReplyEmote = (emoteName: string) => {
+  const emoteUrl = getEmoteUrl(emoteName);
+  if (replyRichTextareaRef.value && emoteUrl) {
+    replyRichTextareaRef.value.insertEmote(emoteName, emoteUrl);
+  }
+  showReplyEmotePicker.value = false;
+};
+
+const handleClickOutside = (event: MouseEvent) => {
+  const target = event.target as Node;
+  if (replyEmotePickerRef.value && !replyEmotePickerRef.value.contains(target)) {
+    showReplyEmotePicker.value = false;
+  }
+};
+
+const handleScroll = () => {
+  if (showReplyEmotePicker.value) {
+    updateReplyEmotePickerPosition();
+  }
+};
+
+onMounted(() => {
+  nextTick(() => {
+    document.addEventListener('click', handleClickOutside);
+    window.addEventListener('scroll', handleScroll, true);
+    window.addEventListener('resize', handleScroll);
+  });
+});
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside);
+  window.removeEventListener('scroll', handleScroll, true);
+  window.removeEventListener('resize', handleScroll);
+});
 
 const submitReply = async () => {
   const name = props.isLoggedIn ? props.userName : replyForm.value.name;
