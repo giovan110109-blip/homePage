@@ -279,12 +279,7 @@ const hasLiked = ref(false)
 const showShareModal = ref(false)
 const showCardPreview = ref(false)
 
-useArticleSeo(computed(() => article.value ? {
-  title: article.value.title,
-  summary: article.value.summary,
-  coverImage: article.value.coverImage,
-  tags: article.value.tags
-} : {}))
+useArticleSeo(article)
 
 const md = markdownit({
   html: false,

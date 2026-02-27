@@ -1,6 +1,5 @@
-import { onMounted, onUnmounted, watch } from 'vue';
+import { onMounted, onUnmounted, watch, unref, computed } from 'vue';
 import type { MaybeRef } from 'vue';
-import { unref } from 'vue';
 
 interface SeoOptions {
   title?: MaybeRef<string>;
@@ -21,7 +20,7 @@ let metaElements: Map<string, HTMLMetaElement> = new Map();
 
 const getOrCreateMeta = (name: string, property?: boolean): HTMLMetaElement => {
   const key = property ? `property:${name}` : `name:${name}`;
-  
+
   if (metaElements.has(key)) {
     return metaElements.get(key)!;
   }
@@ -81,16 +80,16 @@ export const useSeo = (options: SeoOptions = {}) => {
     }
 
     if (options.title) {
-      setTitle(unref(options.title));
+      setTitle(unref(options.title) || '');
     }
     if (options.description) {
-      setDescription(unref(options.description));
+      setDescription(unref(options.description) || '');
     }
     if (options.keywords) {
-      setKeywords(unref(options.keywords));
+      setKeywords(unref(options.keywords) || '');
     }
     if (options.image) {
-      setImage(unref(options.image));
+      setImage(unref(options.image) || '');
     }
     if (options.type) {
       setType(options.type);
@@ -122,12 +121,19 @@ export const useSeo = (options: SeoOptions = {}) => {
   });
 };
 
-export const useArticleSeo = (article: { title?: string; summary?: string; coverImage?: string; tags?: string[] }) => {
+interface ArticleSeoData {
+  title?: string;
+  summary?: string;
+  coverImage?: string;
+  tags?: string[];
+}
+
+export const useArticleSeo = (article: MaybeRef<ArticleSeoData | null>) => {
   useSeo({
-    title: article.title,
-    description: article.summary,
-    image: article.coverImage,
-    keywords: article.tags?.join(', '),
+    title: computed(() => unref(article)?.title || ''),
+    description: computed(() => unref(article)?.summary || ''),
+    image: computed(() => unref(article)?.coverImage || ''),
+    keywords: computed(() => unref(article)?.tags?.join(', ') || ''),
     type: 'article',
   });
 };
