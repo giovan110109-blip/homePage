@@ -41,9 +41,32 @@ docker-compose logs -f server
 
 ### 4. 访问应用
 
-- 前端：http://localhost:3000
+- 前端：http://localhost:40000
 - 后端 API：http://localhost:8998
-- MongoDB：localhost:27017
+
+## 测试环境部署
+
+测试环境使用独立端口，共用正式环境的配置：
+
+| 服务 | 正式环境 | 测试环境 |
+|------|----------|----------|
+| 前端 | `40000:80` | `40001:80` |
+| 后端 | `8998:8998` | `8999:8998` |
+
+```bash
+# 启动测试环境
+docker-compose -f docker-compose.test.yml up -d --build
+
+# 查看测试环境日志
+docker-compose -f docker-compose.test.yml logs -f
+
+# 停止测试环境
+docker-compose -f docker-compose.test.yml down
+```
+
+测试环境访问地址：
+- 前端：http://localhost:40001
+- 后端 API：http://localhost:8999
 
 ## 常用命令
 

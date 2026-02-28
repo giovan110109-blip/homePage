@@ -7,110 +7,87 @@ import type {
   FriendLink, 
   FriendLinkFormData, 
   FriendLinkListResponse,
-  FriendLinkReviewData 
+  FriendLinkReviewData,
+  ApiResponse
 } from '@/types/api'
+import { withApi, type ApiResult } from './utils'
 
 // ==================== 前台接口 ====================
 
-/**
- * 获取已通过的友情链接列表
- */
-export function getFriendLinks() {
-  return request<FriendLink[]>({
-    url: '/friend-links',
-    method: 'GET'
-  })
+export function getFriendLinks(): Promise<ApiResponse<FriendLink[]>> {
+  return request.get('/friend-links')
 }
 
-/**
- * 申请友情链接
- */
-export function applyFriendLink(data: FriendLinkFormData) {
-  return request<FriendLink>({
-    url: '/friend-links',
-    method: 'POST',
-    data
-  })
+export function getFriendLinksSafe(): Promise<ApiResult<FriendLink[]>> {
+  return withApi(getFriendLinks())
 }
 
-/**
- * 记录点击
- */
-export function recordFriendLinkClick(id: string) {
-  return request({
-    url: `/friend-links/${id}/click`,
-    method: 'POST'
-  })
+export function applyFriendLink(data: FriendLinkFormData): Promise<ApiResponse<FriendLink>> {
+  return request.post('/friend-links', data)
+}
+
+export function applyFriendLinkSafe(data: FriendLinkFormData): Promise<ApiResult<FriendLink>> {
+  return withApi(applyFriendLink(data))
+}
+
+export function recordFriendLinkClick(id: string): Promise<ApiResponse<void>> {
+  return request.post(`/friend-links/${id}/click`)
 }
 
 // ==================== 管理后台接口 ====================
 
-/**
- * 分页查询所有友情链接
- */
-export function adminGetFriendLinks(params?: {
+export interface AdminFriendLinksParams {
   page?: number
   pageSize?: number
   status?: string
   isActive?: boolean
   category?: string
-}) {
-  return request<FriendLinkListResponse>({
-    url: '/admin/friend-links',
-    method: 'GET',
-    params
-  })
 }
 
-/**
- * 获取单个友情链接详情
- */
-export function adminGetFriendLinkById(id: string) {
-  return request<FriendLink>({
-    url: `/admin/friend-links/${id}`,
-    method: 'GET'
-  })
+export function adminGetFriendLinks(params?: AdminFriendLinksParams): Promise<ApiResponse<FriendLinkListResponse>> {
+  return request.get('/admin/friend-links', { params })
 }
 
-/**
- * 更新友情链接
- */
-export function adminUpdateFriendLink(id: string, data: Partial<FriendLink>) {
-  return request<FriendLink>({
-    url: `/admin/friend-links/${id}`,
-    method: 'PUT',
-    data
-  })
+export function adminGetFriendLinksSafe(params?: AdminFriendLinksParams): Promise<ApiResult<FriendLinkListResponse>> {
+  return withApi(adminGetFriendLinks(params))
 }
 
-/**
- * 审核友情链接
- */
-export function adminReviewFriendLink(id: string, data: FriendLinkReviewData) {
-  return request<FriendLink>({
-    url: `/admin/friend-links/${id}/review`,
-    method: 'PUT',
-    data
-  })
+export function adminGetFriendLinkById(id: string): Promise<ApiResponse<FriendLink>> {
+  return request.get(`/admin/friend-links/${id}`)
 }
 
-/**
- * 删除友情链接
- */
-export function adminDeleteFriendLink(id: string) {
-  return request({
-    url: `/admin/friend-links/${id}`,
-    method: 'DELETE'
-  })
+export function adminGetFriendLinkByIdSafe(id: string): Promise<ApiResult<FriendLink>> {
+  return withApi(adminGetFriendLinkById(id))
 }
 
-/**
- * 批量更新排序
- */
-export function adminUpdateFriendLinkSort(updates: Array<{ id: string; sort: number }>) {
-  return request({
-    url: '/admin/friend-links/sort',
-    method: 'PUT',
-    data: { updates }
-  })
+export function adminUpdateFriendLink(id: string, data: Partial<FriendLink>): Promise<ApiResponse<FriendLink>> {
+  return request.put(`/admin/friend-links/${id}`, data)
+}
+
+export function adminUpdateFriendLinkSafe(id: string, data: Partial<FriendLink>): Promise<ApiResult<FriendLink>> {
+  return withApi(adminUpdateFriendLink(id, data))
+}
+
+export function adminReviewFriendLink(id: string, data: FriendLinkReviewData): Promise<ApiResponse<FriendLink>> {
+  return request.put(`/admin/friend-links/${id}/review`, data)
+}
+
+export function adminReviewFriendLinkSafe(id: string, data: FriendLinkReviewData): Promise<ApiResult<FriendLink>> {
+  return withApi(adminReviewFriendLink(id, data))
+}
+
+export function adminDeleteFriendLink(id: string): Promise<ApiResponse<void>> {
+  return request.delete(`/admin/friend-links/${id}`)
+}
+
+export function adminDeleteFriendLinkSafe(id: string): Promise<ApiResult<void>> {
+  return withApi(adminDeleteFriendLink(id))
+}
+
+export function adminUpdateFriendLinkSort(updates: Array<{ id: string; sort: number }>): Promise<ApiResponse<void>> {
+  return request.put('/admin/friend-links/sort', { updates })
+}
+
+export function adminUpdateFriendLinkSortSafe(updates: Array<{ id: string; sort: number }>): Promise<ApiResult<void>> {
+  return withApi(adminUpdateFriendLinkSort(updates))
 }

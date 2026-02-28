@@ -1,19 +1,20 @@
-// HTTP 状态码及其描述
 const HttpStatus = {
-    OK: 200,                    // 成功返回请求数据
-    CREATED: 201,               // 新建或修改数据成功
-    ACCEPTED: 202,              // 请求进入后台队列（异步任务）
-    NO_CONTENT: 204,            // 删除数据成功
-    BAD_REQUEST: 400,           // 请求错误
-    UNAUTHORIZED: 401,          // 未授权，需要重新登录
-    FORBIDDEN: 403,             // 拒绝访问
-    NOT_FOUND: 404,            // 请求的资源不存在
-    REQUEST_TIMEOUT: 408,       // 请求超时
-    INTERNAL_ERROR: 500,        // 服务器内部错误
-    NOT_IMPLEMENTED: 501,       // 服务未实现
-    BAD_GATEWAY: 502,          // 网关错误
-    SERVICE_UNAVAILABLE: 503,   // 服务不可用
-    GATEWAY_TIMEOUT: 504        // 网关超时
+    OK: 200,
+    CREATED: 201,
+    ACCEPTED: 202,
+    NO_CONTENT: 204,
+    BAD_REQUEST: 400,
+    UNAUTHORIZED: 401,
+    FORBIDDEN: 403,
+    NOT_FOUND: 404,
+    REQUEST_TIMEOUT: 408,
+    CONFLICT: 409,
+    TOO_MANY_REQUESTS: 429,
+    INTERNAL_ERROR: 500,
+    NOT_IMPLEMENTED: 501,
+    BAD_GATEWAY: 502,
+    SERVICE_UNAVAILABLE: 503,
+    GATEWAY_TIMEOUT: 504
 };
 
 // 响应消息

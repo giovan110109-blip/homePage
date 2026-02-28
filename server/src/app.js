@@ -8,16 +8,13 @@ const dotenv = require("dotenv");
   const serverEnv = path.resolve(__dirname, "../.env");
   if (fs.existsSync(rootEnv)) {
     dotenv.config({ path: rootEnv });
-    console.log("Loaded env from project root .env");
     return;
   }
   if (fs.existsSync(serverEnv)) {
     dotenv.config({ path: serverEnv });
-    console.log("Loaded env from server/.env");
     return;
   }
   dotenv.config();
-  console.log("Loaded env from process environment");
 })();
 
 const Koa = require("koa");
@@ -25,6 +22,8 @@ const koaBody = require("koa-body");
 const cors = require("@koa/cors");
 const koaStatic = require("koa-static");
 const mount = require("koa-mount");
+const compress = require("koa-compress");
+const helmet = require("koa-helmet");
 const mongoose = require("mongoose");
 const registerRoutes = require("./routes");
 const connectDB = require("./config/db");
@@ -36,6 +35,7 @@ const adminAuth = require("./middleware/adminAuth");
 const accessLogger = require("./middleware/accessLogger");
 const uploadQueue = require("./services/uploadQueueManager");
 const timeoutMiddleware = require("./middleware/timeout");
+const appLogger = require("./utils/logger");
 
 // 连接数据库
 connectDB();
@@ -43,10 +43,10 @@ connectDB();
 // 仅在第一个 Worker 进程中启动上传队列管理器
 if (process.env.WORKER_ID === "0") {
   uploadQueue.start().catch((err) => {
-    console.error("Failed to start upload queue:", err);
+    appLogger.error("Failed to start upload queue:", err);
   });
 } else {
-  console.log(
+  appLogger.info(
     `Worker ${process.pid} skipping upload queue startup (managed by Worker 0)`,
   );
 }
@@ -73,25 +73,64 @@ app.use(
 
 // CORS
 const allowedOrigins = process.env.CORS_ORIGINS
-  ? process.env.CORS_ORIGINS.split(',').map(s => s.trim())
-  : ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:8999'];
+  ? process.env.CORS_ORIGINS.split(",").map((s) => s.trim())
+  : ["http://localhost:3000", "http://localhost:5173", "http://localhost:8999"];
 
 app.use(
   cors({
     origin: (ctx) => {
-      const requestOrigin = ctx.get('Origin');
-      if (!requestOrigin) return '*';
+      const requestOrigin = ctx.get("Origin");
+      if (!requestOrigin) return "*";
       if (allowedOrigins.includes(requestOrigin)) {
         return requestOrigin;
       }
-      if (process.env.NODE_ENV === 'development') {
+      if (process.env.NODE_ENV === "development") {
         return requestOrigin;
       }
       return allowedOrigins[0];
     },
     allowHeaders: ["Content-Type", "Authorization", "x-request-timestamp"],
-    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowMethods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     credentials: true,
+  }),
+);
+
+// 安全头中间件 - XSS 防护、CSP、防点击劫持等
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", "data:", "blob:", "https:"],
+        fontSrc: ["'self'", "data:"],
+        connectSrc: ["'self'", "https:"],
+        mediaSrc: ["'self'", "https:", "blob:"],
+        objectSrc: ["'none'"],
+        frameSrc: ["'self'"],
+      },
+    },
+    crossOriginEmbedderPolicy: false,
+    crossOriginOpenerPolicy: false,
+    crossOriginResourcePolicy: false,
+  }),
+);
+
+// Gzip 压缩中间件 - 压缩 JSON、HTML、CSS、JS 等文本响应
+app.use(
+  compress({
+    filter: (contentType) => {
+      return /text|json|javascript|css|xml/i.test(contentType);
+    },
+    threshold: 1024,
+    gzip: {
+      flush: require("zlib").constants.Z_SYNC_FLUSH,
+    },
+    deflate: {
+      flush: require("zlib").constants.Z_SYNC_FLUSH,
+    },
+    br: false,
   }),
 );
 
@@ -192,7 +231,7 @@ registerRoutes(app);
 
 // 启动服务器
 const server = app.listen(port, () => {
-  console.log(`Server running at http://localhost:${port}`);
+  appLogger.info(`Server running at http://localhost:${port}`);
 });
 
 // 设置服务器超时（用于处理大文件上传）
@@ -208,12 +247,12 @@ if (server.requestTimeout !== undefined) {
 }
 
 const shutdown = async (signal) => {
-  console.log(`Received ${signal}, closing gracefully...`);
+  appLogger.info(`Received ${signal}, closing gracefully...`);
   server.close(() => {
-    console.log("HTTP server closed");
+    appLogger.info("HTTP server closed");
   });
   await mongoose.connection.close();
-  console.log("MongoDB connection closed");
+  appLogger.info("MongoDB connection closed");
   process.exit(0);
 };
 

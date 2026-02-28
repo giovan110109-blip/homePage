@@ -1,8 +1,9 @@
 const mongoose = require('mongoose');
+const logger = require('../utils/logger');
 
 const connectDB = async () => {
     if (process.env.SKIP_DB === '1' || process.env.SKIP_DB === 'true') {
-        console.log('Skipping MongoDB connection because SKIP_DB is set');
+        logger.info('Skipping MongoDB connection because SKIP_DB is set');
         return;
     }
 
@@ -41,17 +42,17 @@ const connectDB = async () => {
             connectTimeoutMS: 10000,
             maxIdleTimeMS: 30000,
         });
-        console.log(`MongoDB 已连接: ${conn.connection.host}`);
+        logger.info(`MongoDB 已连接: ${conn.connection.host}`);
 
         mongoose.connection.on('error', (err) => {
-            console.error('MongoDB 连接错误:', err);
+            logger.error('MongoDB 连接错误:', err);
         });
 
         mongoose.connection.on('disconnected', () => {
-            console.warn('MongoDB 连接断开');
+            logger.warn('MongoDB 连接断开');
         });
     } catch (error) {
-        console.error('MongoDB 连接失败:', error);
+        logger.error('MongoDB 连接失败:', error);
         // 生产环境建议退出；如需开发不中断，可设置 SKIP_DB=true
         process.exit(1);
     }

@@ -1,6 +1,25 @@
 const { Response, HttpStatus, HttpError } = require('./response');
+const {
+  AppError,
+  NotFoundError,
+  ValidationError,
+  UnauthorizedError,
+  ForbiddenError,
+  ConflictError,
+  TooManyRequestsError,
+  InternalError,
+} = require('./errors');
 
-// 通用控制器基类，提供统一的响应与错误处理
+const ERROR_CLASS_MAP = {
+  [HttpStatus.BAD_REQUEST]: ValidationError,
+  [HttpStatus.UNAUTHORIZED]: UnauthorizedError,
+  [HttpStatus.FORBIDDEN]: ForbiddenError,
+  [HttpStatus.NOT_FOUND]: NotFoundError,
+  [HttpStatus.CONFLICT]: ConflictError,
+  [HttpStatus.TOO_MANY_REQUESTS]: TooManyRequestsError,
+  [HttpStatus.INTERNAL_ERROR]: InternalError,
+};
+
 class BaseController {
     ok(ctx, data = null, message = '', meta) {
         ctx.status = HttpStatus.OK;
@@ -23,13 +42,23 @@ class BaseController {
     }
 
     fail(ctx, error, fallbackStatus = HttpStatus.INTERNAL_ERROR) {
-        const status = error instanceof HttpError ? error.status : (error?.status || fallbackStatus);
+        let status = fallbackStatus;
+        if (error instanceof AppError) {
+            status = error.status;
+        } else if (error instanceof HttpError) {
+            status = error.status;
+        } else if (error?.status) {
+            status = error.status;
+        }
         ctx.status = status;
         ctx.body = Response.fromError(error, status);
     }
 
     throwHttpError(message, status = HttpStatus.BAD_REQUEST, details) {
-        throw new HttpError(message, status, details);
+        const ErrorClass = ERROR_CLASS_MAP[status] || InternalError;
+        const error = new ErrorClass(message);
+        if (details) error.details = details;
+        throw error;
     }
 }
 

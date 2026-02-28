@@ -3,6 +3,8 @@
  */
 
 import request from './request'
+import type { ApiResponse } from '@/types/api'
+import { withApi, type ApiResult } from './utils'
 
 export interface VerifyResponse {
   valid: boolean
@@ -13,13 +15,6 @@ export interface VerifyResponse {
     avatar?: string
     email?: string
   }
-}
-
-export interface ApiResponse<T = any> {
-  code: number
-  data: T
-  message: string
-  success: boolean
 }
 
 export interface QrSessionData {
@@ -43,35 +38,34 @@ export interface QrStatusData {
   }
 }
 
-/**
- * 验证 token 是否有效
- */
-export function verifyToken(): Promise<any> {
+export function verifyToken(): Promise<ApiResponse<VerifyResponse>> {
   return request.get('/admin/verify')
 }
 
-/**
- * 创建扫码登录会话
- */
-export function createQrSession(): Promise<any> {
+export function verifyTokenSafe(): Promise<ApiResult<VerifyResponse>> {
+  return withApi(verifyToken())
+}
+
+export function createQrSession(): Promise<ApiResponse<QrSessionData>> {
   return request.post('/auth/create-qr-session')
 }
 
-/**
- * 获取小程序码图片URL
- */
+export function createQrSessionSafe(): Promise<ApiResult<QrSessionData>> {
+  return withApi(createQrSession())
+}
+
 export function getQrCodeUrl(qrToken: string): string {
   const rawBaseUrl = import.meta.env.VITE_API_BASE_URL || 'https://serve.giovan.cn'
-  // 与 http.ts 保持一致，自动补全 /api
   const baseUrl = rawBaseUrl.replace(/\/$/, '').endsWith('/api') 
     ? rawBaseUrl.replace(/\/$/, '') 
     : `${rawBaseUrl.replace(/\/$/, '')}/api`
   return `${baseUrl}/auth/generate-qr-code?qrToken=${qrToken}`
 }
 
-/**
- * 检查扫码登录状态
- */
-export function checkQrStatus(qrToken: string): Promise<any> {
+export function checkQrStatus(qrToken: string): Promise<ApiResponse<QrStatusData>> {
   return request.get(`/auth/check-qr-status/${qrToken}`)
+}
+
+export function checkQrStatusSafe(qrToken: string): Promise<ApiResult<QrStatusData>> {
+  return withApi(checkQrStatus(qrToken))
 }

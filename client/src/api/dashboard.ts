@@ -3,6 +3,8 @@
  */
 
 import request from './request'
+import type { ApiResponse } from '@/types/api'
+import { withApi, type ApiResult } from './utils'
 
 export interface DashboardStats {
   messages: {
@@ -33,12 +35,10 @@ export interface DashboardStats {
   }
 }
 
-/**
- * 获取仪表板统计数据
- */
-export function getDashboardStats() {
-  return request<DashboardStats>({
-    url: '/admin/dashboard/stats',
-    method: 'GET'
-  })
+export function getDashboardStats(): Promise<ApiResponse<DashboardStats>> {
+  return request.get('/admin/dashboard/stats')
+}
+
+export function getDashboardStatsSafe(): Promise<ApiResult<DashboardStats>> {
+  return withApi(getDashboardStats())
 }

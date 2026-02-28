@@ -6,6 +6,11 @@ const path = require("path");
 const fs = require("fs");
 const fsp = fs.promises;
 const { HttpStatus, Response } = require("../utils/response");
+const {
+  NotFoundError,
+  ValidationError,
+  InternalError,
+} = require("../utils/errors");
 
 class PhotoController {
   processPhotos(photos) {
@@ -32,8 +37,7 @@ class PhotoController {
       const file = ctx.request.files?.file;
 
       if (!file) {
-        ctx.body = Response.error("请选择要上传的文件", HttpStatus.BAD_REQUEST);
-        return;
+        throw new ValidationError("请选择要上传的文件");
       }
 
       // 确保上传目录存在
@@ -56,7 +60,7 @@ class PhotoController {
       // 使用流式写入而不是rename,这样可以跨设备工作
       const tempPath = file.filepath || file.path;
       if (!tempPath) {
-        throw new Error("无法获取上传文件的临时路径");
+        throw new InternalError("无法获取上传文件的临时路径");
       }
 
       // 方法1: 使用 fs.copyFile (跨设备推荐)
@@ -152,11 +156,7 @@ class PhotoController {
         "上传成功，开始处理",
       );
     } catch (error) {
-      console.error("上传失败:", error);
-      ctx.body = Response.error(
-        `上传失败: ${error.message}`,
-        HttpStatus.INTERNAL_ERROR,
-      );
+      throw error;
     }
   }
 
@@ -169,8 +169,7 @@ class PhotoController {
       const task = await uploadQueue.getTaskStatus(taskId);
 
       if (!task) {
-        ctx.body = Response.error("任务不存在", HttpStatus.NOT_FOUND);
-        return;
+        throw new NotFoundError("任务不存在");
       }
 
       ctx.body = Response.success(
@@ -185,20 +184,16 @@ class PhotoController {
         "获取成功",
       );
     } catch (error) {
-      ctx.body = Response.error(error.message, HttpStatus.INTERNAL_ERROR);
+      throw error;
     }
   }
 
-  /**
-   * 批量获取任务状态
-   */
   async getTaskStatuses(ctx) {
     try {
       const { taskIds } = ctx.request.body || {};
 
       if (!Array.isArray(taskIds) || taskIds.length === 0) {
-        ctx.body = Response.error("taskIds 不能为空", HttpStatus.BAD_REQUEST);
-        return;
+        throw new ValidationError("taskIds 不能为空");
       }
 
       const tasks = await UploadTask.find({ taskId: { $in: taskIds } }).lean();
@@ -224,25 +219,19 @@ class PhotoController {
 
       ctx.body = Response.success({ tasks: data }, "获取成功");
     } catch (error) {
-      ctx.body = Response.error(error.message, HttpStatus.INTERNAL_ERROR);
+      throw error;
     }
   }
 
-  /**
-   * 获取队列统计
-   */
   async getQueueStats(ctx) {
     try {
       const stats = await uploadQueue.getStats();
       ctx.body = Response.success(stats, "获取成功");
     } catch (error) {
-      ctx.body = Response.error(error.message, HttpStatus.INTERNAL_ERROR);
+      throw error;
     }
   }
 
-  /**
-   * 获取失败任务列表
-   */
   async getFailedTasks(ctx) {
     try {
       const { page = 1, limit = 20 } = ctx.query;
@@ -283,21 +272,17 @@ class PhotoController {
         "获取成功",
       );
     } catch (error) {
-      ctx.body = Response.error(error.message, HttpStatus.INTERNAL_ERROR);
+      throw error;
     }
   }
 
-  /**
-   * 重试失败任务
-   */
   async retryTask(ctx) {
     try {
       const { taskId } = ctx.params;
       const task = await UploadTask.findOne({ taskId }).lean();
 
       if (!task) {
-        ctx.body = Response.error("任务不存在", HttpStatus.NOT_FOUND);
-        return;
+        throw new NotFoundError("任务不存在");
       }
 
       task.status = "pending";
@@ -319,13 +304,10 @@ class PhotoController {
         "已重试",
       );
     } catch (error) {
-      ctx.body = Response.error(error.message, HttpStatus.INTERNAL_ERROR);
+      throw error;
     }
   }
 
-  /**
-   * 获取照片列表
-   */
   async getPhotos(ctx) {
     try {
       const {
@@ -384,34 +366,27 @@ class PhotoController {
 
       ctx.body = Response.success(result, "获取成功");
     } catch (error) {
-      ctx.body = Response.error(error.message, HttpStatus.INTERNAL_ERROR);
+      throw error;
     }
   }
 
-  /**
-   * 获取照片详情
-   */
   async getPhotoDetail(ctx) {
     try {
       const { id } = ctx.params;
       const photo = await Photo.findById(id).lean();
 
       if (!photo) {
-        ctx.body = Response.error("照片不存在", HttpStatus.NOT_FOUND);
-        return;
+        throw new NotFoundError("照片不存在");
       }
 
       await Photo.findByIdAndUpdate(id, { $inc: { views: 1 } });
 
       ctx.body = Response.success(photo, "获取成功");
     } catch (error) {
-      ctx.body = Response.error(error.message, HttpStatus.INTERNAL_ERROR);
+      throw error;
     }
   }
 
-  /**
-   * 获取地图数据（聚合位置信息）
-   */
   async getMapData(ctx) {
     try {
       const photos = await Photo.find({
@@ -467,21 +442,17 @@ class PhotoController {
 
       ctx.body = Response.success(Object.values(locationGroups), "获取成功");
     } catch (error) {
-      ctx.body = Response.error(error.message, HttpStatus.INTERNAL_ERROR);
+      throw error;
     }
   }
 
-  /**
-   * 删除照片
-   */
   async deletePhoto(ctx) {
     try {
       const { id } = ctx.params;
       const photo = await Photo.findById(id).lean();
 
       if (!photo) {
-        ctx.body = Response.error("照片不存在", HttpStatus.NOT_FOUND);
-        return;
+        throw new NotFoundError("照片不存在");
       }
 
       // 删除文件
@@ -522,30 +493,22 @@ class PhotoController {
 
       ctx.body = Response.success(null, "删除成功");
     } catch (error) {
-      ctx.body = Response.error(error.message, HttpStatus.INTERNAL_ERROR);
+      throw error;
     }
   }
 
-  /**
-   * 批量删除照片
-   */
   async batchDeletePhotos(ctx) {
     try {
       const { ids } = ctx.request.body;
 
       if (!Array.isArray(ids) || ids.length === 0) {
-        ctx.body = Response.error(
-          "请提供要删除的照片ID列表",
-          HttpStatus.BAD_REQUEST,
-        );
-        return;
+        throw new ValidationError("请提供要删除的照片ID列表");
       }
 
       const photos = await Photo.find({ _id: { $in: ids } }).lean();
 
       if (photos.length === 0) {
-        ctx.body = Response.error("未找到要删除的照片", HttpStatus.NOT_FOUND);
-        return;
+        throw new NotFoundError("未找到要删除的照片");
       }
 
       const baseUploadDir =
@@ -589,16 +552,10 @@ class PhotoController {
         `成功删除 ${result.deletedCount} 张照片`,
       );
     } catch (error) {
-      ctx.body = Response.error(
-        error.message || "批量删除失败",
-        HttpStatus.INTERNAL_ERROR,
-      );
+      throw error;
     }
   }
 
-  /**
-   * 更新照片信息
-   */
   async updatePhoto(ctx) {
     try {
       const { id } = ctx.params;
@@ -619,33 +576,27 @@ class PhotoController {
       });
 
       if (!photo) {
-        ctx.body = Response.error("照片不存在", HttpStatus.NOT_FOUND);
-        return;
+        throw new NotFoundError("照片不存在");
       }
 
       ctx.body = Response.success(photo, "更新成功");
     } catch (error) {
-      ctx.body = Response.error(error.message, HttpStatus.INTERNAL_ERROR);
+      throw error;
     }
   }
 
-  /**
-   * 手动设置照片位置信息
-   */
   async updatePhotoLocation(ctx) {
     try {
       const { id } = ctx.params;
       const { latitude, longitude } = ctx.request.body;
 
       if (typeof latitude !== "number" || typeof longitude !== "number") {
-        ctx.body = Response.error("经纬度必须是数字", HttpStatus.BAD_REQUEST);
-        return;
+        throw new ValidationError("经纬度必须是数字");
       }
 
       const photo = await Photo.findById(id).lean();
       if (!photo) {
-        ctx.body = Response.error("照片不存在", HttpStatus.NOT_FOUND);
-        return;
+        throw new NotFoundError("照片不存在");
       }
 
       // 更新位置信息
@@ -677,26 +628,21 @@ class PhotoController {
         "位置信息更新成功，地理信息正在后台获取",
       );
     } catch (error) {
-      ctx.body = Response.error(error.message, HttpStatus.INTERNAL_ERROR);
+      throw error;
     }
   }
 
-  /**
-   * 重新获取照片的地理位置信息（基于现有的经纬度）
-   */
   async refreshPhotoGeoinfo(ctx) {
     try {
       const { id } = ctx.params;
       const photo = await Photo.findById(id).lean();
 
       if (!photo) {
-        ctx.body = Response.error("照片不存在", HttpStatus.NOT_FOUND);
-        return;
+        throw new NotFoundError("照片不存在");
       }
 
       if (!photo.location?.latitude || !photo.location?.longitude) {
-        ctx.body = Response.error("照片没有位置信息", HttpStatus.BAD_REQUEST);
-        return;
+        throw new ValidationError("照片没有位置信息");
       }
 
       const geocoding = require("../services/geocoding");
@@ -710,21 +656,17 @@ class PhotoController {
 
       ctx.body = Response.success(photo, "地理位置信息更新成功");
     } catch (error) {
-      ctx.body = Response.error(error.message, HttpStatus.INTERNAL_ERROR);
+      throw error;
     }
   }
 
-  /**
-   * 重新提取照片的 EXIF 信息
-   */
   async refreshPhotoExif(ctx) {
     try {
       const { id } = ctx.params;
       const photo = await Photo.findById(id).lean();
 
       if (!photo) {
-        ctx.body = Response.error("照片不存在", HttpStatus.NOT_FOUND);
-        return;
+        throw new NotFoundError("照片不存在");
       }
 
       // 获取原始文件路径（优先使用 originalKey，因为它保留了完整的 EXIF）
@@ -741,8 +683,7 @@ class PhotoController {
           .then(() => true)
           .catch(() => false))
       ) {
-        ctx.body = Response.error("原始文件不存在", HttpStatus.NOT_FOUND);
-        return;
+        throw new NotFoundError("原始文件不存在");
       }
 
       // 重新提取 EXIF
@@ -788,13 +729,10 @@ class PhotoController {
 
       ctx.body = Response.success(photo, "EXIF 信息更新成功");
     } catch (error) {
-      ctx.body = Response.error(error.message, HttpStatus.INTERNAL_ERROR);
+      throw error;
     }
   }
 
-  /**
-   * 旋转照片
-   */
   async rotatePhoto(ctx) {
     try {
       const { id } = ctx.params;
@@ -805,17 +743,12 @@ class PhotoController {
       );
 
       if (!degree || ![90, -90, 180].includes(degree)) {
-        ctx.body = Response.error(
-          "无效的旋转角度，仅支持 90, -90, 180",
-          HttpStatus.BAD_REQUEST,
-        );
-        return;
+        throw new ValidationError("无效的旋转角度，仅支持 90, -90, 180");
       }
 
       const photo = await Photo.findById(id).lean();
       if (!photo) {
-        ctx.body = Response.error("照片不存在", HttpStatus.NOT_FOUND);
-        return;
+        throw new NotFoundError("照片不存在");
       }
 
       // 获取原始文件路径
@@ -832,8 +765,7 @@ class PhotoController {
           .then(() => true)
           .catch(() => false))
       ) {
-        ctx.body = Response.error("原始文件不存在", HttpStatus.NOT_FOUND);
-        return;
+        throw new NotFoundError("原始文件不存在");
       }
 
       const sharp = require("sharp");
@@ -894,7 +826,7 @@ class PhotoController {
         console.log(`[ROTATE] ✓ 旋转文件已创建: ${rotatedStats.size} bytes`);
 
         if (rotatedStats.size === 0) {
-          throw new Error("旋转后文件为空");
+          throw new ValidationError("旋转后文件为空");
         }
 
         // 替换原文件
@@ -939,7 +871,7 @@ class PhotoController {
 
           const webpRotatedStats = await fsp.stat(webpPath + ".rotated");
           if (webpRotatedStats.size === 0) {
-            throw new Error("WebP 旋转后文件为空");
+            throw new ValidationError("WebP 旋转后文件为空");
           }
 
           await fsp.rename(webpPath + ".rotated", webpPath);
@@ -1004,10 +936,7 @@ class PhotoController {
       ctx.body = Response.success(photo, "图片旋转成功");
     } catch (error) {
       console.error("旋转图片失败:", error);
-      ctx.body = Response.error(
-        error.message || "旋转图片失败",
-        HttpStatus.INTERNAL_ERROR,
-      );
+      throw error;
     }
   }
 }

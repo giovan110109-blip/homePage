@@ -96,7 +96,6 @@ class CommentController extends BaseController {
     }
 
     if (recipientEmail && emailType) {
-      // TODO: 在这里实现发送邮件
       await sendEmail({
         email: recipientEmail,
         type: emailType,

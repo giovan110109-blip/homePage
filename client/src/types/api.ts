@@ -3,6 +3,35 @@
  * Contains request and response types for API operations
  */
 
+// ==================== 统一 API 响应类型 ====================
+
+export interface ApiResponse<T = any> {
+  code: number
+  data: T
+  message: string
+  success: boolean
+}
+
+export interface ApiError {
+  code: number
+  message: string
+  success: false
+}
+
+export interface PaginatedResponse<T> {
+  list: T[]
+  total: number
+  page: number
+  pageSize: number
+  totalPages: number
+}
+
+export interface PaginationParams {
+  page?: number
+  limit?: number
+  pageSize?: number
+}
+
 // ==================== 照片相关类型 ====================
 
 export interface Photo {

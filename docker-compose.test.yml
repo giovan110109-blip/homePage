@@ -1,0 +1,43 @@
+version: "3.8"
+
+services:
+  client-test:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_BASE_URL=${VITE_API_BASE_URL}
+        - VITE_SITE_TITLE=${VITE_SITE_TITLE}
+        - VITE_SITE_DESCRIPTION=${VITE_SITE_DESCRIPTION}
+        - VITE_API_BASE_URL_LOCAL=${VITE_API_BASE_URL_LOCAL}
+    container_name: homepage-client-test
+    ports:
+      - "40001:80"
+    restart: unless-stopped
+    networks:
+      - homepage-network
+
+  server-test:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    container_name: homepage-server-test
+    ports:
+      - "8999:8998"
+    restart: unless-stopped
+    networks:
+      - homepage-network
+    environment:
+      - NODE_ENV=production
+      - PORT=${PORT:-8998}
+      - CLUSTER_MODE=${CLUSTER_MODE:-true}
+      - UPLOAD_DIR=/app/uploads
+      - UPLOAD_BASE_URL=/uploads
+    env_file:
+      - .env
+    volumes:
+      - /Volumes/大金刚/uploads:/app/uploads
+
+networks:
+  homepage-network:
+    external: true
