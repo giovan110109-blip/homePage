@@ -86,46 +86,98 @@ class ImageProcessingService {
     return await fileTypeFromBuffer(buffer);
   }
 
-  async convertHeicToJpeg(buffer) {
+  async convertHeicToJpeg(buffer, originalExif = null) {
+    const originalOrientation = originalExif?.Orientation || 1;
+    let beforeMeta = null;
+
+    try {
+      beforeMeta = await sharp(buffer).metadata();
+      console.log(`📐 HEIC 转换前尺寸: ${beforeMeta.width}x${beforeMeta.height}, Orientation: ${originalOrientation}`);
+    } catch (e) {
+      console.warn(`⚠️ 无法获取 HEIC 原始尺寸: ${e.message}`);
+    }
+
+    let jpegBuffer;
+    let converterUsed = "unknown";
+
     try {
       console.log("🔄 使用 Sharp 处理 HEIC 图片...");
-      const jpegBuffer = await this.createSharpInstance(buffer)
+      jpegBuffer = await this.createSharpInstance(buffer)
         .jpeg({ quality: 100 })
         .toBuffer();
       console.log("✅ Sharp 处理 HEIC 成功");
-      return jpegBuffer;
+      converterUsed = "sharp";
     } catch (sharpError) {
       console.warn(
         `⚠️ Sharp 处理 HEIC 失败: ${sharpError.message}，尝试 heic-convert...`
       );
+      try {
+        const outputBuffer = await heicConvert({
+          buffer,
+          format: "JPEG",
+          quality: 1.0,
+        });
+        jpegBuffer = Buffer.from(outputBuffer);
+        console.log("✅ heic-convert 转换 HEIC 成功");
+        converterUsed = "heic-convert";
+      } catch (error) {
+        throw new Error(`HEIC 转换失败: ${error.message}`);
+      }
     }
 
+    let wasRotated = false;
     try {
-      const outputBuffer = await heicConvert({
-        buffer,
-        format: "JPEG",
-        quality: 1.0,
-      });
-      console.log("✅ heic-convert 转换 HEIC 成功（注意：可能已应用旋转）");
-      return Buffer.from(outputBuffer);
-    } catch (error) {
-      throw new Error(`HEIC 转换失败: ${error.message}`);
+      const afterMeta = await sharp(jpegBuffer).metadata();
+      console.log(`📐 HEIC 转换后尺寸: ${afterMeta.width}x${afterMeta.height}`);
+
+      if (beforeMeta && beforeMeta.width && beforeMeta.height) {
+        const sizeChanged = (
+          (beforeMeta.width === afterMeta.height && beforeMeta.height === afterMeta.width) ||
+          (beforeMeta.width !== afterMeta.width || beforeMeta.height !== afterMeta.height)
+        );
+
+        if (sizeChanged && originalOrientation !== 1) {
+          wasRotated = true;
+          console.log(`⚠️ 检测到 HEIC 转换时已自动旋转！(${converterUsed})`);
+          console.log(`   原始: ${beforeMeta.width}x${beforeMeta.height} -> 转换后: ${afterMeta.width}x${afterMeta.height}`);
+        }
+      }
+    } catch (e) {
+      console.warn(`⚠️ 无法检测旋转状态: ${e.message}`);
     }
+
+    return {
+      buffer: jpegBuffer,
+      wasRotated,
+      converterUsed,
+    };
   }
 
-  async preprocessImage(buffer, mimeType) {
+  async preprocessImage(buffer, mimeType, originalExif = null) {
     if (mimeType === "image/heic" || mimeType === "image/heif") {
-      return await this.convertHeicToJpeg(buffer);
+      const result = await this.convertHeicToJpeg(buffer, originalExif);
+      return {
+        buffer: result.buffer,
+        heicWasRotated: result.wasRotated,
+        converterUsed: result.converterUsed,
+      };
     }
 
     if (mimeType === "image/bmp" || mimeType === "image/x-ms-bmp") {
       console.log("检测到 BMP 格式，转换为 JPEG");
-      return await this.createSharpInstance(buffer)
+      const bmpBuffer = await this.createSharpInstance(buffer)
         .jpeg({ quality: 95 })
         .toBuffer();
+      return {
+        buffer: bmpBuffer,
+        heicWasRotated: false,
+      };
     }
 
-    return buffer;
+    return {
+      buffer,
+      heicWasRotated: false,
+    };
   }
 
   async rotateByOrientation(buffer, orientation) {
@@ -451,7 +503,8 @@ class ImageProcessingService {
         );
       }
 
-      result.processedBuffer = await this.preprocessImage(inputBuffer, mimeType);
+      const preprocessResult = await this.preprocessImage(inputBuffer, mimeType, originalExif);
+      result.processedBuffer = preprocessResult.buffer;
 
       if (
         (mimeType === "image/heic" || mimeType === "image/heif") &&
@@ -459,6 +512,11 @@ class ImageProcessingService {
       ) {
         console.log(`♻️ 复用从原始HEIC提取的EXIF数据`);
         result.exif = originalExif;
+
+        if (preprocessResult.heicWasRotated) {
+          console.log(`🔄 HEIC 转换时已自动旋转，清除 EXIF Orientation`);
+          result.exif.Orientation = 1;
+        }
       } else {
         let exifSourcePath = options.sourceFilePath;
         if (!exifSourcePath) {

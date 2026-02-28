@@ -8,4 +8,7 @@ const SponsorSchema = new mongoose.Schema({
   method: { type: mongoose.Schema.Types.ObjectId, ref: 'SponsorMethod' },
 }, { timestamps: true });
 
+SponsorSchema.index({ date: -1 });
+SponsorSchema.index({ method: 1 });
+
 module.exports = mongoose.model('Sponsor', SponsorSchema);

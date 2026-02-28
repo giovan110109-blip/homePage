@@ -121,7 +121,9 @@ class ImageProcessor {
       autoRotate: false,
     });
 
-    if (orientation === 3) {
+    if (orientation === 1) {
+      console.log(`✅ WebP 无需旋转 (Orientation: ${orientation}, 图片已正确方向)`);
+    } else if (orientation === 3) {
       console.log(`🔄 WebP 应用旋转: 180°`);
       webpImage = webpImage.rotate(180);
     } else if (orientation === 6) {

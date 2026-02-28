@@ -25,10 +25,10 @@ const ArticleSchema = new mongoose.Schema({
     allowComment: { type: Boolean, default: true }                      // 是否允许评论
 }, { timestamps: true });
 
-// 索引
-ArticleSchema.index({ status: 1, publishedAt: -1 });
-ArticleSchema.index({ category: 1 });
+// 索引优化 - 移除冗余索引
+ArticleSchema.index({ status: 1, isTop: -1, publishedAt: -1 });
+ArticleSchema.index({ category: 1, status: 1 });
 ArticleSchema.index({ tags: 1 });
-ArticleSchema.index({ title: 'text', summary: 'text', content: 'text' });  // 全文搜索索引
+ArticleSchema.index({ title: 'text', summary: 'text', content: 'text' });
 
 module.exports = mongoose.model('Article', ArticleSchema);

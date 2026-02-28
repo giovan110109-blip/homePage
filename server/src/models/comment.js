@@ -24,6 +24,7 @@ const CommentSchema = new mongoose.Schema({
 
 CommentSchema.index({ targetId: 1, status: 1, createdAt: -1 });
 CommentSchema.index({ parentId: 1 });
-CommentSchema.index({ status: 1, createdAt: -1 });
+CommentSchema.index({ email: 1 });
+CommentSchema.index({ ip: 1 });
 
 module.exports = mongoose.model('Comment', CommentSchema);

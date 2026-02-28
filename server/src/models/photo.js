@@ -112,17 +112,15 @@ const photoSchema = new mongoose.Schema(
   },
 );
 
-// 索引优化
+// 索引优化 - 移除冗余索引，优化查询性能
 photoSchema.index({ dateTaken: -1 });
 photoSchema.index({ "location.coordinates": "2dsphere" });
 photoSchema.index({ tags: 1 });
-photoSchema.index({ status: 1 });
-photoSchema.index({ visibility: 1 });
-photoSchema.index({ createdAt: -1 });
 photoSchema.index({ albums: 1 });
-photoSchema.index({ sort: -1 });
-photoSchema.index({ status: 1, visibility: 1 });
-photoSchema.index({ status: 1, createdAt: -1 });
 photoSchema.index({ status: 1, visibility: 1, createdAt: -1 });
+photoSchema.index({ status: 1, visibility: 1, dateTaken: -1 });
+photoSchema.index({ status: 1, visibility: 1, sort: -1 });
+photoSchema.index({ "geoinfo.country": 1, "geoinfo.city": 1 });
+photoSchema.index({ "camera.make": 1, "camera.model": 1 });
 
 module.exports = mongoose.model("Photo", photoSchema);

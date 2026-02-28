@@ -31,5 +31,6 @@ const AccessLogSchema = new mongoose.Schema({
 AccessLogSchema.index({ createdAt: -1 });
 AccessLogSchema.index({ ip: 1 });
 AccessLogSchema.index({ path: 1 });
+AccessLogSchema.index({ page: 1 });
 
 module.exports = mongoose.model('AccessLog', AccessLogSchema);

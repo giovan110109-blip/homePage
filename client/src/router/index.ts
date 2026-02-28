@@ -1,6 +1,15 @@
 import { createRouter, createWebHashHistory, type RouteRecordRaw, START_LOCATION } from 'vue-router'
+import NProgress from 'nprogress'
+import 'nprogress/nprogress.css'
 import { useAuthStore } from '@/stores/auth'
 import request from '@/api/request'
+
+NProgress.configure({
+  showSpinner: false,
+  speed: 300,
+  minimum: 0.1,
+  trickleSpeed: 200,
+})
 const { VITE_SITE_TITLE, VITE_SITE_DESCRIPTION } = import.meta.env
 // 定义路由配置
 const routes: RouteRecordRaw[] = [
@@ -134,6 +143,7 @@ const router = createRouter({
 })
 
 router.beforeEach((to, _from, next) => {
+  NProgress.start()
   const authStore = useAuthStore()
   if (to.meta?.requiresAuth && !authStore.isLoggedIn) {
     next({ name: 'admin-login', query: { redirect: to.fullPath } })
@@ -143,6 +153,7 @@ router.beforeEach((to, _from, next) => {
 })
 
 router.afterEach((to, from) => {
+  NProgress.done()
   const pageTitle = to.meta?.title ? `${to.meta.title} - ${VITE_SITE_TITLE ?? ''}`.replace(/\s-\s$/, '') : VITE_SITE_TITLE
   if (pageTitle) {
     document.title = pageTitle
