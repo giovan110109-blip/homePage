@@ -132,9 +132,7 @@
         class="flex flex-col p-4 sm:p-6 lg:p-8 overflow-y-auto bg-transparent min-h-0"
       >
         <div class="w-full flex-1 flex flex-col h-full">
-          <KeepAlive>
-            <component :is="currentComponent" />
-          </KeepAlive>
+          <component :is="currentComponent" :key="activeMenu" />
         </div>
       </el-main>
     </el-container>
@@ -222,7 +220,7 @@ import {
   LogOut,
   Image,
 } from "lucide-vue-next";
-import { ref, computed, onMounted, watch, defineAsyncComponent } from "vue";
+import { ref, computed, onMounted, watch, shallowRef, defineAsyncComponent } from "vue";
 import AppButton from "@/components/ui/AppButton.vue";
 import ThemeToggle from "@/components/ui/ThemeToggle.vue";
 import ProfileDialog from "./components/ProfileDialog.vue";
@@ -267,20 +265,16 @@ const getInitialMenu = () => {
     const saved = localStorage.getItem(ACTIVE_MENU_KEY);
     if (saved && componentMap[saved]) return saved;
   } catch (_) {
-    // ignore
   }
   return "dashboard";
 };
 
 const activeMenu = ref(getInitialMenu());
-
-// 根据activeMenu返回对应的组件
-const currentComponent = computed(() => {
-  return componentMap[activeMenu.value] || componentMap.dashboard;
-});
+const currentComponent = shallowRef(componentMap[activeMenu.value]);
 
 const syncActiveMenu = (value: string) => {
   activeMenu.value = value;
+  currentComponent.value = componentMap[value];
   localStorage.setItem(ACTIVE_MENU_KEY, value);
 };
 

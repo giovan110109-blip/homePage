@@ -1,4 +1,4 @@
-import { ref, computed, readonly } from 'vue'
+import { ref, computed, readonly, onScopeDispose } from 'vue'
 import { useLivePhotoPersist } from './useLivePhotoPersist'
 
 interface LivePhotoState {
@@ -10,19 +10,19 @@ interface LivePhotoState {
   retryCount: number
 }
 
-// 全局缓存存储
 const livePhotoCache = ref<Map<string, LivePhotoState>>(new Map())
 
-// 正在进行的下载请求（去重）
 const downloadingRequests = new Map<string, Promise<Blob | null>>()
+
+let cleanupTimer: ReturnType<typeof setInterval> | null = null
+let refCount = 0
 
 export const useLivePhotoCache = () => {
   const MAX_RETRIES = 3
-  const CACHE_EXPIRY = 24 * 60 * 60 * 1000 // 24小时
-  const MAX_CACHE_SIZE = 50 // 最多缓存50个视频
-  const DOWNLOAD_TIMEOUT = 30000 // 30秒下载超时
+  const CACHE_EXPIRY = 24 * 60 * 60 * 1000
+  const MAX_CACHE_SIZE = 50
+  const DOWNLOAD_TIMEOUT = 30000
 
-  // 持久化缓存
   const persist = useLivePhotoPersist()
 
   /**
@@ -411,12 +411,31 @@ export const useLivePhotoCache = () => {
    */
   const clearCache = () => {
     livePhotoCache.value.clear()
-    console.log('LivePhoto cache cleared')
   }
 
-  // 定期清理（每10分钟）
+  const startCleanupTimer = () => {
+    if (cleanupTimer) return
+    cleanupTimer = setInterval(cleanupCache, 10 * 60 * 1000)
+  }
+
+  const stopCleanupTimer = () => {
+    if (cleanupTimer) {
+      clearInterval(cleanupTimer)
+      cleanupTimer = null
+    }
+  }
+
   if (typeof window !== 'undefined') {
-    setInterval(cleanupCache, 10 * 60 * 1000)
+    refCount++
+    startCleanupTimer()
+
+    onScopeDispose(() => {
+      refCount--
+      if (refCount <= 0) {
+        stopCleanupTimer()
+        refCount = 0
+      }
+    })
   }
 
   return {
@@ -427,7 +446,6 @@ export const useLivePhotoCache = () => {
     getStats,
     clearCache,
     cache: readonly(livePhotoCache),
-    // 持久化接口
     persist
   }
 }

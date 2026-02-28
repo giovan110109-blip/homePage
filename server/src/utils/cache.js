@@ -1,7 +1,9 @@
 class MemoryCache {
-  constructor() {
+  constructor(maxSize = 1000) {
     this.cache = new Map();
     this.timers = new Map();
+    this.maxSize = maxSize;
+    this.accessOrder = [];
   }
 
   get(key) {
@@ -13,6 +15,7 @@ class MemoryCache {
       return null;
     }
     
+    this._updateAccessOrder(key);
     return item.value;
   }
 
@@ -21,8 +24,13 @@ class MemoryCache {
       clearTimeout(this.timers.get(key));
     }
 
+    if (this.cache.size >= this.maxSize && !this.cache.has(key)) {
+      this._evictLRU();
+    }
+
     const expiry = Date.now() + ttlSeconds * 1000;
     this.cache.set(key, { value, expiry });
+    this._updateAccessOrder(key);
 
     const timer = setTimeout(() => {
       this.delete(key);
@@ -32,8 +40,30 @@ class MemoryCache {
     return value;
   }
 
+  _updateAccessOrder(key) {
+    const index = this.accessOrder.indexOf(key);
+    if (index > -1) {
+      this.accessOrder.splice(index, 1);
+    }
+    this.accessOrder.push(key);
+  }
+
+  _evictLRU() {
+    if (this.accessOrder.length === 0) return;
+    
+    const lruKey = this.accessOrder.shift();
+    if (lruKey && this.cache.has(lruKey)) {
+      this.delete(lruKey);
+      console.log(`[Cache] LRU 淘汰: ${lruKey}`);
+    }
+  }
+
   delete(key) {
     this.cache.delete(key);
+    const index = this.accessOrder.indexOf(key);
+    if (index > -1) {
+      this.accessOrder.splice(index, 1);
+    }
     if (this.timers.has(key)) {
       clearTimeout(this.timers.get(key));
       this.timers.delete(key);
@@ -46,6 +76,7 @@ class MemoryCache {
     }
     this.cache.clear();
     this.timers.clear();
+    this.accessOrder = [];
   }
 
   has(key) {
@@ -59,9 +90,17 @@ class MemoryCache {
   size() {
     return this.cache.size;
   }
+
+  stats() {
+    return {
+      size: this.cache.size,
+      maxSize: this.maxSize,
+      keys: this.keys()
+    };
+  }
 }
 
-const cache = new MemoryCache();
+const cache = new MemoryCache(parseInt(process.env.CACHE_MAX_SIZE) || 1000);
 
 const cacheMiddleware = (keyGenerator, ttlSeconds = 300) => {
   return async (ctx, next) => {

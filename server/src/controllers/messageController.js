@@ -5,6 +5,7 @@ const { getClientInfo } = require("../utils/requestInfo");
 const { getLocationByIp } = require("../utils/ipLocator");
 const reactionService = require("../services/reactionService");
 const ReactionLog = require("../models/reactionLog");
+const Comment = require("../models/comment");
 const { getAvatarByEmail } = require("../utils/emailAvatar");
 const { sendEmail } = require("../utils/sendEmail");
 const { containsSensitiveWords, filterSensitiveWords } = require("../utils/sensitiveWords");
@@ -81,10 +82,21 @@ class MessageController extends BaseController {
         sort: { createdAt: -1 },
       });
       const ids = items.map((i) => String(i._id));
-      const countsMap = await reactionService.getCountsMap("message", ids); // 批量获取表态计数
+      const countsMap = await reactionService.getCountsMap("message", ids);
+      
+      const commentCounts = await Comment.aggregate([
+        { $match: { targetId: { $in: ids }, status: "approved" } },
+        { $group: { _id: "$targetId", count: { $sum: 1 } } }
+      ]);
+      const commentCountMap = {};
+      commentCounts.forEach(item => {
+        commentCountMap[item._id] = item.count;
+      });
+      
       const merged = items.map((i) => ({
         ...i,
         reactions: countsMap[String(i._id)] || reactionService.emptyCounts(),
+        commentCount: commentCountMap[String(i._id)] || 0,
       }));
 
       this.paginated(ctx, merged, pagination, "获取留言成功");
@@ -121,47 +133,18 @@ class MessageController extends BaseController {
   async react(ctx) {
     try {
       const { type, action = "add" } = ctx.request.body || {};
-      if (!reactionService.allowed.includes(type)) {
-        this.throwHttpError("无效的表态类型", HttpStatus.BAD_REQUEST);
-      }
-
-      const client = ctx.state.clientInfo || getClientInfo(ctx);
-      const ip = client?.ip || ctx.ip || ctx.request.ip;
+      const ip = ctx.ip || ctx.request.ip;
       const targetId = String(ctx.params.id);
 
-      if (action === "remove") {
-        const removed = await ReactionLog.findOneAndDelete({
-          targetType: "message",
-          targetId,
-          type,
-          ip,
-        });
-        if (!removed) {
-          this.throwHttpError("您未表态过该表情", HttpStatus.BAD_REQUEST);
-        }
-        const counts = await reactionService.unreact("message", targetId, type); // 取消表态
-        if (!counts)
-          this.throwHttpError(
-            "无可取消的表态或留言未找到",
-            HttpStatus.BAD_REQUEST,
-          );
-        this.ok(ctx, counts, "表态已取消");
-        return;
+      const result = await reactionService.handleReact("message", targetId, type, ip, action);
+      if (!result) {
+        this.throwHttpError(
+          action === "remove" ? "您未表态过该表情" : "您已经表态过该表情",
+          HttpStatus.BAD_REQUEST
+        );
       }
 
-      const existed = await ReactionLog.findOne({
-        targetType: "message",
-        targetId,
-        type,
-        ip,
-      }).lean();
-      if (existed) {
-        this.throwHttpError("您已经表态过该表情", HttpStatus.BAD_REQUEST);
-      }
-
-      await ReactionLog.create({ targetType: "message", targetId, type, ip });
-      const counts = await reactionService.react("message", targetId, type); // 新增表态
-      this.ok(ctx, counts, "表态已更新");
+      this.ok(ctx, result, action === "remove" ? "表态已取消" : "表态已更新");
     } catch (err) {
       this.fail(ctx, err);
     }

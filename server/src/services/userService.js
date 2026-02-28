@@ -1,8 +1,6 @@
 const BaseService = require('../utils/baseService');
 const User = require('../models/user');
-const crypto = require('crypto');
-
-const hashPassword = (value) => crypto.createHash('sha256').update(String(value)).digest('hex');
+const { hashPassword } = require('../utils/password');
 
 class UserService extends BaseService {
   constructor() {
@@ -44,7 +42,7 @@ class UserService extends BaseService {
 
     const user = await this.create({
       username,
-      passwordHash: hashPassword(password),
+      passwordHash: await hashPassword(password),
       email: email || undefined,
       nickname: nickname || username,
       avatar: avatar || undefined,

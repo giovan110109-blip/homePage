@@ -117,7 +117,7 @@ const sendEmail = async (data) => {
     });
   } catch (error) {
     console.error("❌ 邮件发送失败:", error);
-    ctx.throw(500, "邮件发送失败,请检查邮箱授权码配置是否正确");
+    throw new Error("邮件发送失败，请检查邮箱授权码配置是否正确");
   }
 };
 

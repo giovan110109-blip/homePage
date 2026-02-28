@@ -269,7 +269,7 @@
                 class="text-xs text-gray-500 dark:text-gray-400 cursor-pointer whitespace-nowrap"
                 @click="handelClick(index)"
               >
-                评论
+                评论{{ message.commentCount ? ` (${message.commentCount})` : '' }}
               </div>
             </div>
             <transition
@@ -355,6 +355,7 @@ interface MessageItem {
   content: string;
   createdAt: string;
   reactions?: Record<string, number>;
+  commentCount?: number;
   status?: string;
   browser?: string;
   os?: string;
@@ -497,6 +498,7 @@ const mapMessage = (item: any): MessageItem | null => {
     content: item.content ?? item.message,
     createdAt: item.createdAt ?? item.time ?? new Date().toISOString(),
     reactions: item.reactions,
+    commentCount: item.commentCount || 0,
     status: item.status,
     browser: item.browser,
     os: item.os,
@@ -507,9 +509,6 @@ const mapMessage = (item: any): MessageItem | null => {
   };
 };
 
-const svgToDataUrl = (svg: string) =>
-  svg ? `data:image/svg+xml;utf8,${encodeURIComponent(svg)}` : "";
-
 const fetchMessages = async (reset = false) => {
   if (isLoading.value) return;
   isLoading.value = true;
@@ -518,13 +517,16 @@ const fetchMessages = async (reset = false) => {
     const res = await request.get("/messages", {
       params: { page: targetPage, pageSize, status: "approved" },
     });
-    const list = (res as any)?.data ?? (res as any)?.items ?? res ?? [];
-    const meta = (res as any)?.meta ?? (res as any)?.pagination ?? {};
+    
+    const list = (res as any)?.data ?? [];
+    const meta = (res as any)?.meta ?? {};
+    
+    console.log('留言板数据:', { listLength: list?.length, meta, res });
+    
     const mapped = Array.isArray(list)
       ? list.map(mapMessage).filter((m): m is MessageItem => Boolean(m))
       : [];
 
-    // 为缺少头像的记录生成一个
     const mappedWithAvatar = await Promise.all(
       mapped.map(async (m) => {
         if (m.avatar) return m;
@@ -534,20 +536,21 @@ const fetchMessages = async (reset = false) => {
     );
 
     if (reset) {
-      // 直接替换，不要先清空再赋值，避免闪烁
       messages.value = mappedWithAvatar;
       page.value = 2;
     } else {
-      // 追加数据
       messages.value = [...messages.value, ...mappedWithAvatar];
       if (mapped.length) {
         page.value += 1;
       }
     }
     
-    totalMessages.value = Number(
-      meta.total ?? totalMessages.value ?? messages.value.length,
-    );
+    totalMessages.value = Number(meta.total ?? 0);
+    console.log('留言板状态:', { 
+      loaded: messages.value.length, 
+      total: totalMessages.value, 
+      hasMore: messages.value.length < totalMessages.value 
+    });
   } catch (error) {
     console.error("加载留言失败:", error);
     ElMessage.error("加载留言失败，请稍后再试");

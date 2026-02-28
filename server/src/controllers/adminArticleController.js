@@ -151,5 +151,4 @@ class AdminArticleController extends BaseController {
     }
 }
 
-const controller = new AdminArticleController();
-module.exports = controller;
+module.exports = new AdminArticleController();

@@ -117,23 +117,10 @@
 </template>
 
 <script setup lang="ts">
-import {
-  Eye,
-  Mail,
-  Code,
-  ArrowRight,
-  ExternalLink,
-  Github,
-  Phone,
-} from "lucide-vue-next";
 import { ref } from "vue";
 import { useRouter } from "vue-router";
 import { useSiteInfoStore } from "@/stores/siteInfo";
-import Button from "@/components/ui/Button.vue";
-import Card from "@/components/ui/Card.vue";
-import TenYearPromise from "@/components/ui/TenYearPromise.vue";
 import SplitText from "@/components/SplitText.vue";
-import MagicCard from "@/components/ui/MagicCard.vue";
 import DotGrid from "@/components/DotGrid.vue";
 
 const router = useRouter();
@@ -152,13 +139,6 @@ const handleGlobalMouseLeave = () => {
 };
 
 const siteInfoStore = useSiteInfoStore();
-
-const scrollToSection = (sectionId: string) => {
-  const element = document.getElementById(sectionId);
-  if (element) {
-    element.scrollIntoView({ behavior: "smooth" });
-  }
-};
 
 const goToAdmin = () => {
   router.push("/admin");

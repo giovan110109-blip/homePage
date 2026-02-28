@@ -1,9 +1,8 @@
 const BaseController = require('../utils/baseController');
 const { HttpStatus } = require('../utils/response');
 const articleService = require('../services/articleService');
-const { getClientInfo } = require('../utils/requestInfo');
+const reactionService = require('../services/reactionService');
 const { cache, invalidateCache } = require('../utils/cache');
-
 class ArticleController extends BaseController {
     async getPublishedArticles(ctx) {
         try {
@@ -81,10 +80,9 @@ class ArticleController extends BaseController {
         try {
             const { id } = ctx.params;
             const { type, action = 'add' } = ctx.request.body || {};
-            const client = ctx.state.clientInfo || getClientInfo(ctx);
-            const ip = client?.ip || ctx.ip || ctx.request.ip;
+            const ip = ctx.ip || ctx.request.ip;
 
-            const result = await articleService.react(id, type, ip, action);
+            const result = await reactionService.handleReact('article', id, type, ip, action);
             if (!result) {
                 this.throwHttpError(
                     action === 'remove' ? '您未表态过该表情' : '您已经表态过该表情',
@@ -163,5 +161,4 @@ class ArticleController extends BaseController {
     }
 }
 
-const controller = new ArticleController();
-module.exports = controller;
+module.exports = new ArticleController();

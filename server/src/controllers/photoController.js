@@ -29,6 +29,34 @@ class PhotoController {
     });
   }
 
+  async deletePhotoFiles(photo) {
+    const baseUploadDir =
+      process.env.UPLOAD_DIR || path.join(process.cwd(), "uploads");
+    const uploadDir = path.join(baseUploadDir, "photos");
+    const thumbnailDir =
+      process.env.THUMBNAIL_DIR || path.join(baseUploadDir, "thumbnails");
+    const webpDir =
+      process.env.UPLOAD_WEBP_DIR || path.join(baseUploadDir, "photos-webp");
+
+    const webpFileName = `${path.parse(photo.storageKey).name}.webp`;
+
+    const fileDeletions = [
+      fsp.unlink(path.join(uploadDir, photo.storageKey)).catch(() => {}),
+      photo.thumbnailKey
+        ? fsp.unlink(path.join(thumbnailDir, photo.thumbnailKey)).catch(() => {})
+        : Promise.resolve(),
+      fsp.unlink(path.join(webpDir, webpFileName)).catch(() => {}),
+      photo.originalKey && photo.originalKey !== photo.storageKey
+        ? fsp.unlink(path.join(uploadDir, photo.originalKey)).catch(() => {})
+        : Promise.resolve(),
+      photo.videoKey
+        ? fsp.unlink(path.join(uploadDir, photo.videoKey)).catch(() => {})
+        : Promise.resolve(),
+    ];
+
+    await Promise.all(fileDeletions);
+  }
+
   /**
    * 上传照片
    */
@@ -279,7 +307,7 @@ class PhotoController {
   async retryTask(ctx) {
     try {
       const { taskId } = ctx.params;
-      const task = await UploadTask.findOne({ taskId }).lean();
+      const task = await UploadTask.findOne({ taskId });
 
       if (!task) {
         throw new NotFoundError("任务不存在");
@@ -287,7 +315,6 @@ class PhotoController {
 
       task.status = "pending";
       task.stage = "upload";
-      // 重试时重置进度为 5（表示重新处理开始），前端 Math.max 保护会确保不倒退显示
       task.progress = 5;
       task.error = null;
       task.attempts = 0;
@@ -455,40 +482,7 @@ class PhotoController {
         throw new NotFoundError("照片不存在");
       }
 
-      // 删除文件
-      const baseUploadDir =
-        process.env.UPLOAD_DIR || path.join(process.cwd(), "uploads");
-      const uploadDir = path.join(baseUploadDir, "photos");
-      const thumbnailDir =
-        process.env.THUMBNAIL_DIR || path.join(baseUploadDir, "thumbnails");
-      const webpDir =
-        process.env.UPLOAD_WEBP_DIR || path.join(baseUploadDir, "photos-webp");
-
-      // 推导 WebP 文件名（基于 storageKey）
-      const webpFileName = `${path.parse(photo.storageKey).name}.webp`;
-
-      const fileDeletions = [
-        // 删除原始文件
-        fsp.unlink(path.join(uploadDir, photo.storageKey)).catch(() => {}),
-        // 删除缩略图
-        photo.thumbnailKey
-          ? fsp
-              .unlink(path.join(thumbnailDir, photo.thumbnailKey))
-              .catch(() => {})
-          : Promise.resolve(),
-        // 删除 WebP 文件（根据命名规则推导）
-        fsp.unlink(path.join(webpDir, webpFileName)).catch(() => {}),
-        // 删除原始高分辨率文件（如果与 storageKey 不同）
-        photo.originalKey && photo.originalKey !== photo.storageKey
-          ? fsp.unlink(path.join(uploadDir, photo.originalKey)).catch(() => {})
-          : Promise.resolve(),
-        // 删除 Live Photo 视频文件（如果存在）
-        photo.videoKey
-          ? fsp.unlink(path.join(uploadDir, photo.videoKey)).catch(() => {})
-          : Promise.resolve(),
-      ];
-
-      await Promise.all(fileDeletions);
+      await this.deletePhotoFiles(photo);
       await Photo.deleteOne({ _id: id });
 
       ctx.body = Response.success(null, "删除成功");
@@ -511,39 +505,7 @@ class PhotoController {
         throw new NotFoundError("未找到要删除的照片");
       }
 
-      const baseUploadDir =
-        process.env.UPLOAD_DIR || path.join(process.cwd(), "uploads");
-      const uploadDir = path.join(baseUploadDir, "photos");
-      const thumbnailDir =
-        process.env.THUMBNAIL_DIR || path.join(baseUploadDir, "thumbnails");
-      const webpDir =
-        process.env.UPLOAD_WEBP_DIR || path.join(baseUploadDir, "photos-webp");
-
-      // 删除所有相关文件
-      const fileDeletions = [];
-      for (const photo of photos) {
-        const webpFileName = `${path.parse(photo.storageKey).name}.webp`;
-
-        fileDeletions.push(
-          fsp.unlink(path.join(uploadDir, photo.storageKey)).catch(() => {}),
-          photo.thumbnailKey
-            ? fsp
-                .unlink(path.join(thumbnailDir, photo.thumbnailKey))
-                .catch(() => {})
-            : Promise.resolve(),
-          fsp.unlink(path.join(webpDir, webpFileName)).catch(() => {}),
-          photo.originalKey && photo.originalKey !== photo.storageKey
-            ? fsp
-                .unlink(path.join(uploadDir, photo.originalKey))
-                .catch(() => {})
-            : Promise.resolve(),
-          photo.videoKey
-            ? fsp.unlink(path.join(uploadDir, photo.videoKey)).catch(() => {})
-            : Promise.resolve(),
-        );
-      }
-
-      await Promise.all(fileDeletions);
+      await Promise.all(photos.map(photo => this.deletePhotoFiles(photo)));
 
       const result = await Photo.deleteMany({ _id: { $in: ids } });
 
@@ -594,39 +556,37 @@ class PhotoController {
         throw new ValidationError("经纬度必须是数字");
       }
 
-      const photo = await Photo.findById(id).lean();
+      const photo = await Photo.findById(id);
       if (!photo) {
         throw new NotFoundError("照片不存在");
       }
 
-      // 更新位置信息
       photo.location = {
         latitude,
         longitude,
         coordinates: [longitude, latitude],
       };
 
-      // 先保存位置信息
       await photo.save();
 
-      // 异步执行反向地理编码（不阻塞响应）
+      const photoId = photo._id;
       const geocoding = require("../services/geocoding");
       geocoding
         .reverseGeocode(latitude, longitude)
         .then(async (geoinfo) => {
           if (geoinfo) {
-            photo.geoinfo = geoinfo;
-            await photo.save();
+            const photoToUpdate = await Photo.findById(photoId);
+            if (photoToUpdate) {
+              photoToUpdate.geoinfo = geoinfo;
+              await photoToUpdate.save();
+            }
           }
         })
         .catch((geoError) => {
           console.warn("反向地理编码失败:", geoError.message);
         });
 
-      ctx.body = Response.success(
-        photo,
-        "位置信息更新成功，地理信息正在后台获取",
-      );
+      ctx.body = Response.success(photo, "位置信息更新成功，地理信息正在后台获取");
     } catch (error) {
       throw error;
     }
@@ -635,7 +595,7 @@ class PhotoController {
   async refreshPhotoGeoinfo(ctx) {
     try {
       const { id } = ctx.params;
-      const photo = await Photo.findById(id).lean();
+      const photo = await Photo.findById(id);
 
       if (!photo) {
         throw new NotFoundError("照片不存在");
@@ -663,20 +623,18 @@ class PhotoController {
   async refreshPhotoExif(ctx) {
     try {
       const { id } = ctx.params;
-      const photo = await Photo.findById(id).lean();
+      const photo = await Photo.findById(id);
 
       if (!photo) {
         throw new NotFoundError("照片不存在");
       }
 
-      // 获取原始文件路径（优先使用 originalKey，因为它保留了完整的 EXIF）
       const baseUploadDir =
         process.env.UPLOAD_DIR || path.join(process.cwd(), "uploads");
       const uploadDir = path.join(baseUploadDir, "photos");
       const fileKey = photo.originalKey || photo.storageKey;
       const filePath = path.join(uploadDir, fileKey);
 
-      // 检查文件是否存在
       if (
         !(await fsp
           .access(filePath)
@@ -686,14 +644,12 @@ class PhotoController {
         throw new NotFoundError("原始文件不存在");
       }
 
-      // 重新提取 EXIF
       const imageProcessing = require("../services/imageProcessing");
       const exifData = await imageProcessing.extractExif({
         filePath,
         originalFileName: photo.originalFileName,
       });
 
-      // 更新照片信息
       photo.exif = exifData.exif;
       if (exifData.dateTaken) {
         photo.dateTaken = exifData.dateTaken;
@@ -709,7 +665,6 @@ class PhotoController {
           ],
         };
 
-        // 如果有新的位置信息，也更新地理信息
         const geocoding = require("../services/geocoding");
         try {
           const geoinfo = await geocoding.reverseGeocode(
@@ -746,19 +701,17 @@ class PhotoController {
         throw new ValidationError("无效的旋转角度，仅支持 90, -90, 180");
       }
 
-      const photo = await Photo.findById(id).lean();
+      const photo = await Photo.findById(id);
       if (!photo) {
         throw new NotFoundError("照片不存在");
       }
 
-      // 获取原始文件路径
       const baseUploadDir =
         process.env.UPLOAD_DIR || path.join(process.cwd(), "uploads");
       const uploadDir = path.join(baseUploadDir, "photos");
       const fileKey = photo.originalKey || photo.storageKey;
       const filePath = path.join(uploadDir, fileKey);
 
-      // 检查文件是否存在
       if (
         !(await fsp
           .access(filePath)
@@ -771,34 +724,28 @@ class PhotoController {
       const sharp = require("sharp");
       const fileExt = path.extname(fileKey).toLowerCase();
 
-      // 获取当前图片信息
       let image = sharp(filePath);
       const metadata = await image.metadata();
 
       let newWidth = metadata.width;
       let newHeight = metadata.height;
 
-      // 旋转 90 或 -90 度会交换宽高
       if (Math.abs(degree) === 90) {
         const temp = newWidth;
         newWidth = newHeight;
         newHeight = temp;
       }
 
-      // 关键修改：直接使用 toFile 方式，让 sharp 自动处理格式
-      // 先备份原文件
       const backupPath = filePath + ".backup";
       await fsp.copyFile(filePath, backupPath);
 
       try {
-        // 创建旋转处理链
         let pipeline = sharp(filePath).rotate(degree);
 
-        // 根据原始格式输出，确保格式一致
         if (fileExt === ".webp") {
           pipeline = pipeline.webp({
             quality: 90,
-            effort: 6, // 增加压缩努力
+            effort: 6,
           });
         } else if (fileExt === ".png") {
           pipeline = pipeline.png({
@@ -814,14 +761,11 @@ class PhotoController {
         } else if (fileExt === ".gif") {
           pipeline = pipeline.gif();
         } else {
-          // 默认使用原格式
           pipeline = pipeline.withMetadata();
         }
 
-        // 写入文件
         await pipeline.toFile(filePath + ".rotated");
 
-        // 验证文件是否创建成功
         const rotatedStats = await fsp.stat(filePath + ".rotated");
         console.log(`[ROTATE] ✓ 旋转文件已创建: ${rotatedStats.size} bytes`);
 
@@ -829,23 +773,18 @@ class PhotoController {
           throw new ValidationError("旋转后文件为空");
         }
 
-        // 替换原文件
         await fsp.rename(filePath + ".rotated", filePath);
 
-        // 验证替换后的文件
         const finalStats = await fsp.stat(filePath);
         console.log(`[ROTATE] ✓ 文件已替换: ${finalStats.size} bytes`);
 
-        // 删除备份文件
         await fsp.unlink(backupPath).catch(() => {});
       } catch (rotateError) {
         console.error("旋转失败:", rotateError.message);
-        // 恢复备份
         await fsp.rename(backupPath, filePath).catch(() => {});
         throw rotateError;
       }
 
-      // 同步旋转 WebP 版本（如果存在）
       const webpDir =
         process.env.UPLOAD_WEBP_DIR || path.join(baseUploadDir, "photos-webp");
       const webpFileName = `${path.parse(photo.storageKey).name}.webp`;
@@ -882,7 +821,6 @@ class PhotoController {
         }
       }
 
-      // 重新生成缩略图（如果存在）
       const thumbnailDir = path.join(uploadDir, "thumbnails");
       const thumbnailKey =
         path.basename(fileKey, path.extname(fileKey)) + "_thumb.jpg";
@@ -906,7 +844,6 @@ class PhotoController {
         }
       }
 
-      // 重新生成 ThumbHash（用于模糊占位图）
       try {
         const imageProcessing = require("../services/imageProcessing");
         const rotatedBuffer = await fsp.readFile(filePath);
@@ -919,16 +856,13 @@ class PhotoController {
         console.warn("ThumbHash 生成失败:", thumbHashError.message);
       }
 
-      // 更新数据库中的尺寸信息
       photo.width = newWidth;
       photo.height = newHeight;
 
-      // 更新 EXIF 信息中的方向标记（设为 1，表示正常）
       if (photo.exif) {
         photo.exif.orientation = 1;
       }
 
-      // 关键：更新 updatedAt 时间戳，这样前端可以用时间戳清除缓存
       photo.updatedAt = new Date();
 
       await photo.save();

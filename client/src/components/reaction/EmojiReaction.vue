@@ -1,11 +1,15 @@
 <template>
-  <div class="emoji-reaction-container">
-    <!-- Reaction Picker (shows on hover) -->
+  <div 
+    class="emoji-reaction-container" 
+    ref="containerRef"
+    @mouseenter="openPicker"
+  >
+    <!-- Reaction Picker -->
     <div
       v-if="showPicker"
+      ref="pickerRef"
       class="emoji-picker"
       :class="{ 'emoji-picker-expanded': expandedPicker }"
-      @mouseleave="!expandedPicker && (showPicker = false)"
     >
       <div class="emoji-picker-scroll">
         <button
@@ -14,7 +18,7 @@
           class="emoji-btn"
           :class="{ 'emoji-btn-active': myReactions.has(emoji.id) }"
           :title="emoji.label"
-          @click="toggleReaction(emoji.id)"
+          @click.stop="toggleReaction(emoji.id)"
         >
           {{ emoji.icon }}
         </button>
@@ -35,23 +39,21 @@
         :key="emojiId"
         class="reaction-item"
         :class="{ 'reaction-item-mine': myReactions.has(emojiId) }"
-        @click="toggleReaction(emojiId)"
-        @mouseenter="showPicker = true"
       >
         <span class="reaction-emoji">{{ getEmojiIcon(emojiId) }}</span>
         <span class="reaction-count-small">{{ count }}</span>
       </div>
     </div>
 
-    <!-- Hover Trigger Area -->
+    <!-- Add Reaction Button -->
     <button
       v-if="!hasReactions"
       class="add-reaction-btn"
-      @mouseenter="showPicker = true"
       :title="addReactionTooltip"
     >
       <Smile class="w-4 h-4" />
     </button>
+
     <ReactionConfetti
       v-if="confettiIcon"
       :icon-name="confettiIcon"
@@ -64,6 +66,7 @@
 import { Smile, ChevronDown } from "lucide-vue-next";
 import { ElMessage } from "element-plus";
 import request from "@/api/request";
+import { onClickOutside } from "@vueuse/core";
 
 interface Emoji {
   id: string;
@@ -118,6 +121,8 @@ const props = defineProps({
   },
 });
 
+const containerRef = ref<HTMLElement | null>(null);
+const pickerRef = ref<HTMLElement | null>(null);
 const showPicker = ref(false);
 const expandedPicker = ref(false);
 const reactionCounts = ref<Record<string, number>>({});
@@ -125,6 +130,7 @@ const myReactions = ref<Set<string>>(new Set());
 const reacting = ref(false);
 const confettiIcon = ref<string | null>(null);
 const triggerCount = ref<number>(0);
+
 const sanitizeCounts = (counts?: Record<string, number>) => {
   return Object.fromEntries(
     Object.entries(counts || {}).filter(([, value]) => Number(value) > 0),
@@ -139,24 +145,27 @@ const toggleExpand = () => {
   expandedPicker.value = !expandedPicker.value;
 };
 
+const openPicker = () => {
+  showPicker.value = true;
+};
+
+const closePicker = () => {
+  showPicker.value = false;
+  expandedPicker.value = false;
+};
+
+onClickOutside(pickerRef, () => {
+  if (showPicker.value) {
+    closePicker();
+  }
+});
+
 const resolvedTargetId = computed(() => props.targetId ?? props.messageId);
 const hasReactions = computed(
   () => Object.keys(reactionCounts.value).length > 0,
 );
-const totalReactions = computed(() => {
-  return Object.values(reactionCounts.value).reduce(
-    (sum, count) => sum + count,
-    0,
-  );
-});
 
-const addReactionTooltip = "点击或移入显示表情";
-const triggerTooltip = computed(() => {
-  const reactions = Object.entries(reactionCounts.value)
-    .map(([emojiId, count]) => `${getEmojiIcon(emojiId)} ${count}`)
-    .join(" ");
-  return reactions;
-});
+const addReactionTooltip = "移入添加表态";
 
 const getStorageKey = (emojiId: string) => {
   if (!resolvedTargetId.value) return "";
@@ -194,6 +203,7 @@ const toggleReaction = async (emojiId: string) => {
   if (props.singleUse && isMine) {
     ElMessage.warning("已表态过该表情");
     reacting.value = false;
+    closePicker();
     return;
   }
   const action = props.singleUse ? "add" : isMine ? "remove" : "add";
@@ -221,7 +231,7 @@ const toggleReaction = async (emojiId: string) => {
     );
   } finally {
     reacting.value = false;
-    showPicker.value = false;
+    closePicker();
   }
 };
 
@@ -257,25 +267,18 @@ watch(
   gap: 8px;
 }
 
-.emoji-picker-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 9;
-  background: transparent;
-}
-
 .emoji-picker {
   position: absolute;
-  bottom: 100%;
+  bottom: calc(100% - 4px);
   left: 0;
   background: white;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   padding: 8px;
+  padding-bottom: 12px;
   display: flex;
   align-items: center;
   gap: 4px;
-  margin-bottom: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   z-index: 10;
   animation: slideUp 0.2s ease;
@@ -291,10 +294,7 @@ watch(
 
 @media (max-width: 768px) {
   .emoji-picker {
-    position: absolute;
-    bottom: 100%;
-    left: 0;
-    margin-bottom: 8px;
+    bottom: calc(100% - 4px);
   }
 
   .emoji-picker-expanded {
@@ -404,50 +404,6 @@ watch(
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 4px;
-}
-
-.reaction-trigger {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  background: #f0f9ff;
-  border: 1px solid #bfdbfe;
-  border-radius: 16px;
-  padding: 4px 12px;
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 500;
-  color: #0284c7;
-  transition: all 0.2s ease;
-}
-
-.dark .reaction-trigger {
-  background: #082f49;
-  border-color: #0e4a8b;
-}
-
-.reaction-trigger:hover {
-  background: #bfdbfe;
-  color: #0c4a6e;
-}
-
-.dark .reaction-trigger:hover {
-  background: #0e4a8b;
-}
-
-.reaction-icon {
-  font-size: 14px;
-}
-
-.reaction-count {
-  min-width: 14px;
-  text-align: center;
-}
-
-.reactions-list {
-  display: flex;
-  flex-wrap: wrap;
   gap: 4px;
 }
 

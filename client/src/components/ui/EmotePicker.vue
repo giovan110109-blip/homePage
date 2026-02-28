@@ -37,6 +37,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, nextTick } from "vue";
 import { useEmotes } from "@/composables/useEmotes";
+import type { EmoteItem } from "@/types/emote";
 
 const emit = defineEmits<{
   (e: "select", emote: string): void;
@@ -62,7 +63,7 @@ const {
 
 const gridRef = ref<HTMLElement | null>(null);
 const emoteRefs = ref<(HTMLElement | null)[]>([]);
-const visibleEmotes = ref<any[]>([]);
+const visibleEmotes = ref<EmoteItem[]>([]);
 
 const VISIBLE_THRESHOLD = 20;
 
@@ -76,15 +77,15 @@ const setActiveGroup = (groupName: string) => {
   });
 };
 
-const shouldLazyLoad = (emote: any, index: number) => {
+const shouldLazyLoad = (_emote: EmoteItem, index: number) => {
   return index >= VISIBLE_THRESHOLD;
 };
 
-const setEmoteRef = (el: any, index: number) => {
+const setEmoteRef = (el: unknown, index: number) => {
   if (emoteRefs.value.length <= index) {
-    emoteRefs.value.push(el);
+    emoteRefs.value.push(el as HTMLElement | null);
   } else {
-    emoteRefs.value[index] = el;
+    emoteRefs.value[index] = el as HTMLElement | null;
   }
 };
 
@@ -96,7 +97,7 @@ const handleScroll = () => {
   updateVisibleEmotes();
 };
 
-const selectEmote = (emote: any) => {
+const selectEmote = (emote: EmoteItem) => {
   if (props.disabled) return;
   emit("select", emote.name);
   emit("update:modelValue", emote.name);

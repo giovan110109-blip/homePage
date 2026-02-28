@@ -11,9 +11,12 @@ class ImageTagService {
     try {
       const imageBase64 = imageBuffer.toString('base64')
       
-      const result = await client.advancedGeneral(imageBase64, {
-        BaikeNum: 0
-      })
+      const result = await Promise.race([
+        client.advancedGeneral(imageBase64, { BaikeNum: 0 }),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('百度API请求超时')), 30000)
+        )
+      ])
       
       console.log('📊 百度API返回:', JSON.stringify(result, null, 2))
       
@@ -33,7 +36,6 @@ class ImageTagService {
       return []
     } catch (error) {
       console.error('❌ 图片标签识别失败:', error.message)
-      console.error('❌ 错误堆栈:', error.stack)
       return []
     }
   }

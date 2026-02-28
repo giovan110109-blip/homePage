@@ -42,7 +42,7 @@ const clearLoginAttempts = (ip, username) => {
   loginAttempts.delete(key);
 };
 
-setInterval(() => {
+const loginAttemptsCleanupTimer = setInterval(() => {
   const now = Date.now();
   for (const [key, attempts] of loginAttempts.entries()) {
     if (attempts.lockUntil && now > attempts.lockUntil) {
@@ -51,13 +51,18 @@ setInterval(() => {
   }
 }, 60 * 1000);
 
+const gracefulShutdown = () => {
+  clearInterval(loginAttemptsCleanupTimer);
+};
+
+process.on('SIGTERM', gracefulShutdown);
+process.on('SIGINT', gracefulShutdown);
+
 class AdminAuthController extends BaseController {
   async login(ctx) {
     try {
       const { username, password } = ctx.request.body || {};
       const ip = ctx.ip || ctx.request.ip || 'unknown';
-      const adminUser = process.env.ADMIN_USER || 'admin';
-      const adminPass = process.env.ADMIN_PASSWORD || 'admin';
 
       if (!username || !password) {
         this.throwHttpError('请输入账号和密码', HttpStatus.BAD_REQUEST);
@@ -71,18 +76,7 @@ class AdminAuthController extends BaseController {
         );
       }
 
-      let defaultAdmin = await User.findOne({ username: adminUser, role: 'admin' }).lean();
-      if (!defaultAdmin) {
-        defaultAdmin = await User.create({
-          username: adminUser,
-          passwordHash: await hashPassword(adminPass),
-          role: 'admin',
-          status: 'active',
-          nickname: '管理员',
-        });
-      }
-
-      let user = await User.findOne({ username, role: 'admin' });
+      const user = await User.findOne({ username, role: 'admin' });
       
       if (!user) {
         recordFailedAttempt(ip, username);

@@ -7,8 +7,21 @@ class GeocodingService {
     this.amapUrl = 'https://restapi.amap.com/v3'
     this.amapKey = process.env.AMAP_KEY
     
-    // 缓存，避免重复请求
     this.cache = new Map()
+    this.cacheExpiry = 24 * 60 * 60 * 1000
+    this.maxCacheSize = 1000
+  }
+
+  _isExpired(cached) {
+    return Date.now() - cached.timestamp > this.cacheExpiry
+  }
+
+  _cleanupExpired() {
+    for (const [key, value] of this.cache.entries()) {
+      if (this._isExpired(value)) {
+        this.cache.delete(key)
+      }
+    }
   }
 
   /**
@@ -22,16 +35,21 @@ class GeocodingService {
       return null
     }
 
-    // 检查缓存（精确到小数点后4位，约11米精度）
     const cacheKey = `${latitude.toFixed(4)},${longitude.toFixed(4)}`
-    if (this.cache.has(cacheKey)) {
-      return this.cache.get(cacheKey)
+    
+    const cached = this.cache.get(cacheKey)
+    if (cached && !this._isExpired(cached)) {
+      return cached.data
+    }
+    
+    if (cached) {
+      this.cache.delete(cacheKey)
     }
 
     try {
       const url = new URL(`${this.amapUrl}/geocode/regeo`)
       url.searchParams.append('key', this.amapKey)
-      url.searchParams.append('location', `${longitude},${latitude}`) // 高德是 lon,lat 格式
+      url.searchParams.append('location', `${longitude},${latitude}`)
       url.searchParams.append('output', 'json')
 
       const response = await fetch(url.toString())
@@ -59,13 +77,18 @@ class GeocodingService {
         streetNumber: regeocode.addressComponent?.streetNumber?.number
       }
 
-      // 缓存结果
-      this.cache.set(cacheKey, geoinfo)
+      this.cache.set(cacheKey, {
+        data: geoinfo,
+        timestamp: Date.now()
+      })
 
-      // 限制缓存大小
-      if (this.cache.size > 1000) {
-        const firstKey = this.cache.keys().next().value
-        this.cache.delete(firstKey)
+      if (this.cache.size > this.maxCacheSize) {
+        this._cleanupExpired()
+        
+        if (this.cache.size > this.maxCacheSize) {
+          const firstKey = this.cache.keys().next().value
+          this.cache.delete(firstKey)
+        }
       }
 
       return geoinfo

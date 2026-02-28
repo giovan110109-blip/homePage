@@ -1,4 +1,5 @@
 const { ReactionModel, reactionTypes } = require('../models/reaction');
+const ReactionLog = require('../models/reactionLog');
 
 function initialCounts() {
     return reactionTypes.reduce((acc, key) => {
@@ -24,13 +25,10 @@ class ReactionService {
         }
     }
 
-    // 表态 +1（不存在则创建并初始化）
     async react(targetType, targetId, type) {
         this.ensureType(type);
-        // 先检查是否存在且 counts 是否合法
         let existing = await ReactionModel.findOne({ targetType, targetId }).lean();
         if (existing && (!existing.counts || typeof existing.counts !== 'object' || Array.isArray(existing.counts))) {
-            // 数据损坏，删除重建
             await ReactionModel.deleteOne({ targetType, targetId });
             existing = null;
         }
@@ -39,12 +37,10 @@ class ReactionService {
         initialCounts[type] = 1;
         
         if (!existing) {
-            // 创建新记录
             const doc = await ReactionModel.create({ targetType, targetId, counts: initialCounts });
             return doc.counts;
         }
         
-        // 存在且合法，执行 $inc
         const doc = await ReactionModel.findOneAndUpdate(
             { targetType, targetId },
             { $inc: { [`counts.${type}`]: 1 } },
@@ -53,13 +49,10 @@ class ReactionService {
         return doc.counts;
     }
 
-    // 取消表态 -1（最小为 0；若无记录或计数为 0 返回 null）
     async unreact(targetType, targetId, type) {
         this.ensureType(type);
-        // 先检查是否存在且 counts 是否合法
         let existing = await ReactionModel.findOne({ targetType, targetId }).lean();
         if (existing && (!existing.counts || typeof existing.counts !== 'object' || Array.isArray(existing.counts))) {
-            // 数据损坏，删除
             await ReactionModel.deleteOne({ targetType, targetId });
             return null;
         }
@@ -68,13 +61,39 @@ class ReactionService {
             return null;
         }
         
-        // 执行 $inc -1
         const doc = await ReactionModel.findOneAndUpdate(
             { targetType, targetId },
             { $inc: { [`counts.${type}`]: -1 } },
             { new: true, lean: true }
         );
         return doc ? doc.counts : null;
+    }
+
+    async handleReact(targetType, targetId, type, ip, action = 'add') {
+        this.ensureType(type);
+        targetId = String(targetId);
+
+        if (action === 'remove') {
+            const removed = await ReactionLog.findOneAndDelete({
+                targetType,
+                targetId,
+                type,
+                ip
+            });
+            if (!removed) return null;
+            return await this.unreact(targetType, targetId, type);
+        }
+
+        const existed = await ReactionLog.findOne({
+            targetType,
+            targetId,
+            type,
+            ip
+        }).lean();
+        if (existed) return null;
+
+        await ReactionLog.create({ targetType, targetId, type, ip });
+        return await this.react(targetType, targetId, type);
     }
 
     async getCountsMap(targetType, targetIds = []) {

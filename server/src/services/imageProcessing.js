@@ -421,7 +421,7 @@ class ImageProcessingService {
       .toBuffer();
   }
 
-  async generateThumbHash(buffer) {
+  async generateThumbHash(buffer, orientation = 1) {
     try {
       const th = await getThumbhash();
       const encode = th.rgbaToThumbHash;
@@ -436,8 +436,12 @@ class ImageProcessingService {
           ? [maxSize, Math.round(maxSize / aspectRatio)]
           : [Math.round(maxSize * aspectRatio), maxSize];
 
-      const { data, info } = await this.createSharpInstance(buffer)
-        .resize(thumbWidth, thumbHeight, { fit: "inside" })
+      let image = this.createSharpInstance(buffer)
+        .resize(thumbWidth, thumbHeight, { fit: "inside" });
+      
+      image = this.applyOrientationRotation(image, orientation);
+
+      const { data, info } = await image
         .ensureAlpha()
         .raw()
         .toBuffer({ resolveWithObject: true });
@@ -553,9 +557,9 @@ class ImageProcessingService {
       });
 
       try {
-        result.thumbHash = await this.generateThumbHash(result.processedBuffer);
+        result.thumbHash = await this.generateThumbHash(result.processedBuffer, orientation);
         if (!result.thumbHash && result.thumbnail) {
-          result.thumbHash = await this.generateThumbHash(result.thumbnail);
+          result.thumbHash = await this.generateThumbHash(result.thumbnail, orientation);
         }
         if (result.thumbHash) {
           result.thumbHashDataURL = await this.thumbHashToDataURL(result.thumbHash);
