@@ -277,7 +277,6 @@ import AppButton from '@/components/ui/AppButton.vue'
 import QuillEditor from '@/components/ui/QuillEditor.vue'
 import ImageUpload from '@/components/ui/ImageUpload.vue'
 import request from '@/api/request'
-import { formatDate } from '@/utils/format'
 
 interface Article {
   _id: string
@@ -351,6 +350,13 @@ const loadMore = async () => {
   await fetchArticles(currentPage.value + 1)
 }
 
+const formatDate = (dateString: string) => {
+  return new Date(dateString).toLocaleDateString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  })
+}
 
 const editArticle = (article: Article) => {
   editingArticle.value = article

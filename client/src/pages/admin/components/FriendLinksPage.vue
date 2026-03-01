@@ -411,6 +411,9 @@ const getCategoryTagType = (category: string) => {
   return map[category] || ''
 }
 
+const formatDate = (date: string) => {
+  return new Date(date).toLocaleString('zh-CN')
+}
 
 onMounted(() => {
   loadData()
