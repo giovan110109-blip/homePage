@@ -5,11 +5,12 @@ const router = new Router({
   prefix: '/api/admin/users'
 });
 
-router.get('/', controller.list.bind(controller)); // 获取用户列表
-router.post('/', controller.create.bind(controller)); // 创建用户
-router.get('/:id', controller.detail.bind(controller)); // 获取用户详情
-router.put('/:id', controller.update.bind(controller)); // 更新用户
-router.post('/:id/reset-password', controller.resetPassword.bind(controller)); // 重置密码
-router.delete('/:id', controller.delete.bind(controller)); // 删除用户
+router.get('/', controller.list.bind(controller));
+router.post('/', controller.create.bind(controller));
+router.get('/:id', controller.detail.bind(controller));
+router.put('/:id', controller.update.bind(controller));
+router.put('/:id/roles', controller.updateRoles.bind(controller));
+router.post('/:id/reset-password', controller.resetPassword.bind(controller));
+router.delete('/:id', controller.delete.bind(controller));
 
 module.exports = router;

@@ -1,9 +1,5 @@
 <template>
-  <div 
-    class="emoji-reaction-container" 
-    ref="containerRef"
-    @mouseenter="openPicker"
-  >
+  <div class="emoji-reaction-container" ref="containerRef">
     <!-- Reaction Picker -->
     <div
       v-if="showPicker"
@@ -33,7 +29,11 @@
     </div>
 
     <!-- Reaction Display -->
-    <div v-if="hasReactions" class="reactions-display">
+    <div 
+      v-if="hasReactions" 
+      class="reactions-display"
+      @mouseenter="openPicker"
+    >
       <div
         v-for="(count, emojiId) in reactionCounts"
         :key="emojiId"
@@ -50,6 +50,7 @@
       v-if="!hasReactions"
       class="add-reaction-btn"
       :title="addReactionTooltip"
+      @mouseenter="openPicker"
     >
       <Smile class="w-4 h-4" />
     </button>
@@ -191,7 +192,7 @@ const loadMyReactions = () => {
 
 const getEndpoint = () => {
   const targetId = resolvedTargetId.value;
-  const base = props.targetType === "article" ? "articles" : "messages";
+  const base = props.targetType === "article" ? "articles" : props.targetType === "message" ? "messages" : "moments";
   return `/${base}/${targetId}/react`;
 };
 
@@ -200,13 +201,7 @@ const toggleReaction = async (emojiId: string) => {
   if (!resolvedTargetId.value) return;
   reacting.value = true;
   const isMine = myReactions.value.has(emojiId);
-  if (props.singleUse && isMine) {
-    ElMessage.warning("已表态过该表情");
-    reacting.value = false;
-    closePicker();
-    return;
-  }
-  const action = props.singleUse ? "add" : isMine ? "remove" : "add";
+  const action = isMine ? "remove" : "add";
   try {
     const res = await request.post(getEndpoint(), { type: emojiId, action });
     const counts = (res as any)?.data ?? res;
@@ -282,13 +277,15 @@ watch(
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   z-index: 10;
   animation: slideUp 0.2s ease;
-  flex-wrap: nowrap;
+  max-width: 300px;
+  max-height: 400px;
+  overflow-y: auto;
 }
 
 .emoji-picker-expanded {
   flex-wrap: wrap;
-  width: 200px;
-  max-height: 200px;
+  width: 300px;
+  max-height: 500px;
   overflow-y: auto;
 }
 

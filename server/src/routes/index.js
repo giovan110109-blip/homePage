@@ -42,7 +42,10 @@ function registerRoutes(app) {
         'geo.js',
         'comment.js',
         'adminComments.js',
-        'wechatAuth.js'
+        'wechatAuth.js',
+        'moments.js',
+        'adminMoments.js',
+        'adminRbac.js'
     ]);
 
     // 过滤出路由文件

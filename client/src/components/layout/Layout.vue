@@ -37,14 +37,16 @@
     
     <main :class="['flex-1', 'relative', 'z-10', showLayoutChrome?'pt-16':'']">
     <Transition 
+      v-if="!isAdminRoute"
       :name="transitionName" 
       mode="out-in"
       @before-enter="onBeforeEnter"
       @enter="onEnter"
       @leave="onLeave"
     >
-      <RouterView :key="$route.fullPath" />
+      <RouterView :key="$route.path" />
     </Transition>
+    <RouterView v-else />
     </main>
     
     <Footer v-if="showLayoutChrome" />
@@ -60,17 +62,17 @@ const route = useRoute()
 const transitionName = ref('page')
 const prevRoute = ref('')
 const showLayoutChrome = computed(() => !route.path.startsWith('/admin')&&!route.path.startsWith('/map'))
+const isAdminRoute = computed(() => route.path.startsWith('/admin'))
 
 // 路由顺序映射，用于判断前进还是后退
 const routeOrder = {
   '/': 0,
   '/about': 1,
   '/note': 2,
-  // '/articles': 3,
-  '/sites': 3,
+   '/moments': 3,
   '/friends': 4,
-  // '/sponsor': 6,
-  '/gallery': 5,
+   '/articles': 5,
+  '/gallery': 6,
 }
 
 // 监听路由变化，动态设置过渡动画

@@ -67,7 +67,7 @@
         <Loading />
       </div>
 
-      <div v-else-if="articles.length === 0" class="text-center py-12">
+      <div v-else-if="!articles || articles.length === 0" class="text-center py-12">
         <FileText
           class="w-16 h-16 text-gray-300 dark:text-gray-600 mx-auto mb-4"
         />
@@ -370,8 +370,14 @@ const fetchArticles = async () => {
     if (selectedCategory.value) params.category = selectedCategory.value;
 
     const response = await request.get("/articles", { params });
-    articles.value = response.data.articles;
-    pagination.value = response.data.pagination;
+    articles.value = response.data || [];
+    const meta = response.meta || { page: 1, pageSize: 10, total: 0, pageCount: 1 };
+    pagination.value = {
+      page: meta.page,
+      limit: meta.pageSize,
+      total: meta.total,
+      pages: meta.pageCount
+    };
     loadLikedStatus();
   } catch (error) {
     console.error("获取文章列表失败:", error);
@@ -467,6 +473,7 @@ const shareArticle = async (articleId: string) => {
 };
 
 const loadLikedStatus = () => {
+  if (!articles.value || !Array.isArray(articles.value)) return;
   const liked = new Set<string>();
   articles.value.forEach((article) => {
     if (localStorage.getItem(`article_liked_${article._id}`) === "true") {

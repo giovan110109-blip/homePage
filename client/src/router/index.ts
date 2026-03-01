@@ -70,6 +70,14 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/moments',
+    name: 'moments',
+    component: () => import('@/pages/MomentsView.vue'),
+    meta: {
+      title: '说说'
+    }
+  },
+  {
     path: '/gallery',
     name: 'gallery',
     component: () => import('@/pages/GalleryView.vue'),
@@ -100,7 +108,81 @@ const routes: RouteRecordRaw[] = [
     meta: {
         title: '后台管理',
         requiresAuth: true
-    }
+    },
+    children: [
+      {
+        path: '',
+        name: 'admin-dashboard',
+        component: () => import('@/pages/admin/components/DashboardPage.vue'),
+        meta: { title: '仪表板', icon: 'LayoutDashboard', showInMenu: true, requiresAuth: true }
+      },
+      {
+        path: 'users',
+        name: 'admin-users',
+        component: () => import('@/pages/admin/components/UsersPage.vue'),
+        meta: { title: '用户管理', icon: 'Users', showInMenu: true, requiresAuth: true }
+      },
+      {
+        path: 'roles',
+        name: 'admin-roles',
+        component: () => import('@/pages/admin/components/RolesPage.vue'),
+        meta: { title: '角色管理', icon: 'Shield', showInMenu: true, requiresAuth: true }
+      },
+      {
+        path: 'menus',
+        name: 'admin-menus',
+        component: () => import('@/pages/admin/components/MenusPage.vue'),
+        meta: { title: '菜单管理', icon: 'Menu', showInMenu: true, requiresAuth: true }
+      },
+      {
+        path: 'messages',
+        name: 'admin-messages',
+        component: () => import('@/pages/admin/components/MessagesPage.vue'),
+        meta: { title: '留言管理', icon: 'MessageSquare', showInMenu: true, requiresAuth: true }
+      },
+      {
+        path: 'articles',
+        name: 'admin-articles',
+        component: () => import('@/pages/admin/components/ArticlesPage.vue'),
+        meta: { title: '文章管理', icon: 'FileText', showInMenu: true, requiresAuth: true }
+      },
+      {
+        path: 'photos',
+        name: 'admin-photos',
+        component: () => import('@/pages/admin/components/PhotosPage.vue'),
+        meta: { title: '相册管理', icon: 'Image', showInMenu: true, requiresAuth: true }
+      },
+      {
+        path: 'moments',
+        name: 'admin-moments',
+        component: () => import('@/pages/admin/components/MomentsPage.vue'),
+        meta: { title: '说说管理', icon: 'Sparkles', showInMenu: true, requiresAuth: true }
+      },
+      {
+        path: 'friend-links',
+        name: 'admin-friend-links',
+        component: () => import('@/pages/admin/components/FriendLinksPage.vue'),
+        meta: { title: '友链管理', icon: 'Link', showInMenu: true, requiresAuth: true }
+      },
+      {
+        path: 'access-logs',
+        name: 'admin-access-logs',
+        component: () => import('@/pages/admin/components/AccessLogsPage.vue'),
+        meta: { title: '访问记录', icon: 'Activity', showInMenu: true, requiresAuth: true }
+      },
+      {
+        path: 'sponsors',
+        name: 'admin-sponsors',
+        component: () => import('@/pages/admin/components/SponsorsPage.vue'),
+        meta: { title: '赞助管理', icon: 'Heart', showInMenu: true, requiresAuth: true }
+      },
+      {
+        path: 'settings',
+        name: 'admin-settings',
+        component: () => import('@/pages/admin/components/SettingsPage.vue'),
+        meta: { title: '系统设置', icon: 'Settings', showInMenu: true, requiresAuth: true }
+      }
+    ]
   },
     {
       path: '/admin/login',
@@ -142,13 +224,24 @@ const router = createRouter({
   routes,
 })
 
-router.beforeEach((to, _from, next) => {
+router.beforeEach(async (to, _from, next) => {
   NProgress.start()
   const authStore = useAuthStore()
+  
   if (to.meta?.requiresAuth && !authStore.isLoggedIn) {
     next({ name: 'admin-login', query: { redirect: to.fullPath } })
     return
   }
+
+  if (to.path.startsWith('/admin') && to.path !== '/admin/login') {
+    await authStore.fetchMenus()
+    
+    if (to.path !== '/admin' && !authStore.hasMenuPath(to.path)) {
+      next({ name: 'admin-dashboard' })
+      return
+    }
+  }
+  
   next()
 })
 

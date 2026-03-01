@@ -3,6 +3,8 @@ const { HttpStatus } = require('../utils/response');
 const { issueToken } = require('../utils/adminTokenStore');
 const { verifyPassword, hashPassword } = require('../utils/password');
 const User = require('../models/user');
+const Role = require('../models/role');
+const Menu = require('../models/menu');
 
 const loginAttempts = new Map();
 const MAX_ATTEMPTS = 5;
@@ -76,7 +78,7 @@ class AdminAuthController extends BaseController {
         );
       }
 
-      const user = await User.findOne({ username, role: 'admin' });
+      const user = await User.findOne({ username });
       
       if (!user) {
         recordFailedAttempt(ip, username);
@@ -108,7 +110,7 @@ class AdminAuthController extends BaseController {
         username: user.username, 
         nickname: user.nickname,
         avatar: user.avatar,
-        role: user.role 
+        roleIds: user.roleIds
       };
       const token = await issueToken(userInfo);
       this.ok(ctx, { token, user: userInfo }, '登录成功');
@@ -127,6 +129,75 @@ class AdminAuthController extends BaseController {
     } catch (err) {
       this.fail(ctx, err);
     }
+  }
+
+  async getUserMenus(ctx) {
+    try {
+      const userId = ctx.state.user._id;
+      
+      const user = await User.findById(userId).populate('roleIds');
+      if (!user) {
+        this.throwHttpError('用户不存在', HttpStatus.NOT_FOUND);
+      }
+
+      let menuIds = [];
+      if (user.roleIds && user.roleIds.length > 0) {
+        const roles = await Role.find({ 
+          _id: { $in: user.roleIds.map(r => r._id) },
+          status: 'active'
+        }).populate('menuIds');
+        
+        roles.forEach(role => {
+          if (role.menuIds) {
+            role.menuIds.forEach(menu => {
+              if (!menuIds.includes(String(menu._id))) {
+                menuIds.push(String(menu._id));
+              }
+            });
+          }
+        });
+      }
+
+      let menus = [];
+      if (menuIds.length > 0) {
+        menus = await Menu.find({ 
+          _id: { $in: menuIds },
+          status: 'active'
+        }).sort({ sort: 1 }).lean();
+      }
+
+      const tree = this.buildMenuTree(menus);
+      
+      this.ok(ctx, tree, '获取菜单成功');
+    } catch (err) {
+      this.fail(ctx, err);
+    }
+  }
+
+  buildMenuTree(menus, parentId = null) {
+    const dashboardMenu = {
+      _id: 'dashboard',
+      name: '仪表板',
+      path: '/admin',
+      icon: 'LayoutDashboard',
+      parentId: null,
+      sort: 0,
+      status: 'active',
+      children: []
+    };
+
+    const filteredMenus = menus
+      .filter(menu => String(menu.parentId) === String(parentId))
+      .sort((a, b) => a.sort - b.sort)
+      .map(menu => ({
+        ...menu,
+        children: this.buildMenuTree(menus, menu._id)
+      }));
+
+    if (parentId === null) {
+      return [dashboardMenu, ...filteredMenus];
+    }
+    return filteredMenus;
   }
 }
 

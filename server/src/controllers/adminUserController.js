@@ -113,6 +113,23 @@ class AdminUserController extends BaseController {
       this.fail(ctx, error);
     }
   }
+
+  async updateRoles(ctx) {
+    try {
+      const { id } = ctx.params;
+      const { roleIds } = ctx.request.body;
+
+      const user = await userService.updateUserRoles(id, roleIds);
+
+      if (!user) {
+        this.throwHttpError('用户不存在', HttpStatus.NOT_FOUND);
+      }
+
+      this.ok(ctx, user, '角色分配成功');
+    } catch (error) {
+      this.fail(ctx, error);
+    }
+  }
 }
 
 module.exports = new AdminUserController();

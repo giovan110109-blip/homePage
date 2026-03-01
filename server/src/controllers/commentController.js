@@ -1,5 +1,6 @@
 const Comment = require("../models/comment");
 const Message = require("../models/message");
+const Article = require("../models/article");
 const { HttpStatus } = require("../utils/response");
 const BaseController = require("../utils/baseController");
 const { getClientInfo } = require("../utils/requestInfo");
@@ -72,13 +73,11 @@ class CommentController extends BaseController {
   async sendCommentNotification(payload, comment) {
     const { parentId, targetId, name, content } = payload;
     
-    // 不给自己发送通知
     let recipientEmail = null;
     let recipientName = null;
     let emailType = null;
 
     if (parentId) {
-      // 对评论进行回复 (type=7)
       const parentComment = await Comment.findById(parentId).lean();
       if (parentComment && parentComment.email !== payload.email) {
         recipientEmail = parentComment.email;
@@ -86,12 +85,18 @@ class CommentController extends BaseController {
         emailType = 7;
       }
     } else {
-      // 对留言进行评论 (type=6)
       const message = await Message.findById(targetId).lean();
       if (message && message.email !== payload.email) {
         recipientEmail = message.email;
         recipientName = message.name;
         emailType = 6;
+      } else {
+        const article = await Article.findById(targetId).lean();
+        if (article && article.author?.email && article.author.email !== payload.email) {
+          recipientEmail = article.author.email;
+          recipientName = article.author.name;
+          emailType = 12;
+        }
       }
     }
 

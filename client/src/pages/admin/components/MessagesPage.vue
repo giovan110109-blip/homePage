@@ -371,6 +371,7 @@ import request from "@/api/request";
 import AppButton from "@/components/ui/AppButton.vue";
 import { useMessageFilterForm } from "@/composables/useMessageFilterForm";
 import { useTableFetch } from "@/composables/useTableFetch";
+import { formatDate } from "@/utils/format";
 import {
   Globe,
   Monitor,
@@ -506,54 +507,6 @@ const handleDeleteFromDialog = async () => {
   }
 };
 
-const formatDate = (value?: string) => {
-  if (!value) return "-";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString();
-};
-
-const formatLocation = (location?: MessageItem["location"]) => {
-  if (!location) return "-";
-  const parts = [location.country, location.region, location.city].filter(
-    Boolean,
-  );
-  return parts.length ? parts.join(" / ") : "-";
-};
-
-const getOsIcon = (os?: string) => {
-  const value = (os || "").toLowerCase();
-  if (value.includes("mac") || value.includes("os x") || value.includes("ios"))
-    return Apple;
-  if (value.includes("windows") || value.includes("win")) return Laptop;
-  return Monitor;
-};
-
-const getDeviceIcon = (device?: string) => {
-  const value = (device || "").toLowerCase();
-  if (value.includes("mobile") || value.includes("phone")) return Smartphone;
-  if (value.includes("desktop") || value.includes("pc")) return Monitor;
-  return Monitor;
-};
-const isHttpAvatar = (avatar: string) => {
-  return typeof avatar === "string" && avatar.startsWith("http");
-};
-onMounted(() => {
-  handleFetch();
-});
-</script>
-
-<style scoped>
-:deep(.avatar-html) {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  overflow: hidden;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: #e5e7eb;
-}
 
 :deep(.avatar-html svg) {
   width: 36px;

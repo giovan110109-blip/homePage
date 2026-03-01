@@ -128,6 +128,9 @@
         </div>
       </article>
 
+      <!-- 评论区域 -->
+      <ArticleComments v-if="article && !loading" :article-id="article._id" />
+
       <!-- 文章不存在 -->
       <div v-else class="text-center py-12">
         <FileText class="w-16 h-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
@@ -248,8 +251,10 @@ import { ElMessage } from 'element-plus'
 import request from '@/api/request'
 import html2canvas from 'html2canvas'
 import hljs from 'highlight.js'
+import 'highlight.js/styles/github-dark.css'
 import markdownit from 'markdown-it'
 import { useArticleSeo } from '@/composables/useSeo'
+import ArticleComments from '@/components/article/ArticleComments.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -500,13 +505,14 @@ onMounted(() => {
 }
 
 .prose :deep(pre) {
-  background: #0f172a;
-  color: #e2e8f0;
-  padding: 1.25rem 1.25rem 1.5rem;
-  border-radius: 0.75rem;
+  background: #1f2937;
+  border-radius: 8px;
+  padding: 16px;
   overflow-x: auto;
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.35);
+  margin: 1em 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.9em;
+  line-height: 1.7;
 }
 
 .prose :deep(pre.code-block) {
@@ -523,30 +529,28 @@ onMounted(() => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 0.65rem;
-  background: rgba(255, 255, 255, 0.92);
-  color: #0f172a;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.25);
+  border-radius: 0.5rem;
+  background: rgba(255, 255, 255, 0.1);
+  color: #9ca3af;
+  border: 1px solid rgba(255, 255, 255, 0.1);
   cursor: pointer;
-  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(8px);
 }
 
 .prose :deep(.code-copy-btn:hover) {
-  background: #ffffff;
+  background: rgba(255, 255, 255, 0.2);
   transform: translateY(-1px);
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.3);
 }
 
 .dark .prose :deep(.code-copy-btn) {
-  background: rgba(15, 23, 42, 0.85);
-  color: #e2e8f0;
-  border-color: rgba(148, 163, 184, 0.2);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.55);
+  background: rgba(255, 255, 255, 0.08);
+  color: #9ca3af;
+  border-color: rgba(255, 255, 255, 0.1);
 }
 
 .dark .prose :deep(.code-copy-btn:hover) {
-  background: rgba(30, 41, 59, 0.9);
+  background: rgba(255, 255, 255, 0.15);
 }
 
 .prose :deep(.code-copy-icon) {
@@ -558,9 +562,17 @@ onMounted(() => {
 .prose :deep(code) {
   background: #f3f4f6;
   color: #1f2937;
-  padding: 0.25rem 0.5rem;
-  border-radius: 0.25rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 0.375rem;
   font-size: 0.875em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.prose :deep(pre code) {
+  background: transparent;
+  color: #e5e7eb;
+  padding: 0;
+  font-size: inherit;
 }
 
 .prose :deep(blockquote) {
@@ -568,6 +580,7 @@ onMounted(() => {
   padding-left: 1rem;
   color: #6b7280;
   font-style: italic;
+  margin: 1.5em 0;
 }
 
 .dark .prose :deep(code) {
@@ -577,5 +590,100 @@ onMounted(() => {
 
 .dark .prose :deep(a) {
   color: #60a5fa;
+}
+
+.prose :deep(.hljs-comment),
+.prose :deep(.hljs-quote) {
+  color: #6b7280;
+}
+
+.prose :deep(.hljs-keyword),
+.prose :deep(.hljs-selector-tag) {
+  color: #f472b6;
+}
+
+.prose :deep(.hljs-string),
+.prose :deep(.hljs-attr) {
+  color: #a5d6ff;
+}
+
+.prose :deep(.hljs-number),
+.prose :deep(.hljs-literal) {
+  color: #79c0ff;
+}
+
+.prose :deep(.hljs-function),
+.prose :deep(.hljs-title) {
+  color: #d2a8ff;
+}
+
+.prose :deep(.hljs-variable),
+.prose :deep(.hljs-template-variable) {
+  color: #ffa657;
+}
+
+.prose :deep(.hljs-built_in) {
+  color: #7ee787;
+}
+
+.prose :deep(.hljs-type),
+.prose :deep(.hljs-class .hljs-title) {
+  color: #ffa657;
+}
+
+.prose :deep(.hljs-params) {
+  color: #79c0ff;
+}
+
+.prose :deep(.hljs-symbol),
+.prose :deep(.hljs-bullet),
+.prose :deep(.hljs-meta),
+.prose :deep(.hljs-link) {
+  color: #7ee787;
+}
+
+.prose :deep(.hljs-deletion) {
+  color: #f87171;
+}
+
+.prose :deep(.hljs-addition) {
+  color: #7ee787;
+}
+
+.prose :deep(.hljs-emphasis) {
+  font-style: italic;
+}
+
+.prose :deep(.hljs-strong) {
+  font-weight: bold;
+}
+
+.prose :deep(.hljs-section) {
+  color: #d2a8ff;
+  font-weight: bold;
+}
+
+.prose :deep(.hljs-name),
+.prose :deep(.hljs-tag) {
+  color: #7ee787;
+}
+
+.prose :deep(.hljs-attribute),
+.prose :deep(.hljs-selector-id),
+.prose :deep(.hljs-selector-class) {
+  color: #79c0ff;
+}
+
+.prose :deep(.hljs-selector-attr),
+.prose :deep(.hljs-selector-pseudo) {
+  color: #f472b6;
+}
+
+.prose :deep(.hljs-regexp) {
+  color: #a5d6ff;
+}
+
+.prose :deep(.hljs-doctag) {
+  color: #f472b6;
 }
 </style>

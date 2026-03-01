@@ -33,7 +33,8 @@ class UploadQueueManager extends EventEmitter {
       process.env.UPLOAD_PHOTOS_DIR || path.join(baseUploadDir, "photos");
     this.webpDir =
       process.env.UPLOAD_WEBP_DIR || path.join(baseUploadDir, "photos-webp");
-    this.uploadBaseUrl = "https://serve.giovan.cn/uploads";
+    this.uploadBaseUrl =
+      process.env.UPLOAD_BASE_URL || "https://serve.giovan.cn/uploads";
 
     this.videoProcessor = new VideoProcessor({
       uploadDir: this.uploadDir,

@@ -77,6 +77,7 @@ import AppButton from '@/components/ui/AppButton.vue'
 import { Globe, Monitor, Smartphone, Apple, Laptop } from 'lucide-vue-next'
 import { useTableFetch } from '@/composables/useTableFetch'
 import { useMessageFilterForm } from '@/composables/useMessageFilterForm'
+import { formatDate } from '@/utils/format'
 
 interface AccessLog {
   _id: string
@@ -112,13 +113,6 @@ const handleFetch = async () => {
   } catch (error: any) {
     ElMessage.error(error?.message || '加载访问记录失败')
   }
-}
-
-const formatDate = (value?: string) => {
-  if (!value) return '-'
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return value
-  return date.toLocaleString()
 }
 
 const formatLocation = (location?: AccessLog['location']) => {

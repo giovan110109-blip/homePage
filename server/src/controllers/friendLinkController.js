@@ -63,7 +63,7 @@ class FriendLinkController extends BaseController {
       });
       //通知我有新的留言
       await sendEmail({
-        email: "14945447@qq.com",
+        email: process.env.ADMIN_EMAIL || process.env.EMAIL_USER,
         type: 11,
         name: name,
         content: url,

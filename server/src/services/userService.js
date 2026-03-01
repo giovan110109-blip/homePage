@@ -21,7 +21,8 @@ class UserService extends BaseService {
       page,
       pageSize,
       sort: { createdAt: -1 },
-      select: '-passwordHash'
+      select: '-passwordHash',
+      populate: { path: 'roleIds', select: 'name code' }
     });
   }
 
@@ -143,6 +144,19 @@ class UserService extends BaseService {
 
   validatePassword(password) {
     return password && password.length >= 6;
+  }
+
+  async updateUserRoles(id, roleIds) {
+    const user = await this.getById(id);
+    if (!user) return null;
+
+    const updated = await this.model.findByIdAndUpdate(
+      id,
+      { roleIds: roleIds || [] },
+      { new: true }
+    ).select('-passwordHash').populate('roleIds', 'name code');
+
+    return updated;
   }
 }
 

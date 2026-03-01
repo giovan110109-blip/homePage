@@ -80,123 +80,11 @@
         </div>
         <button
           class="text-xs text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 cursor-pointer whitespace-nowrap"
-          @click="toggleReply"
+          @click="$emit('reply', comment)"
         >
-          {{ showReplyForm ? "取消回复" : "回复" }}
+          回复
         </button>
       </div>
-
-      <!-- 回复表单 -->
-      <transition
-        enter-active-class="transition-all duration-300 ease-out"
-        leave-active-class="transition-all duration-200 ease-in"
-        enter-from-class="max-h-0 opacity-0"
-        enter-to-class="max-h-[400px] opacity-100"
-        leave-from-class="max-h-[400px] opacity-100"
-        leave-to-class="max-h-0 opacity-0"
-      >
-        <div v-if="showReplyForm" class="mt-3 overflow-hidden">
-          <form @submit.prevent="submitReply" class="space-y-2">
-            <!-- 登录状态：显示用户信息 -->
-            <div v-if="isLoggedIn" class="flex items-center gap-3 mb-2">
-              <img
-                v-if="userAvatar"
-                :src="userAvatar"
-                alt="avatar"
-                class="w-8 h-8 rounded-full object-cover"
-              />
-              <div>
-                <div class="font-medium text-gray-900 dark:text-white text-sm">
-                  {{ userName }}
-                </div>
-                <div class="text-xs text-gray-500 dark:text-gray-400">
-                  管理员
-                </div>
-              </div>
-            </div>
-            <!-- 未登录：显示输入框 -->
-            <div v-else class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-              <input
-                v-model="replyForm.name"
-                type="text"
-                required
-                class="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus:border-blue-500 outline-none transition-all"
-                placeholder="昵称*"
-              />
-              <input
-                v-model="replyForm.email"
-                type="email"
-                required
-                class="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus:border-blue-500 outline-none transition-all"
-                placeholder="邮箱*"
-              />
-              <input
-                v-model="replyForm.website"
-                type="text"
-                inputmode="url"
-                class="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus:border-blue-500 outline-none transition-all"
-                placeholder="网址（可选）"
-                autocomplete="url"
-              />
-            </div>
-            <div class="relative">
-              <RichTextarea
-                v-model="replyForm.content"
-                placeholder="请输入回复..."
-                ref="replyRichTextareaRef"
-              />
-              <button
-                type="button"
-                @click.stop="toggleReplyEmotePicker"
-                class="absolute right-2 bottom-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors z-10"
-                title="插入表情包"
-                ref="replyEmoteButtonRef"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="12" cy="12" r="10"></circle>
-                  <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
-                  <line x1="9" y1="9" x2="9.01" y2="9"></line>
-                  <line x1="15" y1="9" x2="15.01" y2="9"></line>
-                </svg>
-              </button>
-              <transition
-                enter-active-class="transition-all duration-200 ease-out"
-                leave-active-class="transition-all duration-150 ease-in"
-                enter-from-class="opacity-0 scale-95"
-                enter-to-class="opacity-100 scale-100"
-                leave-from-class="opacity-100 scale-100"
-                leave-to-class="opacity-0 scale-95"
-              >
-                <Teleport to="body">
-                  <div 
-                    v-if="showReplyEmotePicker" 
-                    class="fixed"
-                    :style="{ 
-                      top: replyEmotePickerPosition.top + 'px',
-                      right: replyEmotePickerPosition.right + 'px',
-                      zIndex: 99999
-                    }"
-                    ref="replyEmotePickerRef"
-                    @click.stop
-                  >
-                    <EmotePicker @select="insertReplyEmote" />
-                  </div>
-                </Teleport>
-              </transition>
-            </div>
-            <div class="flex justify-end">
-              <AppButton
-                variant="primary"
-                nativeType="submit"
-                :disabled="submitting"
-                size="sm"
-              >
-                {{ submitting ? "发送中..." : "发送" }}
-              </AppButton>
-            </div>
-          </form>
-        </div>
-      </transition>
     </div>
 
     <!-- 子评论（递归） -->
@@ -214,6 +102,7 @@
         :user-name="userName"
         :user-email="userEmail"
         :user-avatar="userAvatar"
+        @reply="$emit('reply', $event)"
         @reply-submitted="$emit('reply-submitted')"
         @comment-deleted="$emit('comment-deleted')"
       />
@@ -222,7 +111,6 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick, onMounted, onUnmounted } from "vue";
 import {
   ExternalLink,
   Trash2,
@@ -236,13 +124,8 @@ import {
 } from "lucide-vue-next";
 import { ElMessage, ElMessageBox } from "element-plus";
 import request from "@/api/request";
-import { buildAvatarSvg } from "@/utils/avatarSvg";
 import { getExternalLinkRedirectUrl } from "@/utils/external-link";
-import AppButton from "@/components/ui/AppButton.vue";
-import EmotePicker from "@/components/ui/EmotePicker.vue";
 import EmoteRenderer from "@/components/ui/EmoteRenderer.vue";
-import RichTextarea from "@/components/ui/RichTextarea.vue";
-import { useEmotes } from "@/composables/useEmotes";
 
 interface CommentType {
   id: string;
@@ -270,159 +153,10 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
+  (e: "reply", comment: CommentType): void;
   (e: "reply-submitted"): void;
   (e: "comment-deleted"): void;
 }>();
-
-const COMMENT_FORM_KEY = "comment-form-cache";
-const loadFormCache = () => {
-  try {
-    const cached = localStorage.getItem(COMMENT_FORM_KEY);
-    if (cached) {
-      const parsed = JSON.parse(cached);
-      return { name: parsed.name || "", email: parsed.email || "", website: parsed.website || "", content: "" };
-    }
-  } catch {}
-  return { name: "", email: "", website: "", content: "" };
-};
-
-const saveFormCache = () => {
-  if (!props.isLoggedIn) {
-    localStorage.setItem(COMMENT_FORM_KEY, JSON.stringify({
-      name: replyForm.value.name,
-      email: replyForm.value.email,
-      website: replyForm.value.website,
-    }));
-  }
-};
-
-const showReplyForm = ref(false);
-const submitting = ref(false);
-const replyForm = ref(loadFormCache());
-const showReplyEmotePicker = ref(false);
-const replyRichTextareaRef = ref<InstanceType<typeof RichTextarea> | null>(null);
-const replyEmotePickerRef = ref<HTMLDivElement | null>(null);
-const replyEmoteButtonRef = ref<HTMLButtonElement | null>(null);
-const replyEmotePickerPosition = ref({ top: 0, right: 0 });
-
-const { getEmoteUrl } = useEmotes();
-
-const updateReplyEmotePickerPosition = () => {
-  if (!replyEmoteButtonRef.value) return;
-
-  const rect = replyEmoteButtonRef.value.getBoundingClientRect();
-  const pickerWidth = Math.min(window.innerWidth - 32, 600);
-  const pickerHeight = Math.min(window.innerHeight - 32, 450);
-
-  let top = rect.top - pickerHeight - 8;
-  let right = window.innerWidth - rect.right;
-
-  if (top < 16) {
-    top = rect.bottom + 8;
-  }
-
-  if (right < 16) {
-    right = 16;
-  }
-
-  replyEmotePickerPosition.value = {
-    top,
-    right,
-  };
-};
-
-const toggleReply = () => {
-  showReplyForm.value = !showReplyForm.value;
-};
-
-const toggleReplyEmotePicker = () => {
-  showReplyEmotePicker.value = !showReplyEmotePicker.value;
-  if (showReplyEmotePicker.value) {
-    nextTick(() => {
-      updateReplyEmotePickerPosition();
-    });
-  }
-};
-
-const insertReplyEmote = (emoteName: string) => {
-  const emoteUrl = getEmoteUrl(emoteName);
-  if (replyRichTextareaRef.value && emoteUrl) {
-    replyRichTextareaRef.value.insertEmote(emoteName, emoteUrl);
-  }
-  showReplyEmotePicker.value = false;
-};
-
-const handleClickOutside = (event: MouseEvent) => {
-  const target = event.target as Node;
-  if (replyEmotePickerRef.value && !replyEmotePickerRef.value.contains(target)) {
-    showReplyEmotePicker.value = false;
-  }
-};
-
-const handleScroll = () => {
-  if (showReplyEmotePicker.value) {
-    updateReplyEmotePickerPosition();
-  }
-};
-
-onMounted(() => {
-  nextTick(() => {
-    document.addEventListener('click', handleClickOutside);
-    window.addEventListener('scroll', handleScroll, true);
-    window.addEventListener('resize', handleScroll);
-  });
-});
-
-onUnmounted(() => {
-  document.removeEventListener('click', handleClickOutside);
-  window.removeEventListener('scroll', handleScroll, true);
-  window.removeEventListener('resize', handleScroll);
-});
-
-const submitReply = async () => {
-  const name = props.isLoggedIn ? props.userName : replyForm.value.name;
-  const email = props.isLoggedIn ? props.userEmail : replyForm.value.email;
-
-  if (!replyForm.value.content) {
-    ElMessage.warning("请输入回复内容");
-    return;
-  }
-  if (!props.isLoggedIn && (!name || !email)) {
-    ElMessage.warning("请填写昵称和邮箱");
-    return;
-  }
-  if (!props.targetId) {
-    ElMessage.warning("无法确定评论目标");
-    return;
-  }
-  submitting.value = true;
-  try {
-    const avatar = props.isLoggedIn && props.userAvatar 
-      ? props.userAvatar 
-      : await buildAvatarSvg();
-    await request.post("/comments", {
-      targetId: props.targetId,
-      parentId: props.comment.id,
-      name: name || "楼主",
-      email: email || "14945447@qq.com",
-      website: replyForm.value.website || undefined,
-      avatar,
-      content: replyForm.value.content,
-      isAdmin: props.isLoggedIn,
-    });
-    saveFormCache();
-    replyForm.value.content = "";
-    showReplyForm.value = false;
-    ElMessage.success("回复成功");
-    emit("reply-submitted");
-  } catch (error) {
-    console.error("回复失败:", error);
-    const msg = (error as any)?.response?.data?.message || "回复失败，请稍后再试";
-    ElMessage.error(msg);
-  } finally {
-    submitting.value = false;
-  }
-};
 
 const handleDelete = async () => {
   try {

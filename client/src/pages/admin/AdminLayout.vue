@@ -108,14 +108,14 @@
         <el-scrollbar class="h-full">
           <el-menu
             class="border-r-0 bg-transparent"
-            :default-active="activeMenu"
+            :default-active="currentMenuKey"
             :collapse="sidebarCollapsed"
-            @select="syncActiveMenu($event)"
+            router
           >
             <el-menu-item
               v-for="item in menuItems"
               :key="item.id"
-              :index="item.id"
+              :index="item.route"
               class="menu-item-custom transition-all duration-200"
             >
               <component :is="item.icon" class="w-5 h-5" />
@@ -132,7 +132,11 @@
         class="flex flex-col p-4 sm:p-6 lg:p-8 overflow-y-auto bg-transparent min-h-0"
       >
         <div class="w-full flex-1 flex flex-col h-full">
-          <component :is="currentComponent" :key="activeMenu" />
+          <router-view v-slot="{ Component }">
+            <transition name="fade" mode="out-in">
+              <component :is="Component" />
+            </transition>
+          </router-view>
         </div>
       </el-main>
     </el-container>
@@ -171,15 +175,16 @@
       </template>
 
       <el-menu
-        :default-active="activeMenu"
-        @select="handleMobileSelect"
+        :default-active="currentMenuKey"
+        router
         class="border-r-0"
       >
         <el-menu-item
           v-for="item in menuItems"
           :key="item.id"
-          :index="item.id"
+          :index="item.route"
           class="menu-item-custom"
+          @click="mobileMenuOpen = false"
         >
           <component :is="item.icon" class="w-5 h-5" />
           <template #title>
@@ -192,7 +197,6 @@
     <!-- 个人信息弹窗 -->
     <ProfileDialog
       v-model="profileDialogVisible"
-      @updated="handleProfileUpdated"
     />
 
     <!-- 上传任务队列浮窗（全局） - 移动端隐藏 -->
@@ -203,85 +207,56 @@
 </template>
 
 <script setup lang="ts">
-import {
-  LayoutDashboard,
-  MessageSquare,
-  Settings,
-  Heart,
-  Activity,
-  Users,
-  Menu,
-  User,
-  ChevronLeft,
-  ChevronRight,
-  Link,
-  FileText,
-  Home,
-  LogOut,
-  Image,
-} from "lucide-vue-next";
-import { ref, computed, onMounted, watch, shallowRef, defineAsyncComponent } from "vue";
+import { LayoutDashboard, ChevronRight, ChevronLeft, User, Home, LogOut } from "lucide-vue-next";
+import * as LucideIcons from "lucide-vue-next";
+import { ref, computed, onMounted } from "vue";
 import AppButton from "@/components/ui/AppButton.vue";
 import ThemeToggle from "@/components/ui/ThemeToggle.vue";
 import ProfileDialog from "./components/ProfileDialog.vue";
 import UploadQueueFloat from "@/components/admin/UploadQueueFloat.vue";
 import { useAuthStore } from "@/stores/auth";
-import { useRouter } from "vue-router";
+import { useRouter, useRoute } from "vue-router";
 import { ElMessage } from "element-plus";
 
+const getIconComponent = (iconName: string) => {
+  if (!iconName) return LayoutDashboard;
+  return (LucideIcons as any)[iconName] || LayoutDashboard;
+};
+
 const sidebarCollapsed = ref(false);
-const ACTIVE_MENU_KEY = "admin:active-menu";
 const mobileMenuOpen = ref(false);
 const profileDialogVisible = ref(false);
 const authStore = useAuthStore();
 const router = useRouter();
+const route = useRoute();
 
-const menuItems = [
-  { id: "dashboard", label: "仪表板", icon: LayoutDashboard },
-  { id: "users", label: "用户管理", icon: Users },
-  { id: "messages", label: "留言管理", icon: MessageSquare },
-  { id: "articles", label: "文章管理", icon: FileText },
-  { id: "photos", label: "相册管理", icon: Image },
-  { id: "friendLinks", label: "友链管理", icon: Link },
-  { id: "accessLogs", label: "访问记录", icon: Activity },
-  { id: "sponsors", label: "赞助管理", icon: Heart },
-  { id: "settings", label: "系统设置", icon: Settings },
-];
+const menuItems = computed(() => {
+  const menus = authStore.menus || [];
+  if (menus.length === 0) return [];
+  
+  const flatMenus: any[] = [];
+  const flatten = (items: any[]) => {
+    items.forEach(item => {
+      flatMenus.push({
+        id: item._id,
+        label: item.name,
+        icon: getIconComponent(item.icon),
+        route: item.path,
+      });
+      if (item.children && item.children.length > 0) {
+        flatten(item.children);
+      }
+    });
+  };
+  flatten(menus);
+  return flatMenus;
+});
 
-const componentMap: Record<string, any> = {
-  dashboard: defineAsyncComponent(() => import("./components/DashboardPage.vue")),
-  users: defineAsyncComponent(() => import("./components/UsersPage.vue")),
-  messages: defineAsyncComponent(() => import("./components/MessagesPage.vue")),
-  articles: defineAsyncComponent(() => import("./components/ArticlesPage.vue")),
-  photos: defineAsyncComponent(() => import("./components/PhotosPage.vue")),
-  friendLinks: defineAsyncComponent(() => import("./components/FriendLinksPage.vue")),
-  accessLogs: defineAsyncComponent(() => import("./components/AccessLogsPage.vue")),
-  sponsors: defineAsyncComponent(() => import("./components/SponsorsPage.vue")),
-  settings: defineAsyncComponent(() => import("./components/SettingsPage.vue")),
-};
-
-const getInitialMenu = () => {
-  try {
-    const saved = localStorage.getItem(ACTIVE_MENU_KEY);
-    if (saved && componentMap[saved]) return saved;
-  } catch (_) {
-  }
-  return "dashboard";
-};
-
-const activeMenu = ref(getInitialMenu());
-const currentComponent = shallowRef(componentMap[activeMenu.value]);
-
-const syncActiveMenu = (value: string) => {
-  activeMenu.value = value;
-  currentComponent.value = componentMap[value];
-  localStorage.setItem(ACTIVE_MENU_KEY, value);
-};
-
-const handleMobileSelect = (value: string) => {
-  syncActiveMenu(value);
-  mobileMenuOpen.value = false;
-};
+const currentMenuKey = computed(() => {
+  const path = route.path;
+  if (path === "/admin") return "/admin";
+  return path;
+});
 
 const handleCommand = (command: string) => {
   if (command === "profile") {
@@ -293,36 +268,26 @@ const handleCommand = (command: string) => {
   }
 };
 
-const handleProfileUpdated = () => {
-  // 个人信息更新后，可以刷新用户信息
-  // 如果需要更新显示的用户名等信息
-};
-
 const handleLogout = () => {
   authStore.logout();
   router.replace("/admin/login");
 };
 
-// 验证登录状态
 const checkAuthStatus = async () => {
   if (!authStore.token) {
-    // 没有 token，重定向到登录
     router.replace("/admin/login");
     return;
   }
 
-  // 验证 token 是否过期
   const isValid = await authStore.verifyToken();
   if (!isValid) {
-    // token 过期或无效
     ElMessage.error("登录已过期，请重新登录");
     router.replace("/admin/login");
+    return;
   }
-};
 
-watch(activeMenu, (value) => {
-  localStorage.setItem(ACTIVE_MENU_KEY, value);
-});
+  await authStore.fetchMenus();
+};
 
 onMounted(() => {
   checkAuthStatus();
@@ -335,6 +300,17 @@ onMounted(() => {
    Typography: Fira Code + Fira Sans
    Motion: 150-300ms smooth transitions
    ============================================ */
+
+/* 过渡动画 */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
 
 :deep(.el-menu) {
   background-color: transparent;

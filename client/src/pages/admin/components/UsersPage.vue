@@ -78,11 +78,19 @@
         </el-table-column>
         <el-table-column prop="email" label="邮箱" min-width="160"></el-table-column>
         <el-table-column prop="nickname" label="昵称" min-width="130"></el-table-column>
-        <el-table-column prop="role" label="角色" width="100" align="center">
+        <el-table-column label="角色" min-width="150" align="center">
           <template #default="scope">
-            <el-tag :type="scope.row.role === 'admin' ? 'danger' : 'info'">
-              {{ scope.row.role === 'admin' ? '管理员' : '用户' }}
-            </el-tag>
+            <div class="flex flex-wrap gap-1 justify-center">
+              <el-tag 
+                v-for="role in (scope.row.roleIds || [])" 
+                :key="role._id" 
+                type="primary" 
+                size="small"
+              >
+                {{ role.name }}
+              </el-tag>
+              <span v-if="!scope.row.roleIds || scope.row.roleIds.length === 0" class="text-gray-400 text-sm">暂无角色</span>
+            </div>
           </template>
         </el-table-column>
         <el-table-column prop="status" label="状态" width="100" align="center">
@@ -97,9 +105,10 @@
             {{ formatDate(scope.row.createdAt) }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="200" fixed="right" align="center">
+        <el-table-column label="操作" width="250" fixed="right" align="center">
           <template #default="scope">
             <el-button link type="primary" size="small" @click="handleEditUser(scope.row)">编辑</el-button>
+            <el-button link type="info" size="small" @click="openRoleDialog(scope.row)">分配角色</el-button>
             <el-button link type="warning" size="small" @click="handleResetPassword(scope.row)">重密</el-button>
             <el-button link type="danger" size="small" @click="handleDeleteUser(scope.row)">删除</el-button>
           </template>
@@ -255,6 +264,32 @@
         <el-button type="primary" @click="handleConfirmResetPassword" :loading="saving">确认</el-button>
       </template>
     </el-dialog>
+
+    <!-- 分配角色对话框 -->
+    <el-dialog
+      v-model="roleDialogVisible"
+      title="分配角色"
+      width="500px"
+      destroy-on-close
+    >
+      <el-form label-width="80px">
+        <el-form-item label="用户名">
+          <span class="text-gray-700 dark:text-gray-300">{{ currentUser?.username }}</span>
+        </el-form-item>
+        <el-form-item label="角色">
+          <el-checkbox-group v-model="selectedRoleIds">
+            <el-checkbox v-for="role in allRoles" :key="role._id" :value="role._id">
+              {{ role.name }}
+            </el-checkbox>
+          </el-checkbox-group>
+        </el-form-item>
+      </el-form>
+
+      <template #footer>
+        <el-button @click="roleDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleSaveRoles" :loading="savingRoles">确认</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -265,6 +300,7 @@ import { Plus, User } from 'lucide-vue-next'
 import AppButton from '@/components/ui/AppButton.vue'
 import request from '@/api/request'
 import { getAssetURL } from '@/utils'
+import { formatDate } from '@/utils/format'
 
 interface User {
   _id: string
@@ -310,6 +346,13 @@ const resetPasswordDialogVisible = ref(false)
 const resetPasswordFormRef = ref()
 const resetPasswordForm = ref('')
 const resetPasswordUserId = ref('')
+
+// 角色分配
+const roleDialogVisible = ref(false)
+const currentUser = ref<User | null>(null)
+const allRoles = ref<{ _id: string; name: string; code: string }[]>([])
+const selectedRoleIds = ref<string[]>([])
+const savingRoles = ref(false)
 
 // 验证规则
 const rules = {
@@ -582,15 +625,45 @@ const resetForm = () => {
   formData.status = 'active'
 }
 
-// 格式化日期
-const formatDate = (date: string) => {
-  return new Date(date).toLocaleString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
+// 加载所有角色
+const loadAllRoles = async () => {
+  try {
+    const res: any = await request.get('/admin/roles/all')
+    if (res?.success) {
+      allRoles.value = res.data || []
+    }
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+// 打开角色分配对话框
+const openRoleDialog = async (user: User) => {
+  currentUser.value = user
+  await loadAllRoles()
+  selectedRoleIds.value = ((user as any).roleIds || []).map((r: any) => r._id || r)
+  roleDialogVisible.value = true
+}
+
+// 保存角色
+const handleSaveRoles = async () => {
+  if (!currentUser.value) return
+  
+  savingRoles.value = true
+  try {
+    const res: any = await request.put(`/admin/users/${currentUser.value._id}/roles`, {
+      roleIds: selectedRoleIds.value
+    })
+    if (res?.success) {
+      ElMessage.success('角色分配成功')
+      roleDialogVisible.value = false
+      loadUsers()
+    }
+  } catch (error: any) {
+    ElMessage.error(error.response?.data?.message || '保存失败')
+  } finally {
+    savingRoles.value = false
+  }
 }
 
 // 初始化

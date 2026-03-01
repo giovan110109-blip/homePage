@@ -1,10 +1,10 @@
 const nodemailer = require("nodemailer");
 const { getEmailTemplate } = require("./getEmailTemplate");
-// 邮箱配置
-EMAIL_HOST = "QQ";
-EMAIL_PORT = 465;
-EMAIL_USER = "14945447@qq.com";
-EMAIL_PASS = "zqepjjgixbufcbea";
+
+const EMAIL_HOST = process.env.EMAIL_HOST || "QQ";
+const EMAIL_PORT = parseInt(process.env.EMAIL_PORT) || 465;
+const EMAIL_USER = process.env.EMAIL_USER;
+const EMAIL_PASS = process.env.EMAIL_PASS;
 
 const subjectList = {
   1: "✨ 欢迎您加入 Giovan 管理系统",

@@ -5,6 +5,15 @@
       class="bg-white/80 dark:bg-white/5 backdrop-blur-xl rounded-xl p-3 sm:p-4 border border-gray-200/60 dark:border-white/10 shadow-md"
     >
       <form @submit.prevent="onSubmit" class="space-y-3">
+        <!-- 回复提示 -->
+        <div v-if="replyTo" class="flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-sm">
+          <span class="text-gray-600 dark:text-gray-400">回复</span>
+          <span class="font-medium text-blue-600 dark:text-blue-400">@{{ replyTo.name }}</span>
+          <button type="button" @click="cancelReply" class="ml-auto text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+            <X class="w-4 h-4" />
+          </button>
+        </div>
+
         <!-- 登录状态：显示用户信息 -->
         <div v-if="isLoggedIn" class="flex items-center gap-3 mb-2">
           <img
@@ -25,21 +34,21 @@
             v-model="form.name"
             type="text"
             required
-            class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus:border-blue-500 outline-none transition-all text-sm"
+            class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus:border-blue-500 outline-none transition-all text-sm text-gray-900 dark:text-white"
             placeholder="昵称*"
           />
           <input
             v-model="form.email"
             type="email"
             required
-            class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus:border-blue-500 outline-none transition-all text-sm"
+            class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus:border-blue-500 outline-none transition-all text-sm text-gray-900 dark:text-white"
             placeholder="邮箱*"
           />
           <input
             v-model="form.website"
             type="text"
             inputmode="url"
-            class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus:border-blue-500 outline-none transition-all text-sm"
+            class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus:border-blue-500 outline-none transition-all text-sm text-gray-900 dark:text-white"
             placeholder="网址（可选）"
             autocomplete="url"
           />
@@ -47,7 +56,7 @@
         <div class="relative">
           <RichTextarea
             v-model="form.content"
-            placeholder="请输入评论..."
+            :placeholder="replyTo ? `回复 @${replyTo.name}...` : '请输入评论...'"
             ref="richTextareaRef"
           />
           <button
@@ -133,6 +142,7 @@
         :user-name="userName"
         :user-email="userEmail"
         :user-avatar="userAvatar"
+        @reply="handleReply"
         @reply-submitted="fetchComments"
         @comment-deleted="fetchComments"
       />
@@ -142,9 +152,11 @@
 
 <script setup lang="ts">
 import { ElMessage } from "element-plus";
+import { X } from "lucide-vue-next";
 import request from "@/api/request";
 import { buildAvatarSvg } from "@/utils/avatarSvg";
 import { useAuthStore } from "@/stores/auth";
+import { useVisitorStore } from "@/stores/visitor";
 import AppButton from "@/components/ui/AppButton.vue";
 import CommentItem from "@/components/ui/CommentItem.vue";
 import EmotePicker from "@/components/ui/EmotePicker.vue";
@@ -176,6 +188,7 @@ const emit = defineEmits<{
 }>();
 
 const authStore = useAuthStore();
+const visitorStore = useVisitorStore();
 const isLoggedIn = computed(() => authStore.isLoggedIn);
 const userName = computed(
   () => authStore.user?.nickname || authStore.user?.username || "管理员",
@@ -183,32 +196,14 @@ const userName = computed(
 const userEmail = computed(() => authStore.user?.email || "");
 const userAvatar = computed(() => authStore.user?.avatar || "");
 
-const COMMENT_FORM_KEY = "comment-form-cache";
-const loadFormCache = () => {
-  try {
-    const cached = localStorage.getItem(COMMENT_FORM_KEY);
-    if (cached) {
-      const parsed = JSON.parse(cached);
-      return parsed;
-    }
-  } catch {}
-  return { name: "", email: "", website: "", content: "" };
-};
+const form = ref({
+  name: visitorStore.name,
+  email: visitorStore.email,
+  website: visitorStore.website,
+  content: ""
+});
 
-const saveFormCache = () => {
-  if (!isLoggedIn.value) {
-    localStorage.setItem(
-      COMMENT_FORM_KEY,
-      JSON.stringify({
-        name: form.value.name,
-        email: form.value.email,
-        website: form.value.website,
-      }),
-    );
-  }
-};
-
-const form = ref(loadFormCache());
+const replyTo = ref<CommentType | null>(null);
 const submitting = ref(false);
 const loading = ref(false);
 const comments = ref<CommentType[]>([]);
@@ -365,6 +360,14 @@ const buildCommentTree = (
   return rootComments;
 };
 
+const handleReply = (comment: CommentType) => {
+  replyTo.value = comment
+}
+
+const cancelReply = () => {
+  replyTo.value = null
+}
+
 const onSubmit = async () => {
   const name = isLoggedIn.value ? userName.value : form.value.name;
   const email = isLoggedIn.value ? userEmail.value : form.value.email;
@@ -389,6 +392,7 @@ const onSubmit = async () => {
         : await buildAvatarSvg();
     await request.post("/comments", {
       targetId: props.targetId,
+      parentId: replyTo.value?.id || null,
       name: name || "楼主",
       email: email || "14945447@qq.com",
       website: form.value.website || undefined,
@@ -396,8 +400,17 @@ const onSubmit = async () => {
       content: form.value.content,
       isAdmin: isLoggedIn.value,
     });
-    saveFormCache();
+
+    if (!isLoggedIn.value) {
+      visitorStore.setInfo({
+        name: form.value.name,
+        email: form.value.email,
+        website: form.value.website
+      });
+    }
+
     form.value.content = "";
+    replyTo.value = null;
     ElMessage.success("评论成功");
     await fetchComments();
     emit("commented");

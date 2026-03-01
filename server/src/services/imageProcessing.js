@@ -339,28 +339,97 @@ class ImageProcessingService {
   }
 
   parseGPSCoordinates(exifData) {
-    if (!exifData.GPSLatitude || !exifData.GPSLongitude) {
+    if (!exifData.GPSLatitude && !exifData.GPSLongitude) {
       return null;
     }
 
-    let latitude =
-      typeof exifData.GPSLatitude === "number"
-        ? exifData.GPSLatitude
-        : parseFloat(exifData.GPSLatitude);
+    let latitude = this.parseCoordinate(exifData.GPSLatitude);
+    let longitude = this.parseCoordinate(exifData.GPSLongitude);
 
-    let longitude =
-      typeof exifData.GPSLongitude === "number"
-        ? exifData.GPSLongitude
-        : parseFloat(exifData.GPSLongitude);
+    if (latitude === null || longitude === null) {
+      return null;
+    }
 
-    if (exifData.GPSLatitudeRef === "S") latitude = -latitude;
-    if (exifData.GPSLongitudeRef === "W") longitude = -longitude;
+    if (exifData.GPSLatitudeRef === "S" || exifData.GPSLatitudeRef === "s") {
+      latitude = -latitude;
+    }
+    if (exifData.GPSLongitudeRef === "W" || exifData.GPSLongitudeRef === "w") {
+      longitude = -longitude;
+    }
 
     return {
       latitude,
       longitude,
       altitude: exifData.GPSAltitude,
     };
+  }
+
+  parseCoordinate(value) {
+    if (value === null || value === undefined) {
+      return null;
+    }
+
+    if (typeof value === "number") {
+      return value;
+    }
+
+    if (typeof value === "string") {
+      const num = parseFloat(value);
+      return isNaN(num) ? null : num;
+    }
+
+    if (Array.isArray(value) && value.length >= 3) {
+      const degrees = this.parseDMSPart(value[0]);
+      const minutes = this.parseDMSPart(value[1]);
+      const seconds = this.parseDMSPart(value[2]);
+
+      if (degrees === null || minutes === null || seconds === null) {
+        return null;
+      }
+
+      return degrees + minutes / 60 + seconds / 3600;
+    }
+
+    if (Array.isArray(value) && value.length === 2) {
+      const degrees = this.parseDMSPart(value[0]);
+      const minutes = this.parseDMSPart(value[1]);
+
+      if (degrees === null || minutes === null) {
+        return null;
+      }
+
+      return degrees + minutes / 60;
+    }
+
+    return null;
+  }
+
+  parseDMSPart(value) {
+    if (value === null || value === undefined) {
+      return null;
+    }
+
+    if (typeof value === "number") {
+      return value;
+    }
+
+    if (typeof value === "string") {
+      if (value.includes("/")) {
+        const parts = value.split("/");
+        if (parts.length === 2) {
+          const numerator = parseFloat(parts[0]);
+          const denominator = parseFloat(parts[1]);
+          if (!isNaN(numerator) && !isNaN(denominator) && denominator !== 0) {
+            return numerator / denominator;
+          }
+        }
+        return null;
+      }
+      const num = parseFloat(value);
+      return isNaN(num) ? null : num;
+    }
+
+    return null;
   }
 
   async getImageMetadata(buffer) {
@@ -542,6 +611,24 @@ class ImageProcessingService {
       }
 
       result.location = this.parseGPSCoordinates(result.exif);
+
+      if (result.location) {
+        console.log(
+          `📍 GPS 坐标解析成功: 纬度 ${result.location.latitude.toFixed(6)}, 经度 ${result.location.longitude.toFixed(6)}`
+        );
+      } else {
+        const hasGPS = result.exif?.GPSLatitude || result.exif?.GPSLongitude;
+        if (hasGPS) {
+          console.warn(`⚠️ GPS 数据存在但解析失败:`, {
+            GPSLatitude: result.exif?.GPSLatitude,
+            GPSLongitude: result.exif?.GPSLongitude,
+            GPSLatitudeRef: result.exif?.GPSLatitudeRef,
+            GPSLongitudeRef: result.exif?.GPSLongitudeRef,
+          });
+        } else {
+          console.log(`📍 图片无 GPS 信息`);
+        }
+      }
 
       const orientation = result.exif?.Orientation || 1;
       console.log(

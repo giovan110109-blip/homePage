@@ -13,7 +13,7 @@
 import { computed } from 'vue'
 
 interface Props {
-  variant?: 'primary' | 'reset' | 'submit' | 'check' | 'ghost-danger' | 'custom' | 'link-primary' | 'link-danger' | 'outline' | 'danger' | 'success'
+  variant?: 'primary' | 'secondary' | 'ghost' | 'reset' | 'submit' | 'check' | 'ghost-danger' | 'custom' | 'link-primary' | 'link-danger' | 'outline' | 'danger' | 'success'
   size?: 'lg' | 'md' | 'sm' | 'xs' | 'none'
   nativeType?: 'button' | 'submit' | 'reset'
   disabled?: boolean
@@ -43,6 +43,8 @@ const buttonClass = computed(() => {
   }
   const variants: Record<string, string> = {
     primary: 'bg-gradient-to-r from-blue-500 to-purple-500 text-white hover:from-blue-600 hover:to-purple-600 shadow-lg',
+    secondary: 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600',
+    ghost: 'bg-transparent text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700',
     submit: 'bg-gradient-to-br from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700 shadow-lg',
     success: 'bg-gradient-to-r from-emerald-500 to-green-600 text-white hover:from-emerald-600 hover:to-green-700 shadow-lg',
     danger: 'bg-gradient-to-r from-red-500 to-rose-600 text-white hover:from-red-600 hover:to-rose-700 shadow-lg',

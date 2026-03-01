@@ -12,6 +12,12 @@ const {
   InternalError,
 } = require("../utils/errors");
 
+const IMAGE_EXTS = [
+  ".jpg", ".jpeg", ".png", ".heic", ".heif", ".webp", ".gif", ".tiff", ".tif"
+];
+
+const VIDEO_EXTS = [".mp4", ".mov", ".avi", ".mkv", ".m4v"];
+
 class PhotoController {
   processPhotos(photos) {
     return photos.map((photo) => {
@@ -99,22 +105,10 @@ class PhotoController {
       // Live Photo 检测：检查是否有同名的视频/图片文件
       const mimeType = file.mimetype || file.type || file.mimeType || "";
       const extLower = ext.toLowerCase();
-      const imageExts = [
-        ".jpg",
-        ".jpeg",
-        ".png",
-        ".heic",
-        ".heif",
-        ".webp",
-        ".gif",
-        ".tiff",
-        ".tif",
-      ];
-      const videoExts = [".mp4", ".mov", ".avi", ".mkv", ".m4v"];
       const isImage =
-        mimeType.startsWith("image/") || imageExts.includes(extLower);
+        mimeType.startsWith("image/") || IMAGE_EXTS.includes(extLower);
       const isVideo =
-        mimeType.startsWith("video/") || videoExts.includes(extLower);
+        mimeType.startsWith("video/") || VIDEO_EXTS.includes(extLower);
 
       let pairedFile = null;
       let isLivePhoto = false;
@@ -133,21 +127,11 @@ class PhotoController {
 
           // 名字匹配且类型不同（比较原始 baseName）
           if (existingBaseName === baseName && existingFile !== filename) {
-            const videoExts = [".mp4", ".mov", ".avi", ".mkv", ".m4v"];
-            const imageExts = [
-              ".jpg",
-              ".jpeg",
-              ".png",
-              ".heic",
-              ".heif",
-              ".webp",
-            ];
-
-            if (isImage && videoExts.includes(existingExt)) {
+            if (isImage && VIDEO_EXTS.includes(existingExt)) {
               pairedFile = existingFile;
               isLivePhoto = true;
               break;
-            } else if (isVideo && imageExts.includes(existingExt)) {
+            } else if (isVideo && IMAGE_EXTS.includes(existingExt)) {
               pairedFile = existingFile;
               isLivePhoto = true;
               break;

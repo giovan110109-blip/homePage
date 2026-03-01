@@ -1,52 +1,42 @@
-/**
- * 格式化文件大小
- * @param size 字节数
- * @param digits 保留小数位
- */
-export function formatFileSize(size: number, digits = 2): string {
-  if (isNaN(size) || size === 0) return '0 B';
-  const units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
-  const idx = Math.floor(Math.log(size) / Math.log(1024));
-  const val = size / Math.pow(1024, idx);
-  return `${val.toFixed(digits)} ${units[idx]}`;
+export const formatDate = (value?: string | Date): string => {
+  if (!value) return '-'
+  const date = new Date(value)
+  if (isNaN(date.getTime())) return '-'
+  return date.toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
 }
-/**
- * Format Utilities
- * Contains formatting and transformation utilities
- */
 
-/**
- * Highlight JSON string with HTML markup for syntax highlighting
- */
-export function highlightJSON(json: string): string {
-  if (!json) {
-    return ''
-  }
+export const formatDateShort = (value?: string | Date): string => {
+  if (!value) return '-'
+  const date = new Date(value)
+  if (isNaN(date.getTime())) return '-'
+  return date.toLocaleDateString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  })
+}
 
-  if (typeof json != 'string') {
-    json = JSON.stringify(json, undefined, 2)
-  }
-
-  json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-
-  return json.replace(
-    /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?)/g,
-    (match) => {
-      let cls = ''
-      if (/^"/.test(match)) {
-        if (/:$/.test(match)) {
-          cls = 'key'
-        } else {
-          cls = 'string'
-        }
-      } else if (/true|false/.test(match)) {
-        cls = 'boolean'
-      } else if (/null/.test(match)) {
-        cls = 'null'
-      } else {
-        cls = 'number'
-      }
-      return `<span class="token ${cls}">${match}</span>`
-    }
-  )
+export const formatRelativeTime = (value?: string | Date): string => {
+  if (!value) return '-'
+  const date = new Date(value)
+  if (isNaN(date.getTime())) return '-'
+  
+  const now = new Date()
+  const diff = now.getTime() - date.getTime()
+  const seconds = Math.floor(diff / 1000)
+  const minutes = Math.floor(seconds / 60)
+  const hours = Math.floor(minutes / 60)
+  const days = Math.floor(hours / 24)
+  
+  if (days > 7) return formatDateShort(value)
+  if (days > 0) return `${days}天前`
+  if (hours > 0) return `${hours}小时前`
+  if (minutes > 0) return `${minutes}分钟前`
+  return '刚刚'
 }

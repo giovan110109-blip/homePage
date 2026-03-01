@@ -165,8 +165,21 @@ class ImageProcessor {
   }
 
   async getGeoInfo(location) {
-    if (!location) return null;
-    return await geocoding.reverseGeocode(location.latitude, location.longitude);
+    if (!location) {
+      console.log("📍 无 GPS 坐标，跳过地理编码");
+      return null;
+    }
+    
+    console.log(`🗺️ 开始反向地理编码: (${location.latitude}, ${location.longitude})`);
+    const geoinfo = await geocoding.reverseGeocode(location.latitude, location.longitude);
+    
+    if (geoinfo) {
+      console.log(`✅ 地理编码成功: ${geoinfo.displayName || geoinfo.city || geoinfo.province}`);
+    } else {
+      console.warn("⚠️ 地理编码失败，返回空");
+    }
+    
+    return geoinfo;
   }
 
   async getImageTags(buffer) {

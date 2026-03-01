@@ -111,9 +111,10 @@ const navigation = [
   { name: "首页", href: "/" },
   { name: "关于我", href: "/about" },
   { name: "留言板", href: "/note" },
+  { name: "说说", href: "/moments" },
   { name: "朋友圈", href: "/friends" },
-  // { name: '文章列表', href: '/articles' },
-  { name: "我的网站", href: "/sites" },
+  { name: '文章列表', href: '/articles' },
+  // { name: "我的网站", href: "/sites" },
   // { name: '赞助支持', href: '/sponsor' },
   { name: "画廊", href: "/gallery" },
 ];

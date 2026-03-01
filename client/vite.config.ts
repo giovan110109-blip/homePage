@@ -50,7 +50,12 @@ export default defineConfig(({ mode }) => {
             return "assets/[name]-[hash][extname]";
           },
           manualChunks(id) {
-            if (!id.includes("node_modules")) return;
+            if (!id.includes("node_modules")) {
+              if (id.includes("/src/pages/admin/")) {
+                return "admin";
+              }
+              return;
+            }
 
             if (coreDeps.some((dep) => id.includes(`/node_modules/${dep}/`))) {
               return "vendor-core";

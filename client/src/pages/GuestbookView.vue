@@ -345,6 +345,7 @@ import request from "@/api/request";
 import { buildAvatarSvg } from "@/utils/avatarSvg";
 import { getExternalLinkRedirectUrl } from "@/utils/external-link";
 import { useEmotes } from "@/composables/useEmotes";
+import { useVisitorStore } from "@/stores/visitor";
 
 interface MessageItem {
   id: string;
@@ -372,10 +373,12 @@ interface FormData {
   message: string;
 }
 
+const visitorStore = useVisitorStore();
+
 const formData = ref<FormData>({
-  name: "",
-  email: "",
-  website: "",
+  name: visitorStore.name,
+  email: visitorStore.email,
+  website: visitorStore.website,
   message: "",
 });
 
@@ -596,15 +599,15 @@ const submitMessage = async () => {
       content: formData.value.message,
     });
 
-    formData.value = {
-      name: "",
-      email: "",
-      website: "",
-      message: "",
-    };
+    visitorStore.setInfo({
+      name: formData.value.name,
+      email: formData.value.email,
+      website: formData.value.website
+    });
+
+    formData.value.message = "";
 
     ElMessage.success("提交成功，待审核通过后展示");
-    // 重新加载列表
     fetchMessages(true);
   } catch (error) {
     console.error("提交留言失败:", error);
