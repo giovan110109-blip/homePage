@@ -369,7 +369,7 @@ const fetchArticles = async () => {
     if (searchKeyword.value) params.keyword = searchKeyword.value;
     if (selectedCategory.value) params.category = selectedCategory.value;
 
-    const response = await request.get("/articles", { params });
+    const response: any = await request.get("/articles", { params });
     articles.value = response.data || [];
     const meta = response.meta || { page: 1, pageSize: 10, total: 0, pageCount: 1 };
     pagination.value = {

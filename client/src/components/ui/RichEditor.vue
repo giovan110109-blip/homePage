@@ -193,7 +193,7 @@
             type="color"
             class="color-picker"
             :value="currentTextColor"
-            @input="setTextColor($event.target.value)"
+            @input="setTextColor(($event.target as HTMLInputElement).value)"
           />
         </div>
         <div class="color-picker-wrapper">
@@ -209,7 +209,7 @@
             type="color"
             class="color-picker"
             :value="currentHighlight"
-            @input="setHighlight($event.target.value)"
+            @input="setHighlight(($event.target as HTMLInputElement).value)"
           />
         </div>
       </div>
@@ -237,7 +237,7 @@
         <button
           type="button"
           class="toolbar-btn"
-          @click="editor.chain().focus().addImageFromURL?.().run()"
+          @click="insertImageFromURL"
           title="插入图片URL"
         >
           <ImagePlus class="w-4 h-4" />
@@ -272,7 +272,7 @@
       <div class="toolbar-group">
         <select
           class="toolbar-select"
-          @change="setCodeBlockLanguage($event.target.value)"
+          @change="setCodeBlockLanguage(($event.target as HTMLSelectElement).value)"
           title="代码语言"
         >
           <option value="">选择语言</option>
@@ -282,7 +282,7 @@
     </div>
 
     <div class="editor-content">
-      <EditorContent :editor="editor" />
+      <EditorContent v-if="editor" :editor="editor" />
     </div>
 
     <div v-if="showCharacterCount" class="editor-footer">
@@ -409,7 +409,7 @@ const codeLanguages = [
   "plaintext",
 ];
 
-const editor = ref<Editor | null>(null);
+const editor = ref<any>(null);
 
 const characterCount = computed(() => editor.value?.storage.characterCount?.characters() ?? 0);
 const wordCount = computed(() => editor.value?.storage.characterCount?.words() ?? 0);
@@ -473,7 +473,7 @@ watch(
   () => props.modelValue,
   (value) => {
     if (editor.value && editor.value.getHTML() !== value) {
-      editor.value.commands.setContent(value, false);
+      editor.value.commands.setContent(value);
     }
   }
 );
@@ -499,12 +499,13 @@ const setHighlight = (color: string) => {
 
 const setLink = async () => {
   const previousUrl = editor.value?.getAttributes("link").href;
-  const { value: url } = await ElMessageBox.prompt("请输入链接地址", "插入链接", {
+  const result: any = await ElMessageBox.prompt("请输入链接地址", "插入链接", {
     confirmButtonText: "确定",
     cancelButtonText: "取消",
     inputValue: previousUrl || "",
   });
 
+  const url = result.value;
   if (url === null || url === undefined) return;
 
   if (url === "") {
@@ -516,13 +517,24 @@ const setLink = async () => {
 };
 
 const insertImage = async () => {
-  const { value: url } = await ElMessageBox.prompt("请输入图片地址", "插入图片", {
+  const result: any = await ElMessageBox.prompt("请输入图片地址", "插入图片", {
     confirmButtonText: "确定",
     cancelButtonText: "取消",
   });
 
-  if (url) {
-    editor.value?.chain().focus().setImage({ src: url }).run();
+  if (result.value) {
+    editor.value?.chain().focus().setImage({ src: result.value }).run();
+  }
+};
+
+const insertImageFromURL = async () => {
+  const result: any = await ElMessageBox.prompt("请输入图片地址", "插入图片", {
+    confirmButtonText: "确定",
+    cancelButtonText: "取消",
+  });
+
+  if (result.value) {
+    editor.value?.chain().focus().setImage({ src: result.value }).run();
   }
 };
 
