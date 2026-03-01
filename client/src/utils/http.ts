@@ -30,20 +30,15 @@ const BASE_URL = (() => {
 export function createHttpClient(): AxiosInstance {
   const service: AxiosInstance = axios.create({
     baseURL: BASE_URL,
-    timeout: 10000,
-    // 默认不带凭证，避免 CORS 需要指定 allow-credentials
+    timeout: 30000,
     withCredentials: false,
   });
 
-  // 请求拦截器
   service.interceptors.request.use(
     (config: InternalAxiosRequestConfig) => {
-      // 根据请求类型调整超时时间
-      // 上传文件需要更长的超时时间（15分钟用于处理多个大文件）
       if (config.url?.includes("/upload")) {
         config.timeout = 15 * 60 * 1000;
       }
-      // 其他请求保持默认 10 秒
 
       // 可在此处添加 token 等通用 header
       // const token = localStorage.getItem('token')
