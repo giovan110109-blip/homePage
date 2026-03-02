@@ -1,6 +1,6 @@
 const BaseController = require('../utils/baseController');
 const { HttpStatus } = require('../utils/response');
-const { issueToken } = require('../utils/adminTokenStore');
+const { issueToken, verifyToken, refreshToken, shouldRefreshToken } = require('../utils/adminTokenStore');
 const { verifyPassword, hashPassword } = require('../utils/password');
 const User = require('../models/user');
 const Role = require('../models/role');
@@ -126,6 +126,35 @@ class AdminAuthController extends BaseController {
         valid: true,
         user: user
       }, 'Token is valid');
+    } catch (err) {
+      this.fail(ctx, err);
+    }
+  }
+
+  async refresh(ctx) {
+    try {
+      const authHeader = ctx.headers.authorization;
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        this.throwHttpError('未登录', HttpStatus.UNAUTHORIZED);
+      }
+
+      const oldToken = authHeader.slice(7);
+      const tokenData = await verifyToken(oldToken);
+
+      if (!tokenData) {
+        this.throwHttpError('Token 无效或已过期', HttpStatus.UNAUTHORIZED);
+      }
+
+      const result = await refreshToken(oldToken);
+      if (!result) {
+        this.throwHttpError('Token 刷新失败', HttpStatus.UNAUTHORIZED);
+      }
+
+      this.ok(ctx, {
+        token: result.token,
+        expiresAt: result.expiresAt,
+        user: result.user
+      }, 'Token 刷新成功');
     } catch (err) {
       this.fail(ctx, err);
     }

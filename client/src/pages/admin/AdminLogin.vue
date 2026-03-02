@@ -146,6 +146,15 @@
                 <span class="text-xs">加载中...</span>
               </div>
 
+              <!-- 二维码图片 -->
+              <img
+                v-else-if="qrCodeUrl && !qrExpired"
+                :src="qrCodeUrl"
+                alt="微信小程序二维码"
+                class="w-full h-full object-contain"
+                @error="handleQrImageError"
+              />
+
               <!-- 二维码过期遮罩 -->
               <div
                 v-else-if="qrExpired"
@@ -230,6 +239,12 @@ const handleBackHome = () => {
 const handleShowQrCode = async () => {
   showQrCode.value = true;
   await initQrLogin();
+};
+
+const handleQrImageError = () => {
+  console.error("QR code image failed to load");
+  ElMessage.error("二维码加载失败，请重试");
+  qrExpired.value = true;
 };
 
 const initQrLogin = async () => {

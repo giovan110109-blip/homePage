@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const Token = require('../models/token');
 
 const DEFAULT_TTL_MS = 24 * 60 * 60 * 1000;
+const REFRESH_THRESHOLD_MS = 2 * 60 * 60 * 1000;
 
 const issueToken = async (user, ttlMs = DEFAULT_TTL_MS) => {
   const token = crypto.randomBytes(32).toString('hex');
@@ -13,7 +14,7 @@ const issueToken = async (user, ttlMs = DEFAULT_TTL_MS) => {
     username: user.username,
     nickname: user.nickname,
     avatar: user.avatar,
-    role: user.role || 'user',
+    roles: user.roles || [],
     expiresAt
   });
 
@@ -37,7 +38,47 @@ const verifyToken = async (token) => {
     username: tokenDoc.username,
     role: tokenDoc.role,
     nickname: tokenDoc.nickname,
-    avatar: tokenDoc.avatar
+    avatar: tokenDoc.avatar,
+    roles: tokenDoc.roles || [],
+    expiresAt: tokenDoc.expiresAt
+  };
+};
+
+const shouldRefreshToken = (tokenData) => {
+  if (!tokenData || !tokenData.expiresAt) return false;
+  const timeUntilExpiry = new Date(tokenData.expiresAt).getTime() - Date.now();
+  return timeUntilExpiry < REFRESH_THRESHOLD_MS && timeUntilExpiry > 0;
+};
+
+const refreshToken = async (oldToken) => {
+  if (!oldToken) return null;
+
+  const tokenDoc = await Token.findOne({ token: oldToken });
+  if (!tokenDoc) return null;
+
+  if (new Date() > tokenDoc.expiresAt) {
+    await Token.deleteOne({ token: oldToken });
+    return null;
+  }
+
+  const newToken = crypto.randomBytes(32).toString('hex');
+  const expiresAt = new Date(Date.now() + DEFAULT_TTL_MS);
+
+  await Token.updateOne(
+    { token: oldToken },
+    { token: newToken, expiresAt }
+  );
+
+  return {
+    token: newToken,
+    expiresAt,
+    user: {
+      _id: tokenDoc.userId,
+      username: tokenDoc.username,
+      nickname: tokenDoc.nickname,
+      avatar: tokenDoc.avatar,
+      roles: tokenDoc.roles || []
+    }
   };
 };
 
@@ -58,6 +99,8 @@ const cleanup = async () => {
 module.exports = {
   issueToken,
   verifyToken,
+  refreshToken,
+  shouldRefreshToken,
   revokeToken,
   revokeAllUserTokens,
   cleanup

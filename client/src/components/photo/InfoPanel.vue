@@ -3,7 +3,7 @@ import { computed, ref, onMounted, watch } from "vue";
 import { motion } from "motion-v";
 import { MapPin, Settings, X } from "lucide-vue-next";
 import service from "@/api/request";
-import { formatFileSize } from "@/utils/format";
+import { formatFileSize, formatDate } from "@/utils/format";
 
 interface Props {
   currentPhoto: any;
@@ -64,16 +64,6 @@ console.log(displayPhoto.value);
 const isMobile = computed(
   () => typeof window !== "undefined" && window.innerWidth < 768,
 );
-
-const formatDate = (date: string) => {
-  return new Date(date).toLocaleString("zh-CN", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-};
 
 const getExifValue = (exif: any, key: string) => {
   if (!exif) return undefined;

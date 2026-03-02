@@ -84,6 +84,7 @@ import { MapPin } from "lucide-vue-next";
 import MasonryWall from "@yeger/vue-masonry-wall";
 import Loading from "@/components/ui/Loading.vue";
 import request from "@/api/request";
+import { formatDate as formatDateUtil } from "@/utils/format";
 import { getPhotoOriginalUrl } from "@/utils";
 import { useLivePhotoCache } from "@/composables/useLivePhotoCache";
 import type { Photo } from "@/types/api";
@@ -133,14 +134,7 @@ const formatDate = (date: string): string => {
     return formattedDateCache.get(date)!;
   }
 
-  const formatted = new Date(date).toLocaleString("zh-CN", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-
+  const formatted = formatDateUtil(date);
   formattedDateCache.set(date, formatted);
   return formatted;
 };

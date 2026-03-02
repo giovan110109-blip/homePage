@@ -117,6 +117,7 @@
 import { ref, reactive, onMounted, onBeforeUnmount, computed } from "vue";
 import { Heart } from "lucide-vue-next";
 import request from "@/api/request";
+import { formatDateShort } from "@/utils/format";
 import wechatIcon from "@/assets/微信.png";
 import wechatQr from "@/assets/wx.jpg";
 import alipayIcon from "@/assets/支付宝.png";
@@ -229,12 +230,7 @@ const fetchSponsors = async (reset = false) => {
   }
 };
 
-const formatDate = (value?: string) => {
-  if (!value) return "-";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleDateString("zh-CN");
-};
+const formatDate = formatDateShort;
 
 const formatAmount = (value?: number) => {
   if (value === undefined || value === null) return "-";

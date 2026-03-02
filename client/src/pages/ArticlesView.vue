@@ -288,6 +288,7 @@ import AppButton from "@/components/ui/AppButton.vue";
 import Loading from "@/components/ui/Loading.vue";
 import { ElMessage } from "element-plus";
 import request from "@/api/request";
+import { formatDateShort } from "@/utils/format";
 
 const router = useRouter();
 
@@ -431,13 +432,7 @@ const viewArticle = (id: string) => {
   router.push(`/articles/${id}`);
 };
 
-const formatDate = (dateString: string) => {
-  return new Date(dateString).toLocaleDateString("zh-CN", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  });
-};
+const formatDate = formatDateShort;
 
 const isLiked = (articleId: string) => {
   return likedArticles.value.has(articleId);

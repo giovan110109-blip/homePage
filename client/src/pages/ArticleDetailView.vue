@@ -255,6 +255,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { Eye, Heart, Calendar, Share2, FileText, ArrowLeft, Link, Image } from 'lucide-vue-next'
 import { ElMessage } from 'element-plus'
 import request from '@/api/request'
+import { formatDateShort } from '@/utils/format'
 import html2canvas from 'html2canvas'
 import hljs from 'highlight.js'
 import 'highlight.js/styles/github-dark.css'
@@ -454,14 +455,7 @@ const downloadCard = async () => {
   }
 }
 
-const formatDate = (dateString: string) => {
-  if (!dateString) return ''
-  return new Date(dateString).toLocaleDateString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  })
-}
+const formatDate = formatDateShort
 
 watch(
   () => article.value?.content,

@@ -163,6 +163,7 @@
 import { onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import request from '@/api/request'
+import { formatDate } from '@/utils/format'
 import AppButton from '@/components/ui/AppButton.vue'
 import { useMessageFilterForm } from '@/composables/useMessageFilterForm'
 import { useTableFetch } from '@/composables/useTableFetch'
@@ -332,13 +333,6 @@ const deleteMethod = async (row: SponsorMethod) => {
       ElMessage.error('删除失败')
     }
   }
-}
-
-const formatDate = (value?: string) => {
-  if (!value) return '-'
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return value
-  return date.toLocaleDateString('zh-CN')
 }
 
 const formatAmount = (value?: number) => {

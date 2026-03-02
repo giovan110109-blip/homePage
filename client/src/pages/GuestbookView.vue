@@ -342,6 +342,7 @@ import EmotePicker from "@/components/ui/EmotePicker.vue";
 import EmoteRenderer from "@/components/ui/EmoteRenderer.vue";
 import RichTextarea from "@/components/ui/RichTextarea.vue";
 import request from "@/api/request";
+import { formatRelativeTime } from "@/utils/format";
 import { buildAvatarSvg } from "@/utils/avatarSvg";
 import { getExternalLinkRedirectUrl } from "@/utils/external-link";
 import { useEmotes } from "@/composables/useEmotes";
@@ -641,27 +642,7 @@ const normalizeWebsite = (url: string) => {
   }
 };
 
-const formatDate = (value: string | Date) => {
-  const date = value instanceof Date ? value : new Date(value);
-  const now = new Date();
-  const diff = now.getTime() - date.getTime();
-  const days = Math.floor(diff / (24 * 60 * 60 * 1000));
-
-  if (days === 0) {
-    const hours = Math.floor(diff / (60 * 60 * 1000));
-    if (hours === 0) {
-      const minutes = Math.floor(diff / (60 * 1000));
-      return `${minutes}分钟前`;
-    }
-    return `${hours}小时前`;
-  } else if (days === 1) {
-    return "昨天";
-  } else if (days < 7) {
-    return `${days}天前`;
-  } else {
-    return date.toLocaleDateString("zh-CN");
-  }
-};
+const formatDate = formatRelativeTime;
 
 const formatReferer = (ref: string) => {
   if (!ref) return "";

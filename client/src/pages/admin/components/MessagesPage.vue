@@ -371,6 +371,7 @@ import request from "@/api/request";
 import AppButton from "@/components/ui/AppButton.vue";
 import { useMessageFilterForm } from "@/composables/useMessageFilterForm";
 import { useTableFetch } from "@/composables/useTableFetch";
+import { formatDate } from "@/utils/format";
 import {
   Globe,
   Monitor,
@@ -504,13 +505,6 @@ const handleDeleteFromDialog = async () => {
   } catch (error: any) {
     if (error?.message) ElMessage.error(error.message);
   }
-};
-
-const formatDate = (value?: string) => {
-  if (!value) return "-";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString();
 };
 
 const formatLocation = (location?: MessageItem["location"]) => {

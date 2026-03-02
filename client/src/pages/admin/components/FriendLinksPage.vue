@@ -247,6 +247,7 @@ import {
   adminDeleteFriendLink
 } from '@/api/friendLink'
 import { useMessageFilterForm } from '@/composables/useMessageFilterForm'
+import { formatDate } from '@/utils/format'
 import type { FriendLink } from '@/types/api'
 
 const filter = useMessageFilterForm({ pageSize: 20, status: '', category: '' })
@@ -409,10 +410,6 @@ const getCategoryTagType = (category: string) => {
     other: ''
   }
   return map[category] || ''
-}
-
-const formatDate = (date: string) => {
-  return new Date(date).toLocaleString('zh-CN')
 }
 
 onMounted(() => {

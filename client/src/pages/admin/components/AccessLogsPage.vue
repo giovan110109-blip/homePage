@@ -73,6 +73,7 @@
 import { onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import request from '@/api/request'
+import { formatDate } from '@/utils/format'
 import AppButton from '@/components/ui/AppButton.vue'
 import { Globe, Monitor, Smartphone, Apple, Laptop } from 'lucide-vue-next'
 import { useTableFetch } from '@/composables/useTableFetch'
@@ -114,12 +115,6 @@ const handleFetch = async () => {
   }
 }
 
-const formatDate = (value?: string) => {
-  if (!value) return '-'
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return value
-  return date.toLocaleString()
-}
 
 const formatLocation = (location?: AccessLog['location']) => {
   if (!location) return '-'

@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const BaseController = require('../utils/baseController');
 const { HttpStatus } = require('../utils/response');
 const User = require('../models/user');

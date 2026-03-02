@@ -22,6 +22,16 @@ export const formatDateShort = (value?: string | Date): string => {
   })
 }
 
+export const formatYearMonth = (value?: string | Date): string => {
+  if (!value) return '-'
+  const date = new Date(value)
+  if (isNaN(date.getTime())) return '-'
+  return date.toLocaleDateString('zh-CN', {
+    year: 'numeric',
+    month: 'long'
+  })
+}
+
 export const formatRelativeTime = (value?: string | Date): string => {
   if (!value) return '-'
   const date = new Date(value)

@@ -113,6 +113,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { gsap } from 'gsap'
+import { formatYearMonth } from '@/utils/format'
 
 interface Project {
   id: string
@@ -245,13 +246,7 @@ const handleClick = (event: MouseEvent) => {
   }, 600)
 }
 
-const formatDate = (dateString: string) => {
-  const date = new Date(dateString)
-  return date.toLocaleDateString('zh-CN', {
-    year: 'numeric',
-    month: 'long'
-  })
-}
+const formatDate = formatYearMonth
 
 onMounted(() => {
   checkMobile()

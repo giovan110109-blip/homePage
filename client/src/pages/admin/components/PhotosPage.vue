@@ -789,6 +789,7 @@ import AppButton from "@/components/ui/AppButton.vue";
 import { useUploadQueueStore } from "@/stores/uploadQueue";
 import { storeToRefs } from "pinia";
 import request from "@/api/request";
+import { formatDate, formatFileSize } from "@/utils/format";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { getPhotoOriginalUrl } from "@/utils";
 import maplibregl from "maplibre-gl";
@@ -905,23 +906,6 @@ const loadFailedTasks = async () => {
 
 const retryFailedTask = async (taskId: string) => {
   await uploadQueueStore.retryFailedTask(taskId);
-};
-
-const formatDate = (value?: string) => {
-  if (!value) return "-";
-  return new Date(value).toLocaleString("zh-CN");
-};
-
-const formatFileSize = (size?: number) => {
-  if (!size) return "-";
-  const units = ["B", "KB", "MB", "GB"];
-  let current = size;
-  let idx = 0;
-  while (current >= 1024 && idx < units.length - 1) {
-    current /= 1024;
-    idx += 1;
-  }
-  return `${current.toFixed(idx === 0 ? 0 : 1)} ${units[idx]}`;
 };
 
 const getVisibilityLabel = (value?: string) => {

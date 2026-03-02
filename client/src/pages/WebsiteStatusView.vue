@@ -166,6 +166,7 @@ import { ref, computed, onMounted } from "vue";
 import { ExternalLink, RotateCw } from "lucide-vue-next";
 import AppButton from "@/components/ui/AppButton.vue";
 import request from "@/api/request";
+import { formatDate } from "@/utils/format";
 
 interface Website {
   name: string;
@@ -409,12 +410,6 @@ const getCertStatusClass = (status: string) => {
   if (status === "expired") return "text-amber-500";
   if (status === "error") return "text-rose-500";
   return "text-gray-400 dark:text-gray-500";
-};
-
-const formatDate = (value: string) => {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString();
 };
 
 const formatUptime = (value: number) => {

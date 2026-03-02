@@ -82,6 +82,7 @@ import { ArrowLeft, MapPin, X } from 'lucide-vue-next'
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import request from '@/api/request'
+import { formatDate } from '@/utils/format'
 import { getAssetURL } from '@/utils'
 import LazyImage from '@/components/photo/LazyImage.vue'
 import { useTheme } from '@/composables/useTheme'
@@ -277,14 +278,6 @@ const fitMapBounds = () => {
 const viewPhoto = (photo: any) => {
   currentPhoto.value = photo
   photoDialogVisible.value = true
-}
-
-const formatDate = (date: string) => {
-  return new Date(date).toLocaleString('zh-CN', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  })
 }
 
 onMounted(async () => {

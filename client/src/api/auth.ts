@@ -55,7 +55,10 @@ export function createQrSessionSafe(): Promise<ApiResult<QrSessionData>> {
 }
 
 export function getQrCodeUrl(qrToken: string): string {
-  const rawBaseUrl = import.meta.env.VITE_API_BASE_URL || 'https://serve.giovan.cn'
+  const { VITE_API_BASE_URL, VITE_API_BASE_URL_LOCAL } = import.meta.env
+  const rawBaseUrl = import.meta.env.DEV
+    ? VITE_API_BASE_URL_LOCAL || VITE_API_BASE_URL || 'http://localhost:8999'
+    : VITE_API_BASE_URL || 'https://serve.giovan.cn'
   const baseUrl = rawBaseUrl.replace(/\/$/, '').endsWith('/api') 
     ? rawBaseUrl.replace(/\/$/, '') 
     : `${rawBaseUrl.replace(/\/$/, '')}/api`
