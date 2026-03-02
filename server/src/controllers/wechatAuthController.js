@@ -60,7 +60,7 @@ class WechatAuthController extends BaseController {
 
       const { openid, session_key, unionid } = data;
 
-      let user = await User.findOne({ wechatOpenId: openid });
+      let user = await User.findOne({ wechatOpenId: openid }).populate('roleIds', 'name code');
 
       if (!user) {
         this.throwHttpError('未绑定账号，请绑定账号登录', HttpStatus.BAD_REQUEST);
@@ -82,7 +82,11 @@ class WechatAuthController extends BaseController {
         wechatOpenId: openid,
         nickname: user.nickname,
         avatar: user.avatar,
-        roleIds: user.roleIds,
+        roles: (user.roleIds || []).map(r => ({
+          _id: r._id,
+          name: r.name,
+          code: r.code
+        }))
       };
       const token = issueToken(userInfoData);
 
@@ -92,7 +96,11 @@ class WechatAuthController extends BaseController {
           _id: user._id,
           nickname: user.nickname,
           avatar: user.avatar,
-          roleIds: user.roleIds,
+          roles: (user.roleIds || []).map(r => ({
+            _id: r._id,
+            name: r.name,
+            code: r.code
+          }))
         },
       }, '登录成功');
     } catch (err) {
@@ -126,7 +134,7 @@ class WechatAuthController extends BaseController {
         this.throwHttpError('该微信已绑定其他账号', HttpStatus.BAD_REQUEST);
       }
 
-      const user = await User.findOne({ username });
+      const user = await User.findOne({ username }).populate('roleIds', 'name code');
       if (!user) {
         this.throwHttpError('用户名不存在', HttpStatus.BAD_REQUEST);
       }
@@ -135,8 +143,8 @@ class WechatAuthController extends BaseController {
         this.throwHttpError('该账号已绑定其他微信', HttpStatus.BAD_REQUEST);
       }
 
-      const passOk = await verifyPassword(password, user.passwordHash);
-      if (!passOk) {
+      const passOK = await verifyPassword(password, user.passwordHash);
+      if (!passOK) {
         this.throwHttpError('密码错误', HttpStatus.BAD_REQUEST);
       }
 
@@ -151,7 +159,11 @@ class WechatAuthController extends BaseController {
         wechatOpenId: openid,
         nickname: user.nickname,
         avatar: user.avatar,
-        roleIds: user.roleIds,
+        roles: (user.roleIds || []).map(r => ({
+          _id: r._id,
+          name: r.name,
+          code: r.code
+        }))
       };
       const token = issueToken(userInfoData);
 
@@ -161,7 +173,11 @@ class WechatAuthController extends BaseController {
           _id: user._id,
           nickname: user.nickname,
           avatar: user.avatar,
-          roleIds: user.roleIds,
+          roles: (user.roleIds || []).map(r => ({
+            _id: r._id,
+            name: r.name,
+            code: r.code
+          }))
         },
       }, '绑定成功');
     } catch (err) {
@@ -183,7 +199,11 @@ class WechatAuthController extends BaseController {
         this.throwHttpError('登录已过期，请重新登录', HttpStatus.UNAUTHORIZED);
       }
 
+      console.log('getCurrentUser - tokenUser:', JSON.stringify(tokenUser));
+      
       const user = await User.findById(tokenUser._id).select('-passwordHash -wechatSessionKey');
+      console.log('getCurrentUser - user found:', user ? user._id : 'null');
+      
       if (!user) {
         this.throwHttpError('用户不存在', HttpStatus.NOT_FOUND);
       }
