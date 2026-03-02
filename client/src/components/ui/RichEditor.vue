@@ -396,7 +396,7 @@ const lowlight = createLowlight(all);
 
 const currentTextColor = ref("#000000");
 const currentHighlight = ref("#fef08a");
-const isFullscreen = ref(false);
+const isFullscreen = ref(props.autoFullscreen || false);
 
 const codeLanguages = [
   "javascript",
@@ -511,9 +511,8 @@ watch(
   () => props.autoFullscreen,
   (value) => {
     if (value && !isFullscreen.value) {
-      setTimeout(() => {
-        toggleFullscreen();
-      }, 100);
+      isFullscreen.value = true;
+      emit("fullscreen-change", true);
     }
   },
   { immediate: true }
