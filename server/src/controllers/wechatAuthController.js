@@ -82,7 +82,7 @@ class WechatAuthController extends BaseController {
         wechatOpenId: openid,
         nickname: user.nickname,
         avatar: user.avatar,
-        role: user.role,
+        roleIds: user.roleIds,
       };
       const token = issueToken(userInfoData);
 
@@ -92,7 +92,7 @@ class WechatAuthController extends BaseController {
           _id: user._id,
           nickname: user.nickname,
           avatar: user.avatar,
-          role: user.role,
+          roleIds: user.roleIds,
         },
       }, '登录成功');
     } catch (err) {
@@ -151,7 +151,7 @@ class WechatAuthController extends BaseController {
         wechatOpenId: openid,
         nickname: user.nickname,
         avatar: user.avatar,
-        role: user.role,
+        roleIds: user.roleIds,
       };
       const token = issueToken(userInfoData);
 
@@ -161,7 +161,7 @@ class WechatAuthController extends BaseController {
           _id: user._id,
           nickname: user.nickname,
           avatar: user.avatar,
-          role: user.role,
+          roleIds: user.roleIds,
         },
       }, '绑定成功');
     } catch (err) {
