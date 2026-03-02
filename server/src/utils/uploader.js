@@ -8,11 +8,13 @@ const crypto = require('crypto');
  * - 目录与访问前缀可通过环境变量配置：
  *   UPLOAD_DIR: 本地保存目录（默认 uploads）
  *   UPLOAD_BASE_URL: 对外访问前缀（默认 /uploads）
+ *   UPLOAD_BASE_URL_SERVER: 服务器地址（用于拼接完整 URL）
  */
 class Uploader {
     constructor(options = {}) {
         this.uploadDir = options.uploadDir || process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads');
         this.baseUrl = options.baseUrl || process.env.UPLOAD_BASE_URL || '/uploads';
+        this.serverUrl = options.serverUrl || process.env.UPLOAD_BASE_URL_SERVER || '';
     }
 
     async ensureDir() {
@@ -26,8 +28,11 @@ class Uploader {
     }
 
     buildPublicUrl(filename) {
-        // 确保前缀有且仅有一个斜杠分隔
-        return `${this.baseUrl.replace(/\/$/, '')}/${filename}`;
+        const relativeUrl = `${this.baseUrl.replace(/\/$/, '')}/${filename}`;
+        if (this.serverUrl) {
+            return `${this.serverUrl.replace(/\/$/, '')}${relativeUrl}`;
+        }
+        return relativeUrl;
     }
 
     /**
