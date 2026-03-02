@@ -72,7 +72,7 @@
             </p>
 
             <!-- 元信息 -->
-            <div class="flex items-center gap-4 text-sm text-slate-600 dark:text-slate-300 mb-4">
+            <div class="flex flex-wrap items-center gap-4 text-sm text-slate-600 dark:text-slate-300 mb-4">
               <span class="flex items-center gap-1">
                 <Eye class="w-4 h-4" />
                 {{ article.views }} 次浏览
@@ -81,13 +81,25 @@
                 <Heart class="w-4 h-4" />
                 {{ article.likes }} 个赞
               </span>
-              <span>
-                {{ formatDate(article.createdAt) }}
+              <span v-if="article.publishedAt">
+                发布: {{ formatDate(article.publishedAt) }}
+              </span>
+              <span v-if="article.updatedAt && article.updatedAt !== article.createdAt" class="text-amber-600 dark:text-amber-400">
+                更新: {{ formatDate(article.updatedAt) }}
               </span>
             </div>
 
             <!-- 操作按钮 -->
             <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+              <AppButton
+                variant="custom"
+                size="sm"
+                class="bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-200 border-purple-200 dark:border-purple-800"
+                @click="continueEdit(article)"
+              >
+                <Edit class="w-4 h-4" />
+                <span class="hidden sm:inline">继续编辑</span>
+              </AppButton>
               <AppButton
                 variant="custom"
                 size="sm"
@@ -149,17 +161,28 @@
     </div>
 
     <!-- 编辑对话框 -->
-    <div v-if="showDialog" class="fixed inset-0 bg-black/50 flex items-center justify-center p-2 sm:p-4 z-50">
+    <div v-if="showDialog" class="fixed inset-0 bg-black/50 flex items-center justify-center p-2 sm:p-4 z-50" :class="{ 'z-[9998]': isEditorFullscreen }">
       <div class="bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[95vh] sm:max-h-[90vh] flex flex-col overflow-hidden">
         <!-- 对话框头部 - 固定 -->
         <div class="flex-shrink-0 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 p-6 flex items-center justify-between">
-          <h2 class="text-2xl font-bold text-slate-950 dark:text-slate-50">
-            {{ editingArticle ? '编辑文章' : '新建文章' }}
-          </h2>
+          <div class="flex items-center gap-4">
+            <h2 class="text-2xl font-bold text-slate-950 dark:text-slate-50">
+              {{ editingArticle ? (isQuickEdit ? '快速编辑' : '编辑文章') : '新建文章' }}
+            </h2>
+            <span v-if="saveStatus === 'saving'" class="text-sm text-amber-600 dark:text-amber-400">
+              保存中...
+            </span>
+            <span v-else-if="saveStatus === 'saved'" class="text-sm text-green-600 dark:text-green-400">
+              已保存
+            </span>
+            <span v-else-if="saveStatus === 'error'" class="text-sm text-red-600 dark:text-red-400">
+              保存失败
+            </span>
+          </div>
           <AppButton
             variant="custom"
             size="none"
-            @click="showDialog = false"
+            @click="handleCloseDialog"
             class="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
           >
             <X class="w-6 h-6 text-slate-700 dark:text-slate-300" />
@@ -168,6 +191,23 @@
 
         <!-- 对话框内容 - 可滚动 -->
         <div class="flex-1 overflow-y-auto p-6 space-y-6">
+          <!-- 快速编辑模式：只显示标题和内容 -->
+          <template v-if="isQuickEdit">
+            <!-- 内容编辑器 -->
+            <div>
+              <QuillEditor
+                v-model="form.content"
+                placeholder="请输入文章内容..."
+                :height="400"
+                :auto-fullscreen="shouldAutoFullscreen"
+                @change="handleContentChange"
+                @fullscreen-change="handleFullscreenChange"
+              />
+            </div>
+          </template>
+
+          <!-- 完整编辑模式 -->
+          <template v-else>
           <!-- 标题 -->
           <div>
             <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
@@ -233,6 +273,30 @@
             />
           </div>
 
+          <!-- 发布时间和更新时间 -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div>
+              <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                发布时间
+              </label>
+              <input
+                v-model="form.publishedAt"
+                type="datetime-local"
+                class="w-full px-4 py-2.5 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+              <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">留空则使用当前时间</p>
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                最后更新
+              </label>
+              <div class="px-4 py-2.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg text-slate-600 dark:text-slate-400 text-sm">
+                {{ form.updatedAt ? formatDateTime(form.updatedAt) : '尚未保存' }}
+              </div>
+              <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">自动记录，不可修改</p>
+            </div>
+          </div>
+
           <!-- 内容编辑器 -->
           <div>
             <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
@@ -242,27 +306,62 @@
               v-model="form.content"
               placeholder="请输入文章内容..."
               :height="400"
+              :auto-fullscreen="shouldAutoFullscreen"
+              @change="handleContentChange"
+              @fullscreen-change="handleFullscreenChange"
             />
           </div>
+          </template>
         </div>
 
         <!-- 对话框底部 - 固定 -->
         <div class="flex-shrink-0 bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 p-4 sm:p-6 flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3">
-          <AppButton
-            variant="reset"
-            size="sm"
-            @click="showDialog = false"
-          >
-            取消
-          </AppButton>
-          <AppButton
-            variant="primary"
-            size="sm"
-            @click="saveArticle"
-            class="order-1 sm:order-2"
-          >
-            保存文章
-          </AppButton>
+          <template v-if="isQuickEdit">
+            <AppButton
+              variant="reset"
+              size="sm"
+              @click="handleCloseDialog"
+            >
+              取消
+            </AppButton>
+            <AppButton
+              variant="primary"
+              size="sm"
+              @click="saveArticle"
+              :disabled="saveStatus === 'saving' || !form.title.trim() || !form.content.trim()"
+            >
+              <Save class="w-4 h-4" />
+              保存
+            </AppButton>
+          </template>
+          <template v-else>
+            <AppButton
+              variant="reset"
+              size="sm"
+              @click="handleCloseDialog"
+            >
+              取消
+            </AppButton>
+            <AppButton
+              variant="custom"
+              size="sm"
+              class="bg-amber-500 hover:bg-amber-600 text-white dark:bg-amber-600 dark:hover:bg-amber-700"
+              @click="autoSave"
+              :disabled="saveStatus === 'saving' || !form.title.trim() || !form.content.trim()"
+            >
+              <Save class="w-4 h-4" />
+              保存草稿
+            </AppButton>
+            <AppButton
+              variant="primary"
+              size="sm"
+              @click="saveArticle"
+              class="order-1 sm:order-2"
+              :disabled="saveStatus === 'saving'"
+            >
+              保存并关闭
+            </AppButton>
+          </template>
         </div>
       </div>
     </div>
@@ -270,9 +369,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
-import { Plus, Edit, Send, Trash2, Heart, Eye, FileText, X, Pin } from 'lucide-vue-next'
-import { ElMessage } from 'element-plus'
+import { ref, onMounted, computed, watch } from 'vue'
+import { Plus, Edit, Send, Trash2, Heart, Eye, FileText, X, Pin, Save } from 'lucide-vue-next'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import AppButton from '@/components/ui/AppButton.vue'
 import QuillEditor from '@/components/ui/QuillEditor.vue'
 import ImageUpload from '@/components/ui/ImageUpload.vue'
@@ -292,6 +391,7 @@ interface Article {
   likes: number
   createdAt: string
   publishedAt?: string
+  updatedAt?: string
 }
 
 const showDialog = ref(false)
@@ -301,6 +401,12 @@ const loading = ref(false)
 const currentPage = ref(1)
 const pageSize = ref(10)
 const totalArticles = ref(0)
+const saveStatus = ref<'idle' | 'saving' | 'saved' | 'error'>('idle')
+const isEditorFullscreen = ref(false)
+const hasUnsavedChanges = ref(false)
+const shouldAutoFullscreen = ref(false)
+const isQuickEdit = ref(false)
+let autoSaveTimer: ReturnType<typeof setTimeout> | null = null
 
 // 计算是否有更多文章
 const hasMore = computed(() => articleList.value.length < totalArticles.value)
@@ -315,6 +421,8 @@ const form = ref({
   summary: '',
   category: '',
   tags: '',
+  publishedAt: '',
+  updatedAt: '',
 })
 
 const fetchArticles = async (page: number = 1) => {
@@ -358,6 +466,16 @@ const formatDate = (dateString: string) => {
   })
 }
 
+const formatDateTime = (dateString: string) => {
+  return new Date(dateString).toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
 const editArticle = (article: Article) => {
   editingArticle.value = article
   form.value = {
@@ -367,8 +485,93 @@ const editArticle = (article: Article) => {
     summary: article.summary || '',
     category: article.category || '',
     tags: Array.isArray(article.tags) ? article.tags.join(',') : '',
+    publishedAt: article.publishedAt ? new Date(article.publishedAt).toISOString().slice(0, 16) : '',
+    updatedAt: article.updatedAt || '',
   }
+  hasUnsavedChanges.value = false
+  saveStatus.value = 'idle'
+  shouldAutoFullscreen.value = false
+  isQuickEdit.value = false
   showDialog.value = true
+}
+
+const continueEdit = (article: Article) => {
+  editingArticle.value = article
+  form.value = {
+    title: article.title,
+    content: article.content,
+    coverImage: article.coverImage || '',
+    summary: article.summary || '',
+    category: article.category || '',
+    tags: Array.isArray(article.tags) ? article.tags.join(',') : '',
+    publishedAt: article.publishedAt ? new Date(article.publishedAt).toISOString().slice(0, 16) : '',
+    updatedAt: article.updatedAt || '',
+  }
+  hasUnsavedChanges.value = false
+  saveStatus.value = 'idle'
+  shouldAutoFullscreen.value = true
+  isQuickEdit.value = true
+  showDialog.value = true
+}
+
+const handleContentChange = () => {
+  hasUnsavedChanges.value = true
+  saveStatus.value = 'idle'
+  
+  if (autoSaveTimer) {
+    clearTimeout(autoSaveTimer)
+  }
+  
+  autoSaveTimer = setTimeout(() => {
+    if (hasUnsavedChanges.value && form.value.title.trim() && form.value.content.trim()) {
+      autoSave()
+    }
+  }, 3000)
+}
+
+const handleFullscreenChange = (fullscreen: boolean) => {
+  isEditorFullscreen.value = fullscreen
+  if (fullscreen) {
+    shouldAutoFullscreen.value = false
+  }
+}
+
+const autoSave = async () => {
+  if (!form.value.title.trim() || !form.value.content.trim()) {
+    return
+  }
+
+  try {
+    saveStatus.value = 'saving'
+    const articleData = {
+      ...form.value,
+      tags: form.value.tags.split(',').map(t => t.trim()).filter(Boolean),
+      status: editingArticle.value?.status || 'draft'
+    }
+
+    if (editingArticle.value) {
+      await request.put(`/admin/articles/${editingArticle.value._id}`, articleData)
+    } else {
+      const response = await request.post('/admin/articles', articleData)
+      editingArticle.value = (response as any).data
+    }
+
+    saveStatus.value = 'saved'
+    hasUnsavedChanges.value = false
+    
+    setTimeout(() => {
+      if (saveStatus.value === 'saved') {
+        saveStatus.value = 'idle'
+      }
+    }, 2000)
+  } catch (error: any) {
+    saveStatus.value = 'error'
+    setTimeout(() => {
+      if (saveStatus.value === 'error') {
+        saveStatus.value = 'idle'
+      }
+    }, 2000)
+  }
 }
 
 const saveArticle = async () => {
@@ -382,26 +585,60 @@ const saveArticle = async () => {
   }
 
   try {
+    saveStatus.value = 'saving'
     const articleData = {
       ...form.value,
       tags: form.value.tags.split(',').map(t => t.trim()).filter(Boolean)
     }
 
     if (editingArticle.value) {
-      // 更新文章
       await request.put(`/admin/articles/${editingArticle.value._id}`, articleData)
       ElMessage.success('文章更新成功')
     } else {
-      // 创建文章
       await request.post('/admin/articles', articleData)
       ElMessage.success('文章创建成功')
     }
 
+    saveStatus.value = 'saved'
+    hasUnsavedChanges.value = false
     resetForm()
     showDialog.value = false
     fetchArticles()
   } catch (error: any) {
+    saveStatus.value = 'error'
     ElMessage.error(error.response?.data?.message || '保存失败')
+  }
+}
+
+const handleCloseDialog = async () => {
+  if (hasUnsavedChanges.value) {
+    try {
+      const action = await ElMessageBox.confirm(
+        '文章有未保存的更改，是否保存？',
+        '提示',
+        {
+          confirmButtonText: '保存',
+          cancelButtonText: '不保存',
+          distinguishCancelAndClose: true,
+          type: 'warning',
+        }
+      )
+      
+      if (action === 'confirm') {
+        await saveArticle()
+      } else {
+        resetForm()
+        showDialog.value = false
+      }
+    } catch (action: any) {
+      if (action === 'cancel') {
+        resetForm()
+        showDialog.value = false
+      }
+    }
+  } else {
+    resetForm()
+    showDialog.value = false
   }
 }
 
@@ -445,9 +682,25 @@ const resetForm = () => {
     summary: '',
     category: '',
     tags: '',
+    publishedAt: '',
+    updatedAt: '',
   }
   editingArticle.value = null
+  hasUnsavedChanges.value = false
+  saveStatus.value = 'idle'
+  shouldAutoFullscreen.value = false
+  isQuickEdit.value = false
+  if (autoSaveTimer) {
+    clearTimeout(autoSaveTimer)
+    autoSaveTimer = null
+  }
 }
+
+watch([() => form.value.title, () => form.value.coverImage, () => form.value.summary, () => form.value.category, () => form.value.tags], () => {
+  if (showDialog.value) {
+    hasUnsavedChanges.value = true
+  }
+})
 
 onMounted(() => {
   fetchArticles()

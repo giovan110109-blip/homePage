@@ -137,9 +137,13 @@
                 <!-- 发布时间 -->
                 <div class="flex items-center gap-1">
                   <Calendar class="w-4 h-4" />
-                  <span>{{
-                    formatDate(article.publishedAt || article.createdAt)
-                  }}</span>
+                  <span>发布: {{ formatDate(article.publishedAt || article.createdAt) }}</span>
+                </div>
+
+                <!-- 更新时间 -->
+                <div v-if="article.updatedAt && article.updatedAt !== article.createdAt" class="flex items-center gap-1 text-amber-600 dark:text-amber-400">
+                  <Calendar class="w-4 h-4" />
+                  <span>更新: {{ formatDate(article.updatedAt) }}</span>
                 </div>
 
                 <!-- 浏览量 -->
@@ -305,6 +309,7 @@ interface Article {
   reactions?: Record<string, number>;
   publishedAt: string;
   createdAt: string;
+  updatedAt?: string;
   isTop: boolean;
 }
 

@@ -1,5 +1,5 @@
 <template>
-  <div class="rich-editor" :class="{ 'is-disabled': disabled }">
+  <div class="rich-editor" :class="{ 'is-disabled': disabled, 'is-fullscreen': isFullscreen }">
     <div v-if="editor" class="editor-toolbar">
       <div class="toolbar-group">
         <button
@@ -279,6 +279,20 @@
           <option v-for="lang in codeLanguages" :key="lang" :value="lang">{{ lang }}</option>
         </select>
       </div>
+
+      <div class="toolbar-divider"></div>
+
+      <div class="toolbar-group">
+        <button
+          type="button"
+          class="toolbar-btn"
+          @click="toggleFullscreen"
+          :title="isFullscreen ? '退出全屏' : '全屏编辑'"
+        >
+          <Maximize v-if="!isFullscreen" class="w-4 h-4" />
+          <Minimize v-else class="w-4 h-4" />
+        </button>
+      </div>
     </div>
 
     <div class="editor-content">
@@ -346,6 +360,8 @@ import {
   ImagePlus,
   Undo,
   Redo,
+  Maximize,
+  Minimize,
 } from "lucide-vue-next";
 import { ElMessage, ElMessageBox } from "element-plus";
 
@@ -358,6 +374,7 @@ const props = withDefaults(
     disabled?: boolean;
     showCharacterCount?: boolean;
     maxHeight?: string;
+    autoFullscreen?: boolean;
   }>(),
   {
     modelValue: "",
@@ -365,18 +382,21 @@ const props = withDefaults(
     disabled: false,
     showCharacterCount: true,
     maxHeight: "500px",
+    autoFullscreen: false,
   }
 );
 
 const emit = defineEmits<{
   (e: "update:modelValue", value: string): void;
   (e: "change", value: string): void;
+  (e: "fullscreen-change", isFullscreen: boolean): void;
 }>();
 
 const lowlight = createLowlight(all);
 
 const currentTextColor = ref("#000000");
 const currentHighlight = ref("#fef08a");
+const isFullscreen = ref(false);
 
 const codeLanguages = [
   "javascript",
@@ -487,6 +507,18 @@ watch(
   }
 );
 
+watch(
+  () => props.autoFullscreen,
+  (value) => {
+    if (value && !isFullscreen.value) {
+      setTimeout(() => {
+        toggleFullscreen();
+      }, 100);
+    }
+  },
+  { immediate: true }
+);
+
 const setTextColor = (color: string) => {
   currentTextColor.value = color;
   editor.value?.chain().focus().setColor(color).run();
@@ -517,14 +549,42 @@ const setLink = async () => {
 };
 
 const insertImage = async () => {
-  const result: any = await ElMessageBox.prompt("请输入图片地址", "插入图片", {
-    confirmButtonText: "确定",
-    cancelButtonText: "取消",
-  });
-
-  if (result.value) {
-    editor.value?.chain().focus().setImage({ src: result.value }).run();
-  }
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = "image/*";
+  
+  input.onchange = async (e: Event) => {
+    const file = (e.target as HTMLInputElement).files?.[0];
+    if (!file) return;
+    
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      
+      const response = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+        headers: {
+          "Authorization": localStorage.getItem("token") || "",
+        },
+      });
+      
+      if (!response.ok) throw new Error("上传失败");
+      
+      const data = await response.json();
+      const imageUrl = data.data?.url || data.url;
+      
+      if (imageUrl) {
+        editor.value?.chain().focus().setImage({ src: imageUrl }).run();
+        ElMessage.success("图片上传成功");
+      }
+    } catch (error) {
+      ElMessage.error("图片上传失败");
+      console.error("上传图片失败:", error);
+    }
+  };
+  
+  input.click();
 };
 
 const insertImageFromURL = async () => {
@@ -548,8 +608,22 @@ const setCodeBlockLanguage = (language: string) => {
   }
 };
 
+const toggleFullscreen = () => {
+  isFullscreen.value = !isFullscreen.value;
+  emit("fullscreen-change", isFullscreen.value);
+  
+  if (isFullscreen.value) {
+    document.body.style.overflow = "hidden";
+  } else {
+    document.body.style.overflow = "";
+  }
+};
+
 onBeforeUnmount(() => {
   editor.value?.destroy();
+  if (isFullscreen.value) {
+    document.body.style.overflow = "";
+  }
 });
 </script>
 
@@ -569,6 +643,21 @@ onBeforeUnmount(() => {
 .rich-editor.is-disabled {
   opacity: 0.6;
   pointer-events: none;
+}
+
+.rich-editor.is-fullscreen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9999;
+  max-height: 100vh;
+  border-radius: 0;
+}
+
+.rich-editor.is-fullscreen .editor-content {
+  max-height: calc(100vh - 120px);
 }
 
 .editor-toolbar {
@@ -734,6 +823,36 @@ onBeforeUnmount(() => {
 .editor-content :deep(.tiptap ol) {
   padding-left: 1.5em;
   margin: 0.5em 0;
+}
+
+.editor-content :deep(.tiptap ul) {
+  list-style-type: disc;
+}
+
+.editor-content :deep(.tiptap ol) {
+  list-style-type: decimal;
+}
+
+.editor-content :deep(.tiptap ul li),
+.editor-content :deep(.tiptap ol li) {
+  display: list-item;
+  margin: 0.25em 0;
+}
+
+.editor-content :deep(.tiptap ul ul) {
+  list-style-type: circle;
+}
+
+.editor-content :deep(.tiptap ul ul ul) {
+  list-style-type: square;
+}
+
+.editor-content :deep(.tiptap ol ol) {
+  list-style-type: lower-alpha;
+}
+
+.editor-content :deep(.tiptap ol ol ol) {
+  list-style-type: lower-roman;
 }
 
 .editor-content :deep(.tiptap blockquote) {

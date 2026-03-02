@@ -5,8 +5,10 @@
     :disabled="disabled"
     :show-character-count="showCharacterCount"
     :max-height="maxHeight || (height ? `${height}px` : '500px')"
+    :auto-fullscreen="autoFullscreen"
     @update:model-value="$emit('update:modelValue', $event)"
     @change="$emit('change', $event)"
+    @fullscreen-change="$emit('fullscreen-change', $event)"
   />
 </template>
 
@@ -21,6 +23,7 @@ withDefaults(
     showCharacterCount?: boolean;
     maxHeight?: string;
     height?: number;
+    autoFullscreen?: boolean;
   }>(),
   {
     modelValue: "",
@@ -29,11 +32,13 @@ withDefaults(
     showCharacterCount: true,
     maxHeight: "",
     height: 0,
+    autoFullscreen: false,
   }
 );
 
 defineEmits<{
   (e: "update:modelValue", value: string): void;
   (e: "change", value: string): void;
+  (e: "fullscreen-change", isFullscreen: boolean): void;
 }>();
 </script>
