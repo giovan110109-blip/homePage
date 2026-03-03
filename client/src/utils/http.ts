@@ -72,7 +72,8 @@ export function createHttpClient(): AxiosInstance {
       config.headers["x-request-timestamp"] = Date.now().toString();
 
       const url = config.url || "";
-      if (url.startsWith("/admin") && !url.includes("/refresh")) {
+      const needsAuth = url.startsWith("/admin") || url.startsWith("/photos/upload") || url.startsWith("/photos/batch-delete");
+      if (needsAuth && !url.includes("/refresh")) {
         const authStore = useAuthStore();
         if (authStore.token) {
           config.headers.Authorization = `Bearer ${authStore.token}`;
@@ -124,7 +125,8 @@ export function createHttpClient(): AxiosInstance {
       const url = error?.config?.url || "";
 
       if (status === 401) {
-        if (url.startsWith("/admin") && url !== "/admin/login") {
+        const needsAuth = url.startsWith("/admin") || url.startsWith("/photos/upload") || url.startsWith("/photos/batch-delete");
+        if (needsAuth && url !== "/admin/login") {
           error.message = "登录已过期，请重新登录";
           const authStore = useAuthStore();
           authStore.logout();

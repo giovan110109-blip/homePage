@@ -897,7 +897,7 @@ const handleDrop = (e: DragEvent) => {
  * 将文件加入上传队列
  */
 const uploadFiles = async (files: File[]) => {
-  uploadQueueStore.enqueueFiles(files);
+  await uploadQueueStore.enqueueFiles(files);
 };
 
 const loadFailedTasks = async () => {

@@ -1,6 +1,9 @@
 import { defineStore } from 'pinia'
+import { ref, computed } from 'vue'
 import request from '@/api/request'
 import { ElMessage } from 'element-plus'
+import { wsService } from '@/utils/websocket'
+import { useAuthStore } from '@/stores/auth'
 
 export interface UploadingFile {
   id: string
@@ -33,7 +36,7 @@ export const useUploadQueueStore = defineStore('uploadQueue', () => {
   const uploadingFiles = ref<UploadingFile[]>([])
   const uploadQueue = ref<UploadingFile[]>([])
   const isUploading = ref(false)
-  const taskPoller = ref<number | null>(null)
+  const wsUnsub = ref<(() => void) | null>(null)
 
   const taskStats = ref({
     total: 0,
@@ -49,7 +52,29 @@ export const useUploadQueueStore = defineStore('uploadQueue', () => {
   const queuedCount = computed(() => uploadingFiles.value.filter(f => f.status === 'queued').length)
   const uploadingCount = computed(() => uploadingFiles.value.filter(f => f.status === 'uploading').length)
 
-  const enqueueFiles = (files: File[]) => {
+  const startWs = async () => {
+    if (wsUnsub.value) return
+    const token = useAuthStore().token
+    if (!token) return
+
+    await wsService.connect()
+    wsUnsub.value = wsService.subscribe(token, (data: any) => {
+      const f = uploadingFiles.value.find(x => x.taskId === data.taskId)
+      if (!f) return
+      f.status = data.status === 'completed' ? 'completed' : data.status === 'failed' ? 'error' : 'processing'
+      f.stage = data.stage
+      f.progress = Math.max(f.progress, data.progress || 0)
+      if (data.status === 'completed') {
+        f.progress = 100
+        setTimeout(() => {
+          const i = uploadingFiles.value.findIndex(x => x.id === f.id)
+          if (i > -1) uploadingFiles.value.splice(i, 1)
+        }, 2000)
+      }
+    })
+  }
+
+  const enqueueFiles = async (files: File[]) => {
     for (const file of files) {
       const uploadFile: UploadingFile = {
         id: `${Date.now()}_${Math.random()}`,
@@ -63,6 +88,8 @@ export const useUploadQueueStore = defineStore('uploadQueue', () => {
       uploadingFiles.value.push(uploadFile)
       uploadQueue.value.push(uploadFile)
     }
+
+    await startWs()
 
     if (!isUploading.value) {
       processUploadQueue()
@@ -109,7 +136,6 @@ export const useUploadQueueStore = defineStore('uploadQueue', () => {
         uploadFile.taskId = res.data.taskId
         uploadFile.status = 'processing'
         uploadFile.progress = 0
-        startTaskPolling()
       } else {
         throw new Error(res?.message || '上传失败')
       }
@@ -128,57 +154,6 @@ export const useUploadQueueStore = defineStore('uploadQueue', () => {
       uploadFile.createdTime = Date.now()
       ElMessage.error(`${uploadFile.name}: ${uploadFile.error}`)
     }
-  }
-
-  const startTaskPolling = () => {
-    if (taskPoller.value) return
-
-    taskPoller.value = window.setInterval(async () => {
-      const pending = uploadingFiles.value.filter((file) => file.taskId && file.status === 'processing')
-      if (pending.length === 0) {
-        if (taskPoller.value) {
-          clearInterval(taskPoller.value)
-          taskPoller.value = null
-        }
-        return
-      }
-
-      try {
-        const taskIds = pending.map((file) => file.taskId)
-        const res: any = await request.post('/photos/tasks/batch', { taskIds })
-        if (!res?.success) return
-
-        const tasks = res.data?.tasks || []
-        const taskMap = new Map(tasks.map((t: any) => [t.taskId, t]))
-
-        for (const uploadFile of pending) {
-          const task = taskMap.get(uploadFile.taskId) as any
-          if (!task) continue
-
-          const { status, stage, progress, error } = task
-          uploadFile.status = status === 'completed' ? 'completed' : status === 'failed' ? 'error' : 'processing'
-          uploadFile.stage = stage
-          uploadFile.progress = Math.max(uploadFile.progress, Math.min(Math.max(progress || 0, 0), 100))
-
-          if (status === 'completed') {
-            uploadFile.progress = 100
-            uploadFile.createdTime = Date.now()
-            loadTaskStats()
-            setTimeout(() => {
-              const index = uploadingFiles.value.findIndex(f => f.id === uploadFile.id)
-              if (index > -1) uploadingFiles.value.splice(index, 1)
-            }, 3000)
-          } else if (status === 'failed') {
-            uploadFile.error = error?.message || '处理失败'
-            uploadFile.createdTime = Date.now()
-            loadFailedTasks()
-            loadTaskStats()
-          }
-        }
-      } catch (error) {
-        console.error('轮询任务状态失败:', error)
-      }
-    }, 1000)
   }
 
   const loadTaskStats = async () => {
@@ -218,7 +193,7 @@ export const useUploadQueueStore = defineStore('uploadQueue', () => {
         ElMessage.success('已重试')
         loadFailedTasks()
         loadTaskStats()
-        startTaskPolling()
+        await startWs()
       } else {
         throw new Error(res?.message || '重试失败')
       }
@@ -239,7 +214,7 @@ export const useUploadQueueStore = defineStore('uploadQueue', () => {
         ElMessage.success('已重试')
         loadFailedTasks()
         loadTaskStats()
-        startTaskPolling()
+        await startWs()
       } else {
         throw new Error(res?.message || '重试失败')
       }

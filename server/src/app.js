@@ -36,6 +36,7 @@ const accessLogger = require("./middleware/accessLogger");
 const uploadQueue = require("./services/uploadQueueManager");
 const timeoutMiddleware = require("./middleware/timeout");
 const appLogger = require("./utils/logger");
+const websocketService = require("./services/websocket");
 
 // 连接数据库
 connectDB();
@@ -232,6 +233,7 @@ registerRoutes(app);
 // 启动服务器
 const server = app.listen(port, () => {
   appLogger.info(`Server running at http://localhost:${port}`);
+  websocketService.init(server);
 });
 
 // 设置服务器超时（用于处理大文件上传）

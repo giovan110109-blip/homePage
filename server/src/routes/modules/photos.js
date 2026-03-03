@@ -1,10 +1,28 @@
 const Router = require('@koa/router')
 const photoController = require('../../controllers/photoController')
+const { verifyToken } = require('../../utils/adminTokenStore')
+
+const auth = async (ctx, next) => {
+  const token = ctx.get('authorization')?.replace('Bearer ', '') || ctx.get('x-admin-token')
+  if (!token) {
+    ctx.status = 401
+    ctx.body = { code: 401, message: '未登录', success: false }
+    return
+  }
+  const user = await verifyToken(token)
+  if (!user) {
+    ctx.status = 401
+    ctx.body = { code: 401, message: '登录已过期', success: false }
+    return
+  }
+  ctx.state.user = user
+  await next()
+}
 
 const router = new Router({ prefix: '/api/photos' })
 
-// 照片上传
-router.post('/upload', photoController.upload.bind(photoController))
+// 照片上传（需要认证）
+router.post('/upload', auth, photoController.upload.bind(photoController))
 
 // 任务状态 - 注意：具体路由必须在参数路由之前
 router.post('/tasks/batch', photoController.getTaskStatuses.bind(photoController))

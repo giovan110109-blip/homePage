@@ -10,6 +10,7 @@ const os = require("os");
 
 const UploadTask = require("../models/uploadTask");
 const imageProcessing = require("./imageProcessing");
+const websocketService = require("./websocket");
 
 const {
   extractBaseName,
@@ -120,12 +121,14 @@ class UploadQueueManager extends EventEmitter {
       task.status = "processing";
       task.attempts += 1;
       await task.save();
+      await this.broadcast(task);
 
       this.emit("taskStarted", task);
 
       task.stage = "upload";
       task.progress = 10;
       await task.save();
+      await this.broadcast(task);
 
       const filePath = path.join(this.uploadDir, task.storageKey);
       const derivedBaseName = extractBaseName(task);
@@ -183,6 +186,7 @@ class UploadQueueManager extends EventEmitter {
     task.photoId = result.photoId;
     task.completedAt = new Date();
     await task.save();
+    await this.broadcast(task);
 
     console.log(`✅ 视频任务完成: ${task.taskId} -> Photo ${result.photoId}`);
     this.emit("taskCompleted", task, result.photo);
@@ -192,6 +196,7 @@ class UploadQueueManager extends EventEmitter {
     task.stage = "format_conversion";
     task.progress = 20;
     await task.save();
+    await this.broadcast(task);
 
     const processed = await imageProcessing.processImage(
       fileBuffer,
@@ -203,12 +208,14 @@ class UploadQueueManager extends EventEmitter {
     task.stage = "metadata_extraction";
     task.progress = 35;
     await task.save();
+    await this.broadcast(task);
 
     const { photo } = await this.imageProcessor.process(task, processed, fileBuffer);
 
     task.stage = "database_save";
     task.progress = 90;
     await task.save();
+    await this.broadcast(task);
 
     task.storageKey = photo.storageKey;
     task.status = "completed";
@@ -216,6 +223,7 @@ class UploadQueueManager extends EventEmitter {
     task.photoId = photo._id;
     task.completedAt = new Date();
     await task.save();
+    await this.broadcast(task);
 
     console.log(`✅ 任务完成: ${task.taskId} -> Photo ${photo._id}`);
     this.emit("taskCompleted", task, photo);
@@ -286,6 +294,16 @@ class UploadQueueManager extends EventEmitter {
     });
 
     return task;
+  }
+
+  async broadcast(task) {
+    if (!task.uploadedBy) return;
+    await websocketService.broadcast(task.uploadedBy, {
+      taskId: task.taskId,
+      status: task.status,
+      stage: task.stage,
+      progress: task.progress
+    });
   }
 }
 

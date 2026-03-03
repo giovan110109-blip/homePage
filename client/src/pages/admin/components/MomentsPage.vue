@@ -474,7 +474,7 @@ const handleFileUpload = async (e: Event) => {
   if (!files || files.length === 0) return
 
   const fileArray = Array.from(files)
-  uploadQueue.enqueueFiles(fileArray)
+  await uploadQueue.enqueueFiles(fileArray)
 
   ElMessage.success(`已添加 ${fileArray.length} 个文件到上传队列`)
 

@@ -94,6 +94,7 @@ class WechatAuthController extends BaseController {
 
       const userInfoData = {
         _id: user._id,
+        username: user.username,
         wechatOpenId: openid,
         nickname: user.nickname,
         avatar: user.avatar,
@@ -171,6 +172,7 @@ class WechatAuthController extends BaseController {
 
       const userInfoData = {
         _id: user._id,
+        username: user.username,
         wechatOpenId: openid,
         nickname: user.nickname,
         avatar: user.avatar,
@@ -214,7 +216,7 @@ class WechatAuthController extends BaseController {
         this.throwHttpError('登录已过期，请重新登录', HttpStatus.UNAUTHORIZED);
       }
       
-      const user = await User.findById(tokenUser.userId).select('-passwordHash -wechatSessionKey');
+      const user = await User.findById(tokenUser._id).select('-passwordHash -wechatSessionKey');
       
       if (!user) {
         this.throwHttpError('用户不存在', HttpStatus.NOT_FOUND);
