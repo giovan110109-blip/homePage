@@ -2,29 +2,11 @@ const crypto = require('crypto');
 const BaseController = require('../utils/baseController');
 const { HttpStatus } = require('../utils/response');
 const User = require('../models/user');
+const QrSession = require('../models/qrSession');
 const { issueToken, verifyToken } = require('../utils/adminTokenStore');
 const { verifyPassword } = require('../utils/password');
 
-const qrSessions = new Map();
 const QR_SESSION_TTL = 5 * 60 * 1000;
-
-const cleanupQrSessions = () => {
-  const now = Date.now();
-  for (const [token, session] of qrSessions.entries()) {
-    if (now - session.createdAt.getTime() > QR_SESSION_TTL) {
-      qrSessions.delete(token);
-    }
-  }
-};
-
-const qrCleanupTimer = setInterval(cleanupQrSessions, 60 * 1000);
-
-const gracefulShutdown = () => {
-  clearInterval(qrCleanupTimer);
-};
-
-process.on('SIGTERM', gracefulShutdown);
-process.on('SIGINT', gracefulShutdown);
 
 const getWechatConfig = () => ({
   appid: process.env.WECHAT_APPID,
@@ -277,7 +259,7 @@ class WechatAuthController extends BaseController {
         this.throwHttpError('登录已过期', HttpStatus.UNAUTHORIZED);
       }
 
-      const session = qrSessions.get(qrToken);
+      const session = await QrSession.findOne({ qrToken });
       if (!session) {
         this.throwHttpError('二维码已过期', HttpStatus.BAD_REQUEST);
       }
@@ -294,11 +276,12 @@ class WechatAuthController extends BaseController {
       session.status = 'scanned';
       session.userId = user._id;
       session.userInfo = {
-        _id: user._id,
+        _id: user._id.toString(),
         nickname: user.nickname,
         avatar: user.avatar,
         role: user.role,
       };
+      await session.save();
 
       this.ok(ctx, { status: 'scanned' }, '扫码成功');
     } catch (err) {
@@ -326,7 +309,7 @@ class WechatAuthController extends BaseController {
         this.throwHttpError('登录已过期', HttpStatus.UNAUTHORIZED);
       }
 
-      const session = qrSessions.get(qrToken);
+      const session = await QrSession.findOne({ qrToken });
       if (!session || session.status !== 'scanned') {
         this.throwHttpError('无效的授权请求', HttpStatus.BAD_REQUEST);
       }
@@ -340,6 +323,7 @@ class WechatAuthController extends BaseController {
 
       const pcToken = issueToken(session.userInfo);
       session.pcToken = pcToken;
+      await session.save();
 
       this.ok(ctx, { status: 'confirmed' }, '授权成功');
     } catch (err) {
@@ -350,14 +334,12 @@ class WechatAuthController extends BaseController {
   async createQrSession(ctx) {
     try {
       const qrToken = crypto.randomBytes(16).toString('hex');
-      qrSessions.set(qrToken, {
+      
+      await QrSession.create({
+        qrToken,
         status: 'pending',
-        createdAt: new Date(),
+        expiresAt: new Date(Date.now() + QR_SESSION_TTL),
       });
-
-      setTimeout(() => {
-        qrSessions.delete(qrToken);
-      }, 5 * 60 * 1000);
 
       this.ok(ctx, { qrToken }, '创建成功');
     } catch (err) {
@@ -368,7 +350,7 @@ class WechatAuthController extends BaseController {
   async checkQrStatus(ctx) {
     try {
       const { qrToken } = ctx.params;
-      const session = qrSessions.get(qrToken);
+      const session = await QrSession.findOne({ qrToken });
 
       if (!session) {
         this.throwHttpError('二维码已过期', HttpStatus.NOT_FOUND);
@@ -385,7 +367,7 @@ class WechatAuthController extends BaseController {
       if (session.status === 'confirmed' && session.pcToken) {
         result.token = session.pcToken;
         result.user = session.userInfo;
-        qrSessions.delete(qrToken);
+        await QrSession.deleteOne({ qrToken });
       }
 
       this.ok(ctx, result);
