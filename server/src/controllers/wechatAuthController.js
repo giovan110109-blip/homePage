@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const mongoose = require('mongoose');
 const BaseController = require('../utils/baseController');
 const { HttpStatus } = require('../utils/response');
 const User = require('../models/user');
@@ -299,8 +300,12 @@ class WechatAuthController extends BaseController {
         this.throwHttpError('二维码已被使用', HttpStatus.BAD_REQUEST);
       }
 
-      const user = await User.findById(tokenUser._id).populate('roleIds', 'name code');
+      const userId = mongoose.Types.ObjectId.isValid(tokenUser._id) 
+        ? new mongoose.Types.ObjectId(tokenUser._id) 
+        : tokenUser._id;
+      const user = await User.findById(userId).populate('roleIds', 'name code');
       if (!user) {
+        console.error('用户不存在, tokenUser._id:', tokenUser._id, '转换后的userId:', userId);
         this.throwHttpError('用户不存在', HttpStatus.NOT_FOUND);
       }
 
