@@ -103,7 +103,7 @@ class WechatAuthController extends BaseController {
           code: r.code
         }))
       };
-      const token = issueToken(userInfoData);
+      const token = await issueToken(userInfoData);
 
       this.ok(ctx, {
         token,
@@ -180,7 +180,7 @@ class WechatAuthController extends BaseController {
           code: r.code
         }))
       };
-      const token = issueToken(userInfoData);
+      const token = await issueToken(userInfoData);
 
       this.ok(ctx, {
         token,
@@ -208,16 +208,13 @@ class WechatAuthController extends BaseController {
       }
 
       const token = authHeader.slice(7);
-      const tokenUser = verifyToken(token);
+      const tokenUser = await verifyToken(token);
 
       if (!tokenUser) {
         this.throwHttpError('登录已过期，请重新登录', HttpStatus.UNAUTHORIZED);
       }
-
-      console.log('getCurrentUser - tokenUser:', JSON.stringify(tokenUser));
       
-      const user = await User.findById(tokenUser._id).select('-passwordHash -wechatSessionKey');
-      console.log('getCurrentUser - user found:', user ? user._id : 'null');
+      const user = await User.findById(tokenUser.userId).select('-passwordHash -wechatSessionKey');
       
       if (!user) {
         this.throwHttpError('用户不存在', HttpStatus.NOT_FOUND);
@@ -237,7 +234,7 @@ class WechatAuthController extends BaseController {
       }
 
       const token = authHeader.slice(7);
-      const tokenUser = verifyToken(token);
+      const tokenUser = await verifyToken(token);
 
       if (!tokenUser) {
         this.throwHttpError('登录已过期，请重新登录', HttpStatus.UNAUTHORIZED);
@@ -248,7 +245,7 @@ class WechatAuthController extends BaseController {
         this.throwHttpError('缺少用户信息', HttpStatus.BAD_REQUEST);
       }
 
-      const user = await User.findById(tokenUser._id);
+      const user = await User.findById(tokenUser.userId);
       if (!user) {
         this.throwHttpError('用户不存在', HttpStatus.NOT_FOUND);
       }
@@ -285,7 +282,7 @@ class WechatAuthController extends BaseController {
       }
 
       const token = authHeader.slice(7);
-      const tokenUser = verifyToken(token);
+      const tokenUser = await verifyToken(token);
 
       if (!tokenUser) {
         this.throwHttpError('登录已过期', HttpStatus.UNAUTHORIZED);
@@ -300,12 +297,8 @@ class WechatAuthController extends BaseController {
         this.throwHttpError('二维码已被使用', HttpStatus.BAD_REQUEST);
       }
 
-      const userId = mongoose.Types.ObjectId.isValid(tokenUser._id) 
-        ? new mongoose.Types.ObjectId(tokenUser._id) 
-        : tokenUser._id;
-      const user = await User.findById(userId).populate('roleIds', 'name code');
+      const user = await User.findById(tokenUser.userId).populate('roleIds', 'name code');
       if (!user) {
-        console.error('用户不存在, tokenUser._id:', tokenUser._id, '转换后的userId:', userId);
         this.throwHttpError('用户不存在', HttpStatus.NOT_FOUND);
       }
 
@@ -343,7 +336,7 @@ class WechatAuthController extends BaseController {
       }
 
       const token = authHeader.slice(7);
-      const tokenUser = verifyToken(token);
+      const tokenUser = await verifyToken(token);
 
       if (!tokenUser) {
         this.throwHttpError('登录已过期', HttpStatus.UNAUTHORIZED);
@@ -354,14 +347,14 @@ class WechatAuthController extends BaseController {
         this.throwHttpError('无效的授权请求', HttpStatus.BAD_REQUEST);
       }
 
-      if (tokenUser._id.toString() !== session.userId.toString()) {
+      if (tokenUser.userId.toString() !== session.userId.toString()) {
         this.throwHttpError('用户不匹配', HttpStatus.FORBIDDEN);
       }
 
       session.status = 'confirmed';
       session.confirmedAt = new Date();
 
-      const pcToken = issueToken(session.userInfo);
+      const pcToken = await issueToken(session.userInfo);
       session.pcToken = pcToken;
       await session.save();
 
