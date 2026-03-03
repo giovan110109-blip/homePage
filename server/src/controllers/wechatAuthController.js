@@ -8,6 +8,9 @@ const { verifyPassword } = require('../utils/password');
 
 const QR_SESSION_TTL = 5 * 60 * 1000;
 
+let cachedAccessToken = null;
+let accessTokenExpiresAt = 0;
+
 const getWechatConfig = () => ({
   appid: process.env.WECHAT_APPID,
   secret: process.env.WECHAT_SECRET,
@@ -18,6 +21,34 @@ const fetchWechatSession = async (code) => {
   const url = `https://api.weixin.qq.com/sns/jscode2session?appid=${appid}&secret=${secret}&js_code=${code}&grant_type=authorization_code`;
   const response = await fetch(url);
   return response.json();
+};
+
+const getAccessToken = async () => {
+  const now = Date.now();
+  
+  if (cachedAccessToken && now < accessTokenExpiresAt) {
+    return cachedAccessToken;
+  }
+
+  const { appid, secret } = getWechatConfig();
+  if (!appid || !secret) {
+    throw new Error('微信小程序配置缺失');
+  }
+
+  const tokenRes = await fetch(
+    `https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=${appid}&secret=${secret}`
+  );
+  const tokenData = await tokenRes.json();
+
+  if (tokenData.errcode) {
+    console.error('获取access_token失败:', tokenData);
+    throw new Error(`获取access_token失败: ${tokenData.errmsg}`);
+  }
+
+  cachedAccessToken = tokenData.access_token;
+  accessTokenExpiresAt = now + (tokenData.expires_in - 300) * 1000;
+
+  return cachedAccessToken;
 };
 
 class WechatAuthController extends BaseController {
@@ -268,7 +299,7 @@ class WechatAuthController extends BaseController {
         this.throwHttpError('二维码已被使用', HttpStatus.BAD_REQUEST);
       }
 
-      const user = await User.findById(tokenUser._id);
+      const user = await User.findById(tokenUser._id).populate('roleIds', 'name code');
       if (!user) {
         this.throwHttpError('用户不存在', HttpStatus.NOT_FOUND);
       }
@@ -279,7 +310,11 @@ class WechatAuthController extends BaseController {
         _id: user._id.toString(),
         nickname: user.nickname,
         avatar: user.avatar,
-        role: user.role,
+        roles: (user.roleIds || []).map(r => ({
+          _id: r._id,
+          name: r.name,
+          code: r.code
+        }))
       };
       await session.save();
 
@@ -384,23 +419,17 @@ class WechatAuthController extends BaseController {
         this.throwHttpError('缺少qrToken', HttpStatus.BAD_REQUEST);
       }
 
-      const { appid, secret } = getWechatConfig();
-      if (!appid || !secret) {
-        console.error('微信小程序配置缺失: WECHAT_APPID 或 WECHAT_SECRET 未设置');
-        this.throwHttpError('微信小程序配置缺失', HttpStatus.INTERNAL_ERROR);
+      const session = await QrSession.findOne({ qrToken });
+      if (!session) {
+        this.throwHttpError('二维码会话不存在或已过期', HttpStatus.NOT_FOUND);
       }
 
-      const tokenRes = await fetch(
-        `https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=${appid}&secret=${secret}`
-      );
-      const tokenData = await tokenRes.json();
-
-      if (tokenData.errcode) {
-        console.error('获取access_token失败:', tokenData);
-        this.throwHttpError(`获取access_token失败: ${tokenData.errmsg}`, HttpStatus.INTERNAL_ERROR);
+      let accessToken;
+      try {
+        accessToken = await getAccessToken();
+      } catch (err) {
+        this.throwHttpError(err.message || '获取access_token失败', HttpStatus.INTERNAL_ERROR);
       }
-
-      const accessToken = tokenData.access_token;
 
       const qrRes = await fetch(
         `https://api.weixin.qq.com/wxa/getwxacodeunlimit?access_token=${accessToken}`,

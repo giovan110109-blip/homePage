@@ -9,6 +9,11 @@ interface AdminUser {
   avatar?: string
   email?: string
   roleIds?: string[]
+  roles?: Array<{
+    _id: string
+    name: string
+    code: string
+  }>
 }
 
 interface MenuItem {

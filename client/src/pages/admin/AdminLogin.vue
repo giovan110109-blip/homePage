@@ -146,6 +146,27 @@
                 <span class="text-xs">加载中...</span>
               </div>
 
+              <!-- 已扫码 - 显示用户信息 -->
+              <div
+                v-else-if="qrStatus === 'scanned' && scannedUserInfo"
+                class="absolute inset-0 bg-white flex flex-col items-center justify-center gap-2 rounded-lg"
+              >
+                <img
+                  v-if="scannedUserInfo.avatar"
+                  :src="scannedUserInfo.avatar"
+                  alt="用户头像"
+                  class="w-16 h-16 rounded-full object-cover border-2 border-green-500"
+                />
+                <div
+                  v-else
+                  class="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center text-green-600 text-xl font-bold"
+                >
+                  {{ scannedUserInfo.nickname?.charAt(0) || 'U' }}
+                </div>
+                <span class="text-sm font-medium text-gray-700">{{ scannedUserInfo.nickname || '用户' }}</span>
+                <span class="text-xs text-green-600">请在手机上确认登录</span>
+              </div>
+
               <!-- 二维码图片 -->
               <img
                 v-else-if="qrCodeUrl && !qrExpired"
@@ -166,13 +187,20 @@
                 </AppButton>
               </div>
             </div>
-            <span class="text-center">{{
-              qrStatus === "scanned"
-                ? "已扫码，请在手机上确认"
-                : showQrCode
-                  ? "扫码/一键登录"
-                  : "点击上方按钮显示二维码"
-            }}</span>
+            
+            <!-- 状态提示 -->
+            <div class="text-center">
+              <span v-if="qrStatus === 'scanned' && scannedUserInfo" class="text-green-600 font-medium">
+                已扫码，等待确认...
+              </span>
+              <span v-else-if="showQrCode && !qrExpired" class="flex flex-col items-center gap-1">
+                <span>扫码/一键登录</span>
+                <span v-if="countdown > 0" class="text-xs text-gray-500">
+                  二维码 {{ Math.floor(countdown / 60) }}:{{ String(countdown % 60).padStart(2, '0') }} 后过期
+                </span>
+              </span>
+              <span v-else-if="!showQrCode">点击上方按钮显示二维码</span>
+            </div>
           </div>
         </div>
       </el-card>
@@ -188,7 +216,7 @@ import { ElMessage } from "element-plus";
 import { ArrowLeft, RefreshCw, QrCode } from "lucide-vue-next";
 import AppButton from "@/components/ui/AppButton.vue";
 import { useAuthStore } from "@/stores/auth";
-import { createQrSession, getQrCodeUrl, checkQrStatus } from "@/api/auth";
+import { createQrSession, getQrCodeUrl, checkQrStatus, type QrStatusData } from "@/api/auth";
 
 const router = useRouter();
 const route = useRoute();
@@ -212,7 +240,10 @@ const qrToken = ref("");
 const qrCodeUrl = ref("");
 const qrStatus = ref<"pending" | "scanned" | "confirmed">("pending");
 const qrExpired = ref(false);
+const scannedUserInfo = ref<QrStatusData["userInfo"]>(null);
+const countdown = ref(0);
 let pollTimer: ReturnType<typeof setInterval> | null = null;
+let countdownTimer: ReturnType<typeof setInterval> | null = null;
 
 const handleLogin = async () => {
   if (!formRef.value) return;
@@ -251,6 +282,7 @@ const initQrLogin = async () => {
   try {
     qrExpired.value = false;
     qrStatus.value = "pending";
+    scannedUserInfo.value = null;
     loadingQr.value = true;
 
     const res = await createQrSession();
@@ -258,6 +290,7 @@ const initQrLogin = async () => {
     qrCodeUrl.value = getQrCodeUrl(qrToken.value);
 
     loadingQr.value = false;
+    startCountdown();
     startPolling();
   } catch (error) {
     console.error("initQrLogin error:", error);
@@ -266,39 +299,59 @@ const initQrLogin = async () => {
   }
 };
 
+const startCountdown = () => {
+  stopCountdown();
+  countdown.value = 300; // 5分钟 = 300秒
+
+  countdownTimer = setInterval(() => {
+    countdown.value--;
+    if (countdown.value <= 0) {
+      stopCountdown();
+      qrExpired.value = true;
+      stopPolling();
+    }
+  }, 1000);
+};
+
+const stopCountdown = () => {
+  if (countdownTimer) {
+    clearInterval(countdownTimer);
+    countdownTimer = null;
+  }
+};
+
 const startPolling = () => {
   stopPolling();
 
-  let pollCount = 0;
-  const maxPolls = 45; // 最多轮询45次 (约7.5分钟，10秒一次)
-
   pollTimer = setInterval(async () => {
     if (!qrToken.value) return;
-
-    pollCount++;
-    if (pollCount > maxPolls) {
-      qrExpired.value = true;
-      stopPolling();
-      return;
-    }
 
     try {
       const res = await checkQrStatus(qrToken.value);
       qrStatus.value = res.data.status;
 
+      if (res.data.status === "scanned" && res.data.userInfo) {
+        scannedUserInfo.value = res.data.userInfo;
+      }
+
       if (res.data.status === "confirmed" && res.data.token) {
         stopPolling();
+        stopCountdown();
         authStore.token = res.data.token;
         authStore.user = res.data.user || null;
         ElMessage.success("登录成功");
         const redirect = (route.query.redirect as string) || "/admin";
         router.replace(redirect);
       }
-    } catch {
-      qrExpired.value = true;
-      stopPolling();
+    } catch (error: any) {
+      const status = error?.response?.status || error?.status;
+      if (status === 404 || error?.message?.includes('过期')) {
+        qrExpired.value = true;
+        stopPolling();
+        stopCountdown();
+      }
     }
-  }, 10000); // 10秒轮询一次
+  }, 3000); // 3秒轮询一次
 };
 
 const stopPolling = () => {
@@ -310,5 +363,6 @@ const stopPolling = () => {
 
 onUnmounted(() => {
   stopPolling();
+  stopCountdown();
 });
 </script>

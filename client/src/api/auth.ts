@@ -27,14 +27,22 @@ export interface QrStatusData {
     _id: string
     nickname?: string
     avatar?: string
-    role: string
+    roles?: Array<{
+      _id: string
+      name: string
+      code: string
+    }>
   }
   token?: string
   user?: {
     _id: string
     nickname?: string
     avatar?: string
-    role: string
+    roles?: Array<{
+      _id: string
+      name: string
+      code: string
+    }>
   }
 }
 

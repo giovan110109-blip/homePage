@@ -19,7 +19,11 @@ const QrSessionSchema = new mongoose.Schema({
     _id: String,
     nickname: String,
     avatar: String,
-    role: String
+    roles: [{
+      _id: String,
+      name: String,
+      code: String
+    }]
   },
   pcToken: {
     type: String
