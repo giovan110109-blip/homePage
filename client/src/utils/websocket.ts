@@ -4,6 +4,10 @@ class WsService {
   private ws: WebSocket | null = null
   private url: string
   private handlers = new Map<string, Set<Handler>>()
+  private reconnectAttempts = 0
+  private maxReconnectAttempts = 5
+  private reconnectDelay = 1000
+  private manualClose = false
 
   constructor() {
     const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:'
@@ -19,17 +23,42 @@ class WsService {
   connect(): Promise<void> {
     if (this.ws?.readyState === WebSocket.OPEN) return Promise.resolve()
     
+    this.manualClose = false
+    
     return new Promise((resolve, reject) => {
       this.ws = new WebSocket(this.url)
       
-      this.ws.onopen = () => resolve()
+      this.ws.onopen = () => {
+        this.reconnectAttempts = 0
+        resolve()
+      }
+      
       this.ws.onmessage = (e) => {
         const msg = JSON.parse(e.data)
         this.handlers.get(msg.type)?.forEach(h => h(msg.data ?? msg))
       }
+      
+      this.ws.onclose = () => {
+        this.ws = null
+        if (!this.manualClose) {
+          this.reconnect()
+        }
+      }
+      
       this.ws.onerror = (e) => reject(e)
-      this.ws.onclose = () => { this.ws = null }
     })
+  }
+
+  private reconnect() {
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) return
+    if (this.manualClose) return
+
+    this.reconnectAttempts++
+    const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1)
+
+    setTimeout(() => {
+      this.connect().catch(() => {})
+    }, delay)
   }
 
   send(type: string, data?: any) {
@@ -48,6 +77,18 @@ class WsService {
   subscribe(token: string, cb: Handler) {
     this.send('subscribe:tasks', { token })
     return this.on('task:update', cb)
+  }
+
+  close() {
+    this.manualClose = true
+    if (this.ws) {
+      this.ws.close()
+      this.ws = null
+    }
+  }
+
+  get isConnected() {
+    return this.ws?.readyState === WebSocket.OPEN
   }
 }
 

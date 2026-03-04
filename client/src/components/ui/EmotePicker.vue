@@ -11,22 +11,26 @@
       </button>
     </div>
 
-    <div ref="gridRef" class="emote-grid" @scroll="handleScroll">
-      <div
-        v-for="(emote, index) in visibleEmotes"
-        :key="emote.name"
-        :ref="(el) => setEmoteRef(el, index)"
-        class="emote-item"
-        @click="selectEmote(emote)"
-      >
-        <img
-          :src="emote.url"
-          :alt="emote.name"
-          :loading="shouldLazyLoad(emote, index) ? 'lazy' : 'eager'"
-          class="emote-image"
-        />
-      </div>
-    </div>
+    <RecycleScroller
+      ref="scrollerRef"
+      class="emote-grid"
+      :items="filteredEmotes"
+      :item-size="100"
+      key-field="name"
+      :grid-items="gridCols"
+      :buffer="200"
+    >
+      <template #default="{ item }">
+        <div class="emote-item" @click="selectEmote(item)">
+          <img
+            :src="item.url"
+            :alt="item.name"
+            loading="lazy"
+            class="emote-image"
+          />
+        </div>
+      </template>
+    </RecycleScroller>
 
     <div v-if="filteredEmotes.length === 0" class="emote-empty">
       没有找到表情包
@@ -36,6 +40,8 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, nextTick } from "vue";
+import { RecycleScroller } from "vue-virtual-scroller";
+import "vue-virtual-scroller/dist/vue-virtual-scroller.css";
 import { useEmotes } from "@/composables/useEmotes";
 import type { EmoteItem } from "@/types/emote";
 
@@ -61,40 +67,21 @@ const {
   setActiveGroup: setActiveGroupOriginal,
 } = useEmotes();
 
-const gridRef = ref<HTMLElement | null>(null);
-const emoteRefs = ref<(HTMLElement | null)[]>([]);
-const visibleEmotes = ref<EmoteItem[]>([]);
+const scrollerRef = ref<InstanceType<typeof RecycleScroller> | null>(null);
+const gridCols = ref(6);
 
-const VISIBLE_THRESHOLD = 20;
+const updateGridCols = () => {
+  const width = window.innerWidth;
+  if (width < 480) gridCols.value = 4;
+  else if (width < 640) gridCols.value = 5;
+  else gridCols.value = 6;
+};
 
 const setActiveGroup = (groupName: string) => {
   setActiveGroupOriginal(groupName);
   nextTick(() => {
-    updateVisibleEmotes();
-    if (gridRef.value) {
-      gridRef.value.scrollTop = 0;
-    }
+    scrollerRef.value?.scrollToItem(0);
   });
-};
-
-const shouldLazyLoad = (_emote: EmoteItem, index: number) => {
-  return index >= VISIBLE_THRESHOLD;
-};
-
-const setEmoteRef = (el: unknown, index: number) => {
-  if (emoteRefs.value.length <= index) {
-    emoteRefs.value.push(el as HTMLElement | null);
-  } else {
-    emoteRefs.value[index] = el as HTMLElement | null;
-  }
-};
-
-const updateVisibleEmotes = () => {
-  visibleEmotes.value = filteredEmotes.value;
-};
-
-const handleScroll = () => {
-  updateVisibleEmotes();
 };
 
 const selectEmote = (emote: EmoteItem) => {
@@ -104,16 +91,12 @@ const selectEmote = (emote: EmoteItem) => {
 };
 
 onMounted(() => {
-  updateVisibleEmotes();
-  if (gridRef.value) {
-    gridRef.value.addEventListener("scroll", handleScroll);
-  }
+  updateGridCols();
+  window.addEventListener("resize", updateGridCols);
 });
 
 onUnmounted(() => {
-  if (gridRef.value) {
-    gridRef.value.removeEventListener("scroll", handleScroll);
-  }
+  window.removeEventListener("resize", updateGridCols);
 });
 </script>
 
@@ -180,18 +163,15 @@ onUnmounted(() => {
 }
 
 .emote-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-  gap: 12px;
   padding: 16px;
-  max-height: 450px;
-  overflow-y: auto;
+  height: 450px;
   flex: 1;
   min-height: 0;
 }
 
 .emote-item {
-  aspect-ratio: 1;
+  width: 80px;
+  height: 80px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -200,6 +180,7 @@ onUnmounted(() => {
   transition: all 0.2s;
   background: #f9fafb;
   padding: 8px;
+  margin: 4px;
 }
 
 .dark .emote-item {
@@ -240,10 +221,8 @@ onUnmounted(() => {
   }
 
   .emote-grid {
-    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
-    gap: 10px;
     padding: 12px;
-    max-height: calc(70vh - 80px);
+    height: calc(70vh - 80px);
   }
 
   .emote-groups {
@@ -253,6 +232,11 @@ onUnmounted(() => {
   .emote-group-tab {
     padding: 5px 12px;
     font-size: 13px;
+  }
+
+  .emote-item {
+    width: 60px;
+    height: 60px;
   }
 }
 </style>

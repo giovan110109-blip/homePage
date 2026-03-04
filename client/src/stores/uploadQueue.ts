@@ -224,6 +224,20 @@ export const useUploadQueueStore = defineStore('uploadQueue', () => {
     }
   }
 
+  const stopWs = () => {
+    if (wsUnsub.value) {
+      wsUnsub.value()
+      wsUnsub.value = null
+    }
+    wsService.close()
+  }
+
+  const clearAllFiles = () => {
+    uploadingFiles.value = []
+    uploadQueue.value = []
+    stopWs()
+  }
+
   return {
     uploadingFiles,
     activeUploads,
@@ -236,6 +250,8 @@ export const useUploadQueueStore = defineStore('uploadQueue', () => {
     loadTaskStats,
     loadFailedTasks,
     retryFailedTask,
-    retryTaskFromUpload
+    retryTaskFromUpload,
+    clearAllFiles,
+    stopWs
   }
 })

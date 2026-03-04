@@ -1,19 +1,15 @@
 const Moment = require("../models/moment");
 const Photo = require("../models/photo");
-  const Comment = require("../models/comment");
+const Comment = require("../models/comment");
+const BaseController = require("../utils/baseController");
+const { HttpStatus } = require("../utils/response");
+const uploadQueue = require("../services/uploadQueueManager");
+const geocoding = require("../services/geocoding");
 const path = require("path");
 const fs = require("fs");
 const fsp = fs.promises;
-const { Response } = require("../utils/response");
-const {
-  NotFoundError,
-  ValidationError,
-  InternalError,
-} = require("../utils/errors");
-const uploadQueue = require("../services/uploadQueueManager");
-const geocoding = require("../services/geocoding");
 
-class MomentController {
+class MomentController extends BaseController {
   async getMoments(ctx) {
     try {
       const { page = 1, limit = 10 } = ctx.query;
@@ -45,19 +41,14 @@ class MomentController {
         comments: commentCountMap[m._id.toString()] || 0,
       }));
 
-      const result = {
-        data: momentsWithComments,
-        meta: {
-          page: parseInt(page),
-          pageSize: parseInt(limit),
-          total,
-          pageCount: Math.ceil(total / parseInt(limit)),
-        },
-      };
-
-      ctx.body = Response.success(result, "获取成功");
+      this.paginated(ctx, momentsWithComments, {
+        page: parseInt(page),
+        pageSize: parseInt(limit),
+        total,
+        pageCount: Math.ceil(total / parseInt(limit)),
+      }, "获取成功");
     } catch (error) {
-      throw error;
+      this.fail(ctx, error);
     }
   }
 
@@ -67,12 +58,12 @@ class MomentController {
       const moment = await Moment.findById(id).lean();
 
       if (!moment) {
-        throw new NotFoundError("说说不存在");
+        this.throwHttpError("说说不存在", HttpStatus.NOT_FOUND);
       }
 
-      ctx.body = Response.success(moment, "获取成功");
+      this.ok(ctx, moment, "获取成功");
     } catch (error) {
-      throw error;
+      this.fail(ctx, error);
     }
   }
 
@@ -87,9 +78,9 @@ class MomentController {
         video,
         location,
       } = ctx.request.body;
-                                                                                                                                                                                                                                                                                                                                                                                                  
+
       if (!content && (!media || media.length === 0) && !livePhoto && !video) {
-        throw new ValidationError("内容不能为空");
+        this.throwHttpError("内容不能为空", HttpStatus.BAD_REQUEST);
       }
 
       let momentType = type;
@@ -161,9 +152,9 @@ class MomentController {
       const moment = new Moment(momentData);
       await moment.save();
 
-      ctx.body = Response.success(moment, "创建成功");
+      this.ok(ctx, moment, "创建成功");
     } catch (error) {
-      throw error;
+      this.fail(ctx, error);
     }
   }
 
@@ -197,12 +188,12 @@ class MomentController {
       });
 
       if (!moment) {
-        throw new NotFoundError("说说不存在");
+        this.throwHttpError("说说不存在", HttpStatus.NOT_FOUND);
       }
 
-      ctx.body = Response.success(moment, "更新成功");
+      this.ok(ctx, moment, "更新成功");
     } catch (error) {
-      throw error;
+      this.fail(ctx, error);
     }
   }
 
@@ -212,21 +203,14 @@ class MomentController {
       const moment = await Moment.findById(id);
 
       if (!moment) {
-        throw new NotFoundError("说说不存在");
-      }
-
-      if (moment.video?.storageKey) {
-        const baseUploadDir =
-          process.env.UPLOAD_DIR || path.join(process.cwd(), "uploads");
-        const videoDir = path.join(baseUploadDir, "moments");
-        await fsp.unlink(path.join(videoDir, moment.video.storageKey)).catch(() => {});
+        this.throwHttpError("说说不存在", HttpStatus.NOT_FOUND);
       }
 
       await Moment.deleteOne({ _id: id });
 
-      ctx.body = Response.success(null, "删除成功");
+      this.ok(ctx, null, "删除成功");
     } catch (error) {
-      throw error;
+      this.fail(ctx, error);
     }
   }
 
@@ -236,18 +220,16 @@ class MomentController {
       const { mode = "livePhoto" } = ctx.query;
 
       if (!file) {
-        throw new ValidationError("请选择要上传的文件");
+        this.throwHttpError("请选择要上传的文件", HttpStatus.BAD_REQUEST);
       }
 
-      const baseUploadDir =
-        process.env.UPLOAD_DIR || path.join(process.cwd(), "uploads");
+      const baseUploadDir = process.env.UPLOAD_DIR || path.join(process.cwd(), "uploads");
 
       if (mode === "video") {
         const videoDir = path.join(baseUploadDir, "moments");
         await fsp.mkdir(videoDir, { recursive: true });
 
-        const originalName =
-          file.originalFilename || file.name || file.newFilename || "unknown";
+        const originalName = file.originalFilename || file.name || file.newFilename || "unknown";
         const ext = path.extname(originalName);
         const timestamp = Date.now();
         const filename = `moment_${timestamp}${ext}`;
@@ -255,29 +237,23 @@ class MomentController {
 
         const tempPath = file.filepath || file.path;
         if (!tempPath) {
-          throw new InternalError("无法获取上传文件的临时路径");
+          this.throwHttpError("无法获取上传文件的临时路径", HttpStatus.INTERNAL_SERVER_ERROR);
         }
 
         await fsp.copyFile(tempPath, filePath);
         await fsp.unlink(tempPath).catch(() => {});
 
-        const videoUrl = `/uploads/moments/${filename}`;
-
-        ctx.body = Response.success(
-          {
-            url: videoUrl,
-            storageKey: filename,
-            originalFileName: originalName,
-            fileSize: file.size,
-          },
-          "上传成功"
-        );
+        this.ok(ctx, {
+          url: `/uploads/moments/${filename}`,
+          storageKey: filename,
+          originalFileName: originalName,
+          fileSize: file.size,
+        }, "上传成功");
       } else {
         const uploadDir = path.join(baseUploadDir, "photos");
         await fsp.mkdir(uploadDir, { recursive: true });
 
-        const originalName =
-          file.originalFilename || file.name || file.newFilename || "unknown";
+        const originalName = file.originalFilename || file.name || file.newFilename || "unknown";
         const ext = path.extname(originalName);
         const baseName = path.parse(originalName).name;
         const timestamp = Date.now();
@@ -286,7 +262,7 @@ class MomentController {
 
         const tempPath = file.filepath || file.path;
         if (!tempPath) {
-          throw new InternalError("无法获取上传文件的临时路径");
+          this.throwHttpError("无法获取上传文件的临时路径", HttpStatus.INTERNAL_SERVER_ERROR);
         }
 
         await fsp.copyFile(tempPath, filePath);
@@ -308,17 +284,14 @@ class MomentController {
 
         const task = await uploadQueue.createTask(taskData);
 
-        ctx.body = Response.success(
-          {
-            taskId: task.taskId,
-            filename,
-            status: task.status,
-          },
-          "上传成功，开始处理"
-        );
+        this.ok(ctx, {
+          taskId: task.taskId,
+          filename,
+          status: task.status,
+        }, "上传成功，开始处理");
       }
     } catch (error) {
-      throw error;
+      this.fail(ctx, error);
     }
   }
 
@@ -349,19 +322,13 @@ class MomentController {
         Photo.countDocuments(query),
       ]);
 
-      ctx.body = Response.success(
-        {
-          data: photos,
-          meta: {
-            page: parseInt(page),
-            pageSize: parseInt(limit),
-            total,
-          },
-        },
-        "获取成功"
-      );
+      this.paginated(ctx, photos, {
+        page: parseInt(page),
+        pageSize: parseInt(limit),
+        total,
+      }, "获取成功");
     } catch (error) {
-      throw error;
+      this.fail(ctx, error);
     }
   }
 
@@ -370,43 +337,37 @@ class MomentController {
       const { latitude, longitude } = ctx.query;
 
       if (!latitude || !longitude) {
-        throw new ValidationError("请提供经纬度");
+        this.throwHttpError("请提供经纬度", HttpStatus.BAD_REQUEST);
       }
 
       const lat = parseFloat(latitude);
       const lng = parseFloat(longitude);
 
       if (isNaN(lat) || isNaN(lng)) {
-        throw new ValidationError("无效的经纬度");
+        this.throwHttpError("无效的经纬度", HttpStatus.BAD_REQUEST);
       }
 
       const geoinfo = await geocoding.reverseGeocode(lat, lng);
 
       if (!geoinfo) {
-        ctx.body = Response.success(
-          {
-            latitude: lat,
-            longitude: lng,
-            name: "未知位置",
-            address: "",
-          },
-          "无法获取位置信息"
-        );
+        this.ok(ctx, {
+          latitude: lat,
+          longitude: lng,
+          name: "未知位置",
+          address: "",
+        }, "无法获取位置信息");
         return;
       }
 
-      ctx.body = Response.success(
-        {
-          latitude: lat,
-          longitude: lng,
-          name: geoinfo.city || geoinfo.province || geoinfo.displayName,
-          address: geoinfo.displayName,
-          ...geoinfo,
-        },
-        "获取成功"
-      );
+      this.ok(ctx, {
+        latitude: lat,
+        longitude: lng,
+        name: geoinfo.city || geoinfo.province || geoinfo.displayName,
+        address: geoinfo.displayName,
+        ...geoinfo,
+      }, "获取成功");
     } catch (error) {
-      throw error;
+      this.fail(ctx, error);
     }
   }
 
@@ -430,20 +391,14 @@ class MomentController {
         Moment.countDocuments(query),
       ]);
 
-      ctx.body = Response.success(
-        {
-          data: moments,
-          meta: {
-            page: parseInt(page),
-            pageSize: parseInt(limit),
-            total,
-            pageCount: Math.ceil(total / parseInt(limit)),
-          },
-        },
-        "获取成功"
-      );
+      this.paginated(ctx, moments, {
+        page: parseInt(page),
+        pageSize: parseInt(limit),
+        total,
+        pageCount: Math.ceil(total / parseInt(limit)),
+      }, "获取成功");
     } catch (error) {
-      throw error;
+      this.fail(ctx, error);
     }
   }
 
@@ -453,15 +408,15 @@ class MomentController {
       
       const moment = await Moment.findById(id);
       if (!moment) {
-        throw new NotFoundError("说说不存在");
+        this.throwHttpError("说说不存在", HttpStatus.NOT_FOUND);
       }
 
       moment.likes = (moment.likes || 0) + 1;
       await moment.save();
 
-      ctx.body = Response.success({ likes: moment.likes }, "点赞成功");
+      this.ok(ctx, { likes: moment.likes }, "点赞成功");
     } catch (error) {
-      throw error;
+      this.fail(ctx, error);
     }
   }
 
@@ -471,16 +426,16 @@ class MomentController {
       const { type, action = "add" } = ctx.request.body;
 
       if (!type) {
-        throw new ValidationError("请选择表态类型");
+        this.throwHttpError("请选择表态类型", HttpStatus.BAD_REQUEST);
       }
 
       const reactionService = require("../services/reactionService");
       const ip = ctx.ip || ctx.request.ip;
       const counts = await reactionService.handleReact("moment", id, type, ip, action);
 
-      ctx.body = Response.success(counts, "表态成功");
+      this.ok(ctx, counts, "表态成功");
     } catch (error) {
-      throw error;
+      this.fail(ctx, error);
     }
   }
 }
