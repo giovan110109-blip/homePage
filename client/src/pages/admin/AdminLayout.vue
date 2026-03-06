@@ -212,7 +212,7 @@ import * as LucideIcons from "lucide-vue-next";
 import { ref, computed, onMounted } from "vue";
 import AppButton from "@/components/ui/AppButton.vue";
 import ThemeToggle from "@/components/ui/ThemeToggle.vue";
-import ProfileDialog from "./components/ProfileDialog.vue";
+import ProfileDialog from "@/components/admin/ProfileDialog.vue";
 import UploadQueueFloat from "@/components/admin/UploadQueueFloat.vue";
 import { useAuthStore } from "@/stores/auth";
 import { useRouter, useRoute } from "vue-router";

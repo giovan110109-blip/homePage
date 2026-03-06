@@ -88,6 +88,7 @@ declare module 'vue' {
     PhotoLocationMap: typeof import('./src/components/photo/PhotoLocationMap.vue')['default']
     PhotoViewer: typeof import('./src/components/photo/PhotoViewer.vue')['default']
     PortfolioMagicCard: typeof import('./src/components/ui/PortfolioMagicCard.vue')['default']
+    ProfileDialog: typeof import('./src/components/admin/ProfileDialog.vue')['default']
     ProgressBar: typeof import('./src/components/ui/ProgressBar.vue')['default']
     ProgressiveImage: typeof import('./src/components/photo/ProgressiveImage.vue')['default']
     ProjectMagicCard: typeof import('./src/components/ui/ProjectMagicCard.vue')['default']
@@ -105,6 +106,7 @@ declare module 'vue' {
     ThumbHash: typeof import('./src/components/ui/ThumbHash.vue')['default']
     Timeline: typeof import('./src/components/ui/Timeline.vue')['default']
     UploadQueueFloat: typeof import('./src/components/admin/UploadQueueFloat.vue')['default']
+    VideoPlayer: typeof import('./src/components/ui/VideoPlayer.vue')['default']
   }
   export interface GlobalDirectives {
     vLoading: typeof import('element-plus/es')['ElLoadingDirective']
