@@ -141,9 +141,9 @@ const fetchMoments = async (isLoadMore = false) => {
       },
     })
 
-    if (res?.success) {
-      const data = res.data?.data || []
-      const meta = res.data?.meta || { page: 1, pageSize: 10, total: 0, pageCount: 1 }
+    if (res?.code === 200) {
+      const data = res.data || []
+      const meta = res.meta || { page: 1, pageSize: 10, total: 0, pageCount: 1 }
 
       if (isLoadMore) {
         moments.value = [...moments.value, ...data]

@@ -35,12 +35,22 @@
               </a>
             </div> -->
           </div>
-<!--           
+          
           <div>
             <h3 class="text-lg font-semibold mb-4">快速导航</h3>
             <ul class="space-y-2">
               <li v-for="item in navigation" :key="item.name">
+                <a
+                  v-if="item.external"
+                  :href="getFileManageUrl()"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
+                >
+                  {{ item.name }}
+                </a>
                 <router-link
+                  v-else
                   :to="item.href"
                   class="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
                 >
@@ -49,7 +59,7 @@
               </li>
             </ul>
           </div>
-           -->
+          
           <div>
             <h3 class="text-lg font-semibold mb-4">联系方式</h3>
             <ul class="space-y-2">
@@ -92,33 +102,23 @@
 <script setup lang="ts">
 import { Mail, MapPin, Github, Linkedin, Twitter, MessageCircle,MessageSquareQuote } from 'lucide-vue-next'
 import { useSiteInfoStore } from '@/stores/siteInfo'
+import { useAuthStore } from '@/stores/auth'
 import MagicCard from '@/components/ui/MagicCard.vue'
 
-// const footerRef = ref<HTMLElement>()
-
 const siteInfoStore = useSiteInfoStore()
+const authStore = useAuthStore()
 
 const currentYear = computed(() => new Date().getFullYear())
 
+const getFileManageUrl = () => {
+  const baseUrl = 'https://file.giovan.cn'
+  if (authStore.isLoggedIn && authStore.token) {
+    return `${baseUrl}?token=${authStore.token}`
+  }
+  return baseUrl
+}
+
 const navigation = [
-  { name: '首页', href: '/' },
-  { name: '关于我', href: '/about' },
-  { name: '文章', href: '/articles' },
-  { name: '项目作品', href: '/portfolio' },
-  { name: '我的网站', href: '/sites' },
-  { name: '赞助支持', href: '/sponsor' }
+  { name: '私人文件管理', href: '/', external: true },
 ]
-
-// const iconMap = {
-//   github: Github,
-//   linkedin: Linkedin,
-//   twitter: Twitter,
-//   'message-circle': MessageCircle,
-//   mail: Mail,
-//   'map-pin': MapPin
-// }
-
-// const getIcon = (iconName: string) => {
-//   return iconMap[iconName as keyof typeof iconMap] || MessageCircle
-// }
 </script>
