@@ -24,7 +24,7 @@ module.exports = function rateLimitTimestamp(options = {}) {
 
   return async (ctx, next) => {
     const url = ctx.request.url || ctx.url || '';
-    if (url.includes('/upload') || url.includes('/generate-qr-code')) {
+    if (url.includes('/upload') || url.includes('/generate-qr-code') || url.includes('/preview') || url.includes('/share/') || url.includes('/s/')) {
       return await next();
     }
 

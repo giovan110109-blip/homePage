@@ -75,7 +75,12 @@ app.use(
 // CORS
 const allowedOrigins = process.env.CORS_ORIGINS
   ? process.env.CORS_ORIGINS.split(",").map((s) => s.trim())
-  : ["http://localhost:3000", "http://localhost:5173", "http://localhost:8999"];
+  : [
+      "http://localhost:3000",
+      "http://localhost:5173",
+      "http://localhost:8999",
+      "https://file.giovan.cn",
+    ];
 
 app.use(
   cors({
@@ -229,6 +234,10 @@ app.use(adminAuth);
 
 // 注册路由
 registerRoutes(app);
+
+// 启动回收站自动清理任务
+const { startTrashCleanupSchedule } = require('./fileManage/services/trashCleanup')
+startTrashCleanupSchedule()
 
 // 启动服务器
 const server = app.listen(port, () => {

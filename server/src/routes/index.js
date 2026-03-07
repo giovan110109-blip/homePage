@@ -45,7 +45,10 @@ function registerRoutes(app) {
         'wechatAuth.js',
         'moments.js',
         'adminMoments.js',
-        'adminRbac.js'
+        'adminRbac.js',
+        'fileManage.js',
+        'share.js',
+        'operationLog.js'
     ]);
 
     // 过滤出路由文件
