@@ -792,8 +792,21 @@ import request from "@/api/request";
 import { formatDate, formatFileSize } from "@/utils/format";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { getPhotoOriginalUrl } from "@/utils";
-import maplibregl from "maplibre-gl";
-import "maplibre-gl/dist/maplibre-gl.css";
+import mapboxgl from "mapbox-gl";
+import "mapbox-gl/dist/mapbox-gl.css";
+
+const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || "";
+if (MAPBOX_TOKEN) {
+  mapboxgl.accessToken = MAPBOX_TOKEN;
+}
+
+const getMapStyle = (isDark: boolean) => {
+  if (MAPBOX_TOKEN) {
+    const style = isDark ? "mapbox://styles/mapbox/dark-v11" : "mapbox://styles/mapbox/light-v11";
+    return `${style}?language=zh`;
+  }
+  return "https://tiles.openfreemap.org/styles/liberty";
+};
 
 const isDragging = ref(false);
 const fileInput = ref<HTMLInputElement | null>(null);
@@ -1202,27 +1215,23 @@ const initMiniMap = () => {
     miniMap = null;
   }
 
-  miniMap = new maplibregl.Map({
+  miniMap = new mapboxgl.Map({
     container: miniMapContainer.value,
-    style:
-      "https://tiles.basemaps.cartocdn.com/gl/positron-gl-style/style.json",
+    style: getMapStyle(false),
     center: [locationForm.value.longitude, locationForm.value.latitude],
     zoom: 12,
   });
 
-  // 添加标记
-  miniMapMarker = new maplibregl.Marker({ draggable: true })
+  miniMapMarker = new mapboxgl.Marker({ draggable: true, color: '#4F46E5' })
     .setLngLat([locationForm.value.longitude, locationForm.value.latitude])
     .addTo(miniMap);
 
-  // 监听标记拖动
   miniMapMarker.on("dragend", () => {
     const lngLat = miniMapMarker.getLngLat();
     locationForm.value.longitude = lngLat.lng;
     locationForm.value.latitude = lngLat.lat;
   });
 
-  // 点击地图更新位置
   miniMap.on("click", (e: any) => {
     locationForm.value.longitude = e.lngLat.lng;
     locationForm.value.latitude = e.lngLat.lat;

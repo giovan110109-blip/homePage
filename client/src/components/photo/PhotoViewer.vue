@@ -15,13 +15,19 @@ const emit = defineEmits<{
   (e: "loadMore"): void;
 }>();
 
-const props = defineProps<{
-  modelValue: boolean;
-  photos: Array<any>;
-  currentPhoto: Record<string, any> | null;
-  hasMore?: boolean;
-  loadingMore?: boolean;
-}>();
+const props = withDefaults(
+  defineProps<{
+    modelValue: boolean;
+    photos: Array<any>;
+    currentPhoto: Record<string, any> | null;
+    hasMore?: boolean;
+    loadingMore?: boolean;
+    showInfoPanel?: boolean;
+  }>(),
+  {
+    showInfoPanel: true,
+  }
+);
 
 const loadingIndicatorRef = useTemplateRef("loadingIndicatorRef");
 const swiperModules = [Keyboard, Virtual];
@@ -712,13 +718,13 @@ onBeforeUnmount(() => {
 
           <!-- EXIF 面板 - 桌面端常驻，移动端可切换 -->
           <InfoPanel
-            v-if="!isMobile && activePhoto && activePhoto._id"
+            v-if="props.showInfoPanel && !isMobile && activePhoto && activePhoto._id"
             :current-photo="activePhoto"
             :exif-data="activePhoto?.exif"
           />
           <AnimatePresence v-if="isMobile">
             <InfoPanel
-              v-if="showExifPanel && activePhoto && activePhoto._id"
+              v-if="props.showInfoPanel && showExifPanel && activePhoto && activePhoto._id"
               :current-photo="activePhoto"
               :exif-data="activePhoto?.exif"
               :on-close="() => (showExifPanel = false)"

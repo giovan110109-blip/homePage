@@ -3,14 +3,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import maplibregl from 'maplibre-gl'
-import 'maplibre-gl/dist/maplibre-gl.css'
+import mapboxgl from 'mapbox-gl'
+import 'mapbox-gl/dist/mapbox-gl.css'
 import { useTheme } from '@/composables/useTheme'
-import lightMapStyleJson from '@/assets/mapStyles/chronoframe_light.json'
-import darkMapStyleJson from '@/assets/mapStyles/chronoframe_dark.json'
-import type { StyleSpecification } from 'maplibre-gl'
 
 interface Props {
   latitude: number
@@ -22,33 +19,47 @@ const props = withDefaults(defineProps<Props>(), {
   zoom: 13
 })
 
+const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || ''
+
+if (MAPBOX_TOKEN) {
+  mapboxgl.accessToken = MAPBOX_TOKEN
+}
+
+const getMapStyle = (isDark: boolean) => {
+  if (MAPBOX_TOKEN) {
+    const style = isDark ? 'mapbox://styles/mapbox/dark-v11' : 'mapbox://styles/mapbox/light-v11'
+    return `${style}?language=zh`
+  }
+  return isDark 
+    ? 'https://tiles.openfreemap.org/styles/dark'
+    : 'https://tiles.openfreemap.org/styles/liberty'
+}
+
 const router = useRouter()
 const mapContainer = ref<HTMLDivElement>()
-const map = ref<maplibregl.Map>()
-const marker = ref<maplibregl.Marker>()
+const map = ref<mapboxgl.Map>()
+const marker = ref<mapboxgl.Marker>()
 const { isDark } = useTheme()
 
 const initMap = () => {
   if (!mapContainer.value) return
 
-  const initialStyle = isDark.value ? darkMapStyleJson : lightMapStyleJson
+  const initialStyle = getMapStyle(isDark.value)
 
-  map.value = new maplibregl.Map({
+  map.value = new mapboxgl.Map({
     container: mapContainer.value,
-    style: initialStyle as any,
+    style: initialStyle,
     center: [props.longitude, props.latitude],
     zoom: props.zoom,
     interactive: true
   })
 
-  // 添加标记
-  marker.value = new maplibregl.Marker({
-    color: '#4F46E5' // indigo-600
+  marker.value = new mapboxgl.Marker({
+    color: '#4F46E5'
   })
     .setLngLat([props.longitude, props.latitude])
     .addTo(map.value)
 
-  // 点击地图跳转到 MapView
   map.value.on('click', () => {
     router.push('/map')
   })
@@ -56,12 +67,11 @@ const initMap = () => {
 
 watch(isDark, (newDarkMode) => {
   if (map.value) {
-    const newStyle = newDarkMode ? darkMapStyleJson : lightMapStyleJson
-    map.value.setStyle(newStyle as any)
+    const newStyle = getMapStyle(newDarkMode)
+    map.value.setStyle(newStyle)
   }
 })
 
-// 监听坐标变化
 watch([() => props.latitude, () => props.longitude], ([newLat, newLng]) => {
   if (map.value && marker.value) {
     const newCenter: [number, number] = [newLng, newLat]
@@ -85,12 +95,12 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-:deep(.maplibregl-ctrl-attrib) {
+:deep(.mapboxgl-ctrl-attrib) {
   font-size: 10px;
   opacity: 0.6;
 }
 
-:deep(.maplibregl-ctrl-logo) {
+:deep(.mapboxgl-ctrl-logo) {
   display: none;
 }
 </style>

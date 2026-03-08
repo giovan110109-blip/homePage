@@ -46,6 +46,7 @@
             v-for="(img, index) in mediaUrls.slice(0, 9)"
             :key="index"
             class="relative overflow-hidden rounded-lg sm:rounded-xl bg-gray-100 dark:bg-gray-700 cursor-pointer aspect-square"
+            @click="previewImage(index)"
           >
             <!-- Live Photo 使用 LivePhoto 组件 -->
             <LivePhoto
@@ -67,7 +68,6 @@
                 :width="img.width || 1"
                 :height="img.height || 1"
                 class="w-full h-full"
-                @click="previewImage(index)"
               />
             </template>
           </div>
@@ -132,59 +132,23 @@
       </div>
     </transition>
 
-    <!-- 图片预览 -->
-    <Teleport to="body">
-      <transition
-        enter-active-class="transition-all duration-300"
-        leave-active-class="transition-all duration-300"
-        enter-from-class="opacity-0"
-        leave-to-class="opacity-0"
-      >
-        <div
-          v-if="showPreview"
-          class="fixed inset-0 z-50 bg-black/95 flex items-center justify-center"
-          @click="closePreview"
-        >
-          <button
-            @click="closePreview"
-            class="absolute top-3 sm:top-4 right-3 sm:right-4 p-1.5 sm:p-2 rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors"
-          >
-            <X class="w-5 h-5 sm:w-6 sm:h-6" />
-          </button>
-          <button
-            v-if="previewIndex > 0"
-            @click.stop="prevImage"
-            class="absolute left-2 sm:left-4 p-2 sm:p-3 rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors"
-          >
-            <ChevronLeft class="w-5 h-5 sm:w-6 sm:h-6" />
-          </button>
-          <img
-            :src="mediaUrls[previewIndex]?.url"
-            class="max-w-[95vw] sm:max-w-[90vw] max-h-[85vh] sm:max-h-[90vh] object-contain"
-            @click.stop
-          />
-          <button
-            v-if="previewIndex < mediaUrls.length - 1"
-            @click.stop="nextImage"
-            class="absolute right-2 sm:right-4 p-2 sm:p-3 rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors"
-          >
-            <ChevronRight class="w-5 h-5 sm:w-6 sm:h-6" />
-          </button>
-          <div class="absolute bottom-3 sm:bottom-4 left-1/2 -translate-x-1/2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-black/50 text-white text-xs sm:text-sm backdrop-blur-sm">
-            {{ previewIndex + 1 }} / {{ mediaUrls.length }}
-          </div>
-        </div>
-      </transition>
-    </Teleport>
+    <!-- 图片查看器 -->
+    <PhotoViewer
+      v-model="photoViewerVisible"
+      :photos="mediaUrls"
+      :current-photo="currentPhoto"
+      :show-info-panel="false"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { Heart, MessageCircle, MapPin, X, ChevronLeft, ChevronRight } from 'lucide-vue-next'
+import { Heart, MessageCircle, MapPin } from 'lucide-vue-next'
 import CommentBox from '@/components/ui/CommentBox.vue'
 import LivePhoto from '@/components/photo/LivePhoto.vue'
 import LazyImage from '@/components/photo/LazyImage.vue'
+import PhotoViewer from '@/components/photo/PhotoViewer.vue'
 import { formatRelativeTime } from '@/utils/format'
 
 interface MomentMedia {
@@ -197,6 +161,7 @@ interface MomentMedia {
   isPrivate?: boolean
   isLive?: boolean
   videoUrl?: string
+  originalFileUrl?: string
 }
 
 interface MomentLivePhoto {
@@ -255,9 +220,10 @@ const emit = defineEmits<{
   (e: 'commentAdded', id: string): void
 }>()
 
-const showPreview = ref(false)
-const previewIndex = ref(0)
 const showComments = ref(false)
+const photoViewerVisible = ref(false)
+const currentPhotoIndex = ref(0)
+const currentPhoto = ref<MomentMedia | null>(null)
 
 const isLiked = ref(false)
 const likeCount = ref(0)
@@ -294,38 +260,28 @@ watch(() => props.moment, () => {
 
 const mediaUrls = computed(() => {
   return (props.moment.media || []).map(item => ({
+    _id: item.photoId || `temp_${Math.random().toString(36)}`,
+    photoId: item.photoId,
     url: item.url,
     thumbnailUrl: item.thumbnailUrl || item.url,
     thumbHash: item.thumbHash,
+    thumbnailHash: item.thumbHash,
     width: item.width,
     height: item.height,
     isLive: item.isLive,
     videoUrl: item.videoUrl,
-    photoId: item.photoId,
+    originalFileUrl: item.originalFileUrl,
+    originalUrl: item.url,
+    title: '',
   }))
 })
 
 const formatDate = formatRelativeTime
 
 const previewImage = (index: number) => {
-  previewIndex.value = index
-  showPreview.value = true
-}
-
-const closePreview = () => {
-  showPreview.value = false
-}
-
-const prevImage = () => {
-  if (previewIndex.value > 0) {
-    previewIndex.value--
-  }
-}
-
-const nextImage = () => {
-  if (previewIndex.value < mediaUrls.value.length - 1) {
-    previewIndex.value++
-  }
+  currentPhotoIndex.value = index
+  currentPhoto.value = mediaUrls.value[index]
+  photoViewerVisible.value = true
 }
 
 const toggleComments = () => {
@@ -337,3 +293,6 @@ const handleCommented = () => {
   emit('commentAdded', props.moment._id)
 }
 </script>
+
+<style scoped>
+</style>

@@ -9,6 +9,7 @@ services:
         - VITE_SITE_TITLE=${VITE_SITE_TITLE}
         - VITE_SITE_DESCRIPTION=${VITE_SITE_DESCRIPTION}
         - VITE_API_BASE_URL_LOCAL=${VITE_API_BASE_URL_LOCAL}
+        - VITE_MAPBOX_TOKEN=${VITE_MAPBOX_TOKEN}
     container_name: homepage-client
     ports:
       - "40000:80"

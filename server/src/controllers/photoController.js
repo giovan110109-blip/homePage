@@ -406,7 +406,7 @@ class PhotoController {
         "location.coordinates": { $exists: true, $ne: null },
       })
         .select(
-          "_id title thumbnailUrl originalUrl location geoinfo dateTaken width height thumbHash",
+          "_id title thumbnailUrl originalUrl originalFileUrl location geoinfo dateTaken width height thumbnailHash isLive videoUrl exif",
         )
         .sort({ dateTaken: -1 })
         .lean();
@@ -442,11 +442,15 @@ class PhotoController {
           title: photo.title,
           thumbnailUrl: photo.thumbnailUrl,
           originalUrl: photo.originalUrl,
+          originalFileUrl: photo.originalFileUrl,
           dateTaken: photo.dateTaken,
           geoinfo: photo.geoinfo,
           width: photo.width,
           height: photo.height,
-          thumbHash: photo.thumbHash,
+          thumbnailHash: photo.thumbnailHash,
+          isLive: photo.isLive,
+          videoUrl: photo.videoUrl,
+          exif: photo.exif,
         });
         locationGroups[key].count += 1;
       });
