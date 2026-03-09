@@ -13,7 +13,7 @@ const CHUNK_SIZE = 5 * 1024 * 1024
 class UploadController {
   async initUpload(ctx) {
     try {
-      const { fileName, fileSize, fileHash, mimeType, parentId } = ctx.request.body
+      const { fileName, fileSize, fileHash, mimeType, parentId, relativePath } = ctx.request.body
       const userId = ctx.state.user._id
 
       if (!fileName || !fileSize) {
@@ -24,6 +24,42 @@ class UploadController {
 
       const uploadId = `upload_${Date.now()}_${crypto.randomBytes(8).toString('hex')}`
       const totalChunks = Math.ceil(fileSize / CHUNK_SIZE)
+
+      let actualParentId = parentId || null
+      const createdFolders = []
+
+      if (relativePath && relativePath.includes('/')) {
+        const pathParts = relativePath.split('/').filter(p => p && p !== fileName)
+        
+        for (const folderName of pathParts) {
+          let existingFolder = await FileItem.findOne({
+            name: folderName,
+            parentId: actualParentId,
+            owner: userId,
+            type: 'folder',
+            isDeleted: false
+          })
+
+          if (!existingFolder) {
+            const newFolder = await FileItem.create({
+              name: folderName,
+              type: 'folder',
+              parentId: actualParentId,
+              path: '/',
+              owner: userId
+            })
+            existingFolder = newFolder
+            createdFolders.push({
+              id: existingFolder._id.toString(),
+              name: existingFolder.name,
+              type: 'folder',
+              parentId: actualParentId
+            })
+          }
+
+          actualParentId = existingFolder._id.toString()
+        }
+      }
 
       if (fileHash) {
         const existingFile = await FileItem.findOne({
@@ -39,7 +75,7 @@ class UploadController {
             size: fileSize,
             mimeType: mimeType || 'application/octet-stream',
             extension: fileName.includes('.') ? fileName.split('.').pop().toLowerCase() : null,
-            parentId: parentId || null,
+            parentId: actualParentId,
             path: '/',
             storageKey: existingFile.storageKey,
             owner: userId
@@ -51,6 +87,15 @@ class UploadController {
               uploadId,
               status: 'completed',
               fileId: newFile._id,
+              file: {
+                id: newFile._id.toString(),
+                name: newFile.name,
+                type: newFile.type,
+                size: newFile.size,
+                mimeType: newFile.mimeType,
+                parentId: newFile.parentId
+              },
+              folders: createdFolders,
               message: '秒传成功'
             }
           }
@@ -67,7 +112,7 @@ class UploadController {
         chunkSize: CHUNK_SIZE,
         totalChunks,
         uploadedChunks: [],
-        parentId: parentId || null,
+        parentId: actualParentId,
         owner: userId
       })
 
@@ -78,7 +123,8 @@ class UploadController {
           chunkSize: CHUNK_SIZE,
           totalChunks,
           uploadedChunks: [],
-          status: 'uploading'
+          status: 'uploading',
+          folders: createdFolders
         }
       }
     } catch (error) {
@@ -281,7 +327,19 @@ class UploadController {
 
       ctx.body = {
         success: true,
-        data: fileItem,
+        data: {
+          file: {
+            id: fileItem._id.toString(),
+            name: fileItem.name,
+            type: fileItem.type,
+            size: fileItem.size,
+            mimeType: fileItem.mimeType,
+            parentId: fileItem.parentId,
+            extension: fileItem.extension,
+            thumbnailKey: fileItem.thumbnailKey,
+            hasThumbnail: !!fileItem.thumbnailKey
+          }
+        },
         message: '文件上传成功'
       }
     } catch (error) {

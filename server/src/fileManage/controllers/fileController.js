@@ -541,7 +541,7 @@ class FileController {
   async upload(ctx) {
     try {
       const file = ctx.request.files?.file
-      const { folderId } = ctx.request.body
+      const { folderId, relativePath } = ctx.request.body
       const userId = ctx.state.user._id
 
       if (!file) {
@@ -622,13 +622,44 @@ class FileController {
         }
       }
 
+      let actualParentId = folderId || null
+      const createdFolders = []
+
+      if (relativePath && relativePath.includes('/')) {
+        const pathParts = relativePath.split('/').filter(p => p && p !== originalName)
+        
+        for (const folderName of pathParts) {
+          let existingFolder = await FileItem.findOne({
+            name: folderName,
+            parentId: actualParentId,
+            owner: userId,
+            type: 'folder',
+            isDeleted: false
+          })
+
+          if (!existingFolder) {
+            const newFolder = await FileItem.create({
+              name: folderName,
+              type: 'folder',
+              parentId: actualParentId,
+              path: '/',
+              owner: userId
+            })
+            existingFolder = newFolder
+            createdFolders.push(formatItem(existingFolder))
+          }
+
+          actualParentId = existingFolder._id.toString()
+        }
+      }
+
       const fileItem = await FileItem.create({
         name: originalName,
         type: 'file',
         size: stats.size,
         mimeType,
         extension: ext.replace('.', '').toLowerCase(),
-        parentId: folderId || null,
+        parentId: actualParentId,
         path: '/',
         storageKey,
         thumbnailKey,
@@ -639,14 +670,19 @@ class FileController {
 
       ctx.body = {
         success: true,
-        data: formatItem(fileItem),
+        data: {
+          file: formatItem(fileItem),
+          folders: createdFolders
+        },
         message: '文件上传成功'
       }
     } catch (error) {
+      console.error('上传文件错误:', error)
       ctx.status = 500
       ctx.body = {
         success: false,
-        message: error.message
+        message: error.message,
+        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
       }
     }
   }
