@@ -541,7 +541,7 @@ class FileController {
   async upload(ctx) {
     try {
       const file = ctx.request.files?.file
-      const { folderId } = ctx.request.body
+      const { folderId, relativePath } = ctx.request.body
       const userId = ctx.state.user._id
 
       if (!file) {
@@ -559,9 +559,13 @@ class FileController {
       await fsp.mkdir(uploadDir, { recursive: true })
       await fsp.mkdir(thumbnailDir, { recursive: true })
 
-      const originalName = file.originalFilename || file.name || 'unknown'
+      let originalName = file.originalFilename || file.name || 'unknown'
+      if (originalName.includes('/')) {
+        originalName = originalName.split('/').pop()
+      }
       const ext = path.extname(originalName)
       const baseName = path.parse(originalName).name
+      
       const timestamp = Date.now()
       const randomStr = Math.random().toString(36).substring(2, 8)
       const storageKey = `${baseName}_${timestamp}_${randomStr}${ext}`
@@ -622,13 +626,62 @@ class FileController {
         }
       }
 
+      let actualParentId = folderId || null
+      const createdFolders = []
+
+      if (relativePath && relativePath.includes('/')) {
+        const pathParts = relativePath.split('/').filter(p => p && p !== originalName)
+        
+        for (const folderName of pathParts) {
+          const beforeCount = await FileItem.countDocuments({
+            name: folderName,
+            parentId: actualParentId,
+            owner: userId,
+            type: 'folder',
+            isDeleted: false
+          })
+
+          const existingFolder = await FileItem.findOneAndUpdate(
+            {
+              name: folderName,
+              parentId: actualParentId,
+              owner: userId,
+              type: 'folder',
+              isDeleted: false
+            },
+            {
+              $setOnInsert: {
+                name: folderName,
+                type: 'folder',
+                parentId: actualParentId,
+                path: '/',
+                owner: userId,
+                isDeleted: false
+              }
+            },
+            {
+              upsert: true,
+              new: true,
+              setDefaultsOnInsert: true
+            }
+          )
+
+          if (existingFolder) {
+            if (beforeCount === 0) {
+              createdFolders.push(formatItem(existingFolder))
+            }
+            actualParentId = existingFolder._id.toString()
+          }
+        }
+      }
+
       const fileItem = await FileItem.create({
         name: originalName,
         type: 'file',
         size: stats.size,
         mimeType,
         extension: ext.replace('.', '').toLowerCase(),
-        parentId: folderId || null,
+        parentId: actualParentId,
         path: '/',
         storageKey,
         thumbnailKey,
@@ -639,14 +692,19 @@ class FileController {
 
       ctx.body = {
         success: true,
-        data: formatItem(fileItem),
+        data: {
+          file: formatItem(fileItem),
+          folders: createdFolders
+        },
         message: '文件上传成功'
       }
     } catch (error) {
+      console.error('上传文件错误:', error)
       ctx.status = 500
       ctx.body = {
         success: false,
-        message: error.message
+        message: error.message,
+        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
       }
     }
   }

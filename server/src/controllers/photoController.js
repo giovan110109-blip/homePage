@@ -400,62 +400,65 @@ class PhotoController {
 
   async getMapData(ctx) {
     try {
-      const photos = await Photo.find({
-        status: "completed",
-        visibility: "public",
-        "location.coordinates": { $exists: true, $ne: null },
-      })
-        .select(
-          "_id title thumbnailUrl originalUrl originalFileUrl location geoinfo dateTaken width height thumbnailHash isLive videoUrl exif",
-        )
-        .sort({ dateTaken: -1 })
-        .lean();
-
-      // 按坐标点聚合（精度到小数点后3位，约100米）
-      const locationGroups = {};
-
-      photos.forEach((photo) => {
-        // 保留3位小数的坐标作为key，精度约100米
-        const lat = photo.location?.latitude;
-        const lng = photo.location?.longitude;
-
-        if (!lat || !lng) return;
-
-        const precision = 1000; // 3位小数
-        const roundedLat = Math.round(lat * precision) / precision;
-        const roundedLng = Math.round(lng * precision) / precision;
-        const key = `${roundedLat},${roundedLng}`;
-
-        if (!locationGroups[key]) {
-          locationGroups[key] = {
-            city: photo.geoinfo?.city || photo.geoinfo?.country || "Unknown",
-            location: {
-              latitude: roundedLat,
-              longitude: roundedLng,
+      const locationGroups = await Photo.aggregate([
+        {
+          $match: {
+            status: "completed",
+            visibility: "public",
+            "location.coordinates": { $exists: true, $ne: null },
+          },
+        },
+        {
+          $group: {
+            _id: {
+              lat: { $round: ["$location.latitude", 3] },
+              lng: { $round: ["$location.longitude", 3] },
             },
-            count: 0,
-            photos: [],
-          };
-        }
-        locationGroups[key].photos.push({
-          _id: photo._id,
-          title: photo.title,
-          thumbnailUrl: photo.thumbnailUrl,
-          originalUrl: photo.originalUrl,
-          originalFileUrl: photo.originalFileUrl,
-          dateTaken: photo.dateTaken,
-          geoinfo: photo.geoinfo,
-          width: photo.width,
-          height: photo.height,
-          thumbnailHash: photo.thumbnailHash,
-          isLive: photo.isLive,
-          videoUrl: photo.videoUrl,
-          exif: photo.exif,
-        });
-        locationGroups[key].count += 1;
-      });
+            city: { $first: "$geoinfo.city" },
+            country: { $first: "$geoinfo.country" },
+            count: { $sum: 1 },
+            photos: { $push: "$$ROOT" },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            city: { $ifNull: ["$city", "$country", "Unknown"] },
+            location: {
+              latitude: "$_id.lat",
+              longitude: "$_id.lng",
+            },
+            count: 1,
+            photos: {
+              $slice: [
+                {
+                  $map: {
+                    input: { $slice: ["$photos", 50] },
+                    as: "photo",
+                    in: {
+                      _id: "$$photo._id",
+                      title: "$$photo.title",
+                      thumbnailUrl: "$$photo.thumbnailUrl",
+                      originalUrl: "$$photo.originalUrl",
+                      originalFileUrl: "$$photo.originalFileUrl",
+                      dateTaken: "$$photo.dateTaken",
+                      width: "$$photo.width",
+                      height: "$$photo.height",
+                      thumbnailHash: "$$photo.thumbnailHash",
+                      isLive: "$$photo.isLive",
+                      videoUrl: "$$photo.videoUrl",
+                    },
+                  },
+                },
+                50,
+              ],
+            },
+          },
+        },
+        { $sort: { count: -1 } },
+      ]);
 
-      ctx.body = Response.success(Object.values(locationGroups), "获取成功");
+      ctx.body = Response.success(locationGroups, "获取成功");
     } catch (error) {
       throw error;
     }

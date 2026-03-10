@@ -8,7 +8,6 @@ const connectDB = async () => {
     }
 
     try {
-        // 优先使用完整连接串 MONGODB_URI
         let uri = process.env.MONGODB_URI;
 
         if (!uri) {
@@ -35,12 +34,15 @@ const connectDB = async () => {
         }
 
         const conn = await mongoose.connect(uri, {
-            maxPoolSize: 100,
-            minPoolSize: 10,
-            socketTimeoutMS: 45000,
-            serverSelectionTimeoutMS: 5000,
-            connectTimeoutMS: 10000,
-            maxIdleTimeMS: 30000,
+            maxPoolSize: 10,
+            minPoolSize: 2,
+            socketTimeoutMS: 30000,
+            serverSelectionTimeoutMS: 10000,
+            connectTimeoutMS: 15000,
+            maxIdleTimeMS: 60000,
+            heartbeatFrequencyMS: 10000,
+            retryWrites: true,
+            retryReads: true,
         });
         logger.info(`MongoDB 已连接: ${conn.connection.host}`);
 
@@ -49,11 +51,14 @@ const connectDB = async () => {
         });
 
         mongoose.connection.on('disconnected', () => {
-            logger.warn('MongoDB 连接断开');
+            logger.warn('MongoDB 连接断开，尝试重连...');
+        });
+
+        mongoose.connection.on('reconnected', () => {
+            logger.info('MongoDB 已重连');
         });
     } catch (error) {
         logger.error('MongoDB 连接失败:', error);
-        // 生产环境建议退出；如需开发不中断，可设置 SKIP_DB=true
         process.exit(1);
     }
 };
