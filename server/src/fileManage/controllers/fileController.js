@@ -633,7 +633,7 @@ class FileController {
         const pathParts = relativePath.split('/').filter(p => p && p !== originalName)
         
         for (const folderName of pathParts) {
-          const beforeCount = await FileItem.countDocuments({
+          let existingFolder = await FileItem.findOne({
             name: folderName,
             parentId: actualParentId,
             owner: userId,
@@ -641,37 +641,19 @@ class FileController {
             isDeleted: false
           })
 
-          const existingFolder = await FileItem.findOneAndUpdate(
-            {
+          if (!existingFolder) {
+            const newFolder = await FileItem.create({
               name: folderName,
-              parentId: actualParentId,
-              owner: userId,
               type: 'folder',
-              isDeleted: false
-            },
-            {
-              $setOnInsert: {
-                name: folderName,
-                type: 'folder',
-                parentId: actualParentId,
-                path: '/',
-                owner: userId,
-                isDeleted: false
-              }
-            },
-            {
-              upsert: true,
-              new: true,
-              setDefaultsOnInsert: true
-            }
-          )
-
-          if (existingFolder) {
-            if (beforeCount === 0) {
-              createdFolders.push(formatItem(existingFolder))
-            }
-            actualParentId = existingFolder._id.toString()
+              parentId: actualParentId,
+              path: '/',
+              owner: userId
+            })
+            existingFolder = newFolder
+            createdFolders.push(formatItem(existingFolder))
           }
+
+          actualParentId = existingFolder._id.toString()
         }
       }
 
