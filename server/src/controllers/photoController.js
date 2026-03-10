@@ -405,7 +405,8 @@ class PhotoController {
           $match: {
             status: "completed",
             visibility: "public",
-            "location.coordinates": { $exists: true, $ne: null },
+            "location.latitude": { $exists: true, $ne: null },
+            "location.longitude": { $exists: true, $ne: null },
           },
         },
         {
