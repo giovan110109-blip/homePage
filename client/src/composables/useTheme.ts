@@ -1,7 +1,6 @@
 
 type Theme = 'light' | 'dark'
 
-// 全局单例状态 - 在模块加载时初始化，只初始化一次
 const getPreferredTheme = (): Theme => {
   const saved = localStorage.getItem('theme') as Theme | null
   if (saved === 'light' || saved === 'dark') {
@@ -10,11 +9,26 @@ const getPreferredTheme = (): Theme => {
   return typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
 }
 
-const applyTheme = (t: Theme) => {
+const applyTheme = (t: Theme, transition = false) => {
   if (typeof document !== 'undefined') {
-    document.documentElement.classList.remove('light', 'dark')
-    document.documentElement.classList.add(t)
-    document.documentElement.style.colorScheme = t
+    const root = document.documentElement
+    
+    if (transition && 'startViewTransition' in document) {
+      (document as any).startViewTransition(() => {
+        root.classList.remove('light', 'dark')
+        root.classList.add(t)
+        root.style.colorScheme = t
+      })
+    } else {
+      root.classList.add('theme-transition')
+      root.classList.remove('light', 'dark')
+      root.classList.add(t)
+      root.style.colorScheme = t
+      
+      setTimeout(() => {
+        root.classList.remove('theme-transition')
+      }, 300)
+    }
   }
 }
 
@@ -22,18 +36,15 @@ const globalTheme = ref<Theme>(getPreferredTheme())
 let isUserSet = false
 let initialized = false
 
-// 页面加载时立即应用主题
 applyTheme(globalTheme.value)
 
 export function useTheme() {
   onMounted(() => {
     if (!initialized) {
-      // 保存用户设置到localStorage
       if (isUserSet) {
         localStorage.setItem('theme', globalTheme.value)
       }
       
-      // 监听浏览器主题变化
       const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
       const handleChange = () => {
         if (!isUserSet) {
@@ -55,7 +66,9 @@ export function useTheme() {
 
   const toggleTheme = () => {
     isUserSet = true
-    globalTheme.value = globalTheme.value === 'light' ? 'dark' : 'light'
+    const newTheme = globalTheme.value === 'light' ? 'dark' : 'light'
+    applyTheme(newTheme, true)
+    globalTheme.value = newTheme
   }
 
   return {

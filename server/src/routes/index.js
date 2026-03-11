@@ -48,7 +48,8 @@ function registerRoutes(app) {
         'adminRbac.js',
         'fileManage.js',
         'share.js',
-        'operationLog.js'
+        'operationLog.js',
+        'nps.js'
     ]);
 
     // 过滤出路由文件

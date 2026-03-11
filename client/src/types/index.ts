@@ -17,3 +17,13 @@ export type {
 
 // Re-export avatar types
 export type { AvatarOption, AvatarSettings, None } from './avatar'
+
+// Re-export moment types
+export type {
+  Moment,
+  MomentMedia,
+  MomentLivePhoto,
+  MomentVideo,
+  MomentLocation,
+  MomentAuthor,
+} from './moment'

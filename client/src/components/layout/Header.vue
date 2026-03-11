@@ -73,27 +73,33 @@
       </div>
 
       <!-- 移动端菜单 -->
-      <div
-        v-if="mobileMenuOpen"
-        class="md:hidden py-4 border-t border-gray-300 dark:border-gray-700"
-      >
-        <div class="space-y-2">
-          <router-link
-            v-for="item in navigation"
-            :key="item.name"
-            :to="item.href"
-            class="block px-4 py-2 text-base font-medium rounded-lg transition-colors"
-            :class="[
-              $route.path === item.href
-                ? 'text-white bg-blue-500/80 backdrop-blur-sm'
-                : 'text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-300/50 dark:hover:bg-gray-800',
-            ]"
-            @click="closeMobileMenu"
-          >
-            {{ item.name }}
-          </router-link>
+      <Transition name="mobile-menu">
+        <div
+          v-show="mobileMenuOpen"
+          class="md:hidden overflow-hidden border-t border-gray-300 dark:border-gray-700"
+        >
+          <div class="py-4">
+            <div class="space-y-2">
+              <router-link
+                v-for="(item, index) in navigation"
+                :key="item.name"
+                :to="item.href"
+                class="block px-4 py-2 text-base font-medium rounded-lg transition-colors menu-item"
+                :class="[
+                  $route.path === item.href
+                    ? 'text-white bg-blue-500/80 backdrop-blur-sm'
+                    : 'text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-300/50 dark:hover:bg-gray-800',
+                  { 'menu-item-active': mobileMenuOpen },
+                ]"
+                :style="{ '--delay': `${index * 50}ms` }"
+                @click="closeMobileMenu"
+              >
+                {{ item.name }}
+              </router-link>
+            </div>
+          </div>
         </div>
-      </div>
+      </Transition>
     </nav>
   </header>
 </template>
@@ -113,7 +119,7 @@ const navigation = [
   { name: "留言板", href: "/note" },
   { name: "说说", href: "/moments" },
   { name: "朋友圈", href: "/friends" },
-  { name: '文章列表', href: '/articles' },
+  { name: "文章列表", href: "/articles" },
   // { name: "我的网站", href: "/sites" },
   // { name: '赞助支持', href: '/sponsor' },
   { name: "画廊", href: "/gallery" },
@@ -137,5 +143,40 @@ const closeMobileMenu = () => {
 
 .custom-font {
   font-family: "CustomFont", sans-serif;
+}
+
+/* 移动端菜单动画 */
+.mobile-menu-enter-active {
+  animation: slideDown 0.3s ease-out;
+}
+
+.mobile-menu-leave-active {
+  animation: slideDown 0.2s ease-in reverse;
+}
+
+@keyframes slideDown {
+  from {
+    max-height: 0;
+    opacity: 0;
+  }
+  to {
+    max-height: 400px;
+    opacity: 1;
+  }
+}
+
+/* 菜单项动画 */
+.menu-item {
+  opacity: 0;
+  transform: translateX(-20px);
+  animation: fadeInItem 0.3s ease forwards;
+  animation-delay: var(--delay, 0ms);
+}
+
+@keyframes fadeInItem {
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 </style>

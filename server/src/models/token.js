@@ -9,7 +9,8 @@ const tokenSchema = new mongoose.Schema({
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true
+    required: true,
+    index: true
   },
   username: {
     type: String,
@@ -35,5 +36,7 @@ const tokenSchema = new mongoose.Schema({
     default: Date.now
   }
 });
+
+tokenSchema.index({ userId: 1, expiresAt: 1 });
 
 module.exports = mongoose.model('Token', tokenSchema);

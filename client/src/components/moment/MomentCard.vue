@@ -150,66 +150,7 @@ import LivePhoto from '@/components/photo/LivePhoto.vue'
 import LazyImage from '@/components/photo/LazyImage.vue'
 import PhotoViewer from '@/components/photo/PhotoViewer.vue'
 import { formatRelativeTime } from '@/utils/format'
-
-interface MomentMedia {
-  url: string
-  thumbnailUrl?: string
-  thumbHash?: string
-  width?: number
-  height?: number
-  photoId?: string
-  isPrivate?: boolean
-  isLive?: boolean
-  videoUrl?: string
-  originalFileUrl?: string
-}
-
-interface MomentLivePhoto {
-  imageUrl?: string
-  videoUrl?: string
-  imagePhotoId?: string
-  videoPhotoId?: string
-  width?: number
-  height?: number
-}
-
-interface MomentVideo {
-  url: string
-  thumbnailUrl?: string
-  duration?: number
-  width?: number
-  height?: number
-}
-
-interface MomentLocation {
-  latitude?: number
-  longitude?: number
-  name?: string
-  address?: string
-}
-
-interface MomentAuthor {
-  _id?: string
-  name?: string
-  avatar?: string
-}
-
-interface Moment {
-  _id: string
-  content: string
-  type: 'text' | 'image' | 'video' | 'live'
-  mode: 'livePhoto' | 'video'
-  media: MomentMedia[]
-  livePhoto?: MomentLivePhoto
-  video?: MomentVideo
-  location?: MomentLocation
-  author: MomentAuthor
-  likes: number
-  comments: number
-  isLiked: boolean
-  reactions?: Record<string, number>
-  createdAt: string
-}
+import type { Moment, MomentMedia } from '@/types'
 
 const props = defineProps<{
   moment: Moment

@@ -6,7 +6,7 @@ class WebSocketService {
   constructor() {
     this.wss = null;
     this.clients = new Map();
-    this.pollTimer = null;
+    this.userClients = new Map();
   }
 
   init(server) {
@@ -23,6 +23,7 @@ class WebSocketService {
       ws.on('close', () => {
         const client = this.clients.get(clientId);
         if (client?.userId) {
+          this.removeFromUserMap(client.userId, clientId);
           WsSubscription.deleteOne({ clientId }).catch(() => {});
         }
         this.clients.delete(clientId);
@@ -31,8 +32,7 @@ class WebSocketService {
       ws.send(JSON.stringify({ type: 'connected', clientId }));
     });
 
-    this.startPolling();
-    console.log('[WS] Service initialized');
+    console.log('[WS] Service initialized (direct push mode)');
   }
 
   async handleMessage(clientId, data) {
@@ -53,6 +53,9 @@ class WebSocketService {
     if (!client) return;
 
     client.userId = userId;
+    
+    this.addToUserMap(userId, clientId);
+    
     await WsSubscription.findOneAndUpdate(
       { clientId },
       { clientId, userId },
@@ -63,43 +66,77 @@ class WebSocketService {
     console.log('[WS] Client subscribed:', clientId, 'userId:', userId);
   }
 
-  startPolling() {
-    let lastTime = Date.now();
-    
-    this.pollTimer = setInterval(async () => {
-      try {
-        const messages = await WsMessage.find({
-          createdAt: { $gt: new Date(lastTime) }
-        }).sort({ createdAt: 1 }).limit(100);
-
-        for (const msg of messages) {
-          lastTime = msg.createdAt.getTime();
-          this.sendToClients(msg.userId, msg.data);
-        }
-      } catch (e) {
-        console.error('[WS] Poll error:', e);
-      }
-    }, 200);
+  addToUserMap(userId, clientId) {
+    if (!this.userClients.has(userId)) {
+      this.userClients.set(userId, new Set());
+    }
+    this.userClients.get(userId).add(clientId);
   }
 
-  sendToClients(userId, data) {
-    const msg = JSON.stringify({ type: 'task:update', data });
-    
-    for (const [, client] of this.clients) {
-      if (client.userId === userId && client.ws?.readyState === WebSocket.OPEN) {
-        client.ws.send(msg);
+  removeFromUserMap(userId, clientId) {
+    const clientSet = this.userClients.get(userId);
+    if (clientSet) {
+      clientSet.delete(clientId);
+      if (clientSet.size === 0) {
+        this.userClients.delete(userId);
       }
     }
   }
 
+  sendToUser(userId, data) {
+    const clientIds = this.userClients.get(userId?.toString());
+    if (!clientIds || clientIds.size === 0) return false;
+
+    const msg = JSON.stringify({ type: 'task:update', data });
+    let sent = 0;
+
+    for (const clientId of clientIds) {
+      const client = this.clients.get(clientId);
+      if (client?.ws?.readyState === WebSocket.OPEN) {
+        client.ws.send(msg);
+        sent++;
+      }
+    }
+
+    return sent > 0;
+  }
+
   async broadcast(userId, data) {
     if (!userId) return;
-    await WsMessage.create({ userId: userId.toString(), data });
+    
+    const sent = this.sendToUser(userId, data);
+    
+    if (!sent) {
+      await WsMessage.create({ 
+        userId: userId.toString(), 
+        data,
+        createdAt: new Date()
+      });
+    }
+  }
+
+  async sendPendingMessages(userId) {
+    const messages = await WsMessage.find({ 
+      userId: userId.toString() 
+    }).sort({ createdAt: 1 }).limit(50);
+
+    for (const msg of messages) {
+      this.sendToUser(userId, msg.data);
+    }
+
+    if (messages.length > 0) {
+      await WsMessage.deleteMany({ 
+        _id: { $in: messages.map(m => m._id) } 
+      });
+    }
   }
 
   close() {
-    if (this.pollTimer) clearInterval(this.pollTimer);
-    if (this.wss) this.wss.close();
+    if (this.wss) {
+      this.wss.close();
+    }
+    this.clients.clear();
+    this.userClients.clear();
   }
 }
 

@@ -33,10 +33,22 @@ export const useSiteInfoStore = defineStore('siteInfo', {
     info: { ...defaultSiteInfo } as SiteInfo,
     loading: false,
     error: null as string | null,
+    lastFetchTime: 0,
   }),
 
+  getters: {
+    shouldRefetch: (state) => {
+      const CACHE_DURATION = 5 * 60 * 1000
+      return Date.now() - state.lastFetchTime > CACHE_DURATION
+    },
+  },
+
   actions: {
-    async fetchSiteInfo() {
+    async fetchSiteInfo(force = false) {
+      if (!force && !this.shouldRefetch && this.info.name) {
+        return
+      }
+
       this.loading = true
       this.error = null
       try {
@@ -53,6 +65,7 @@ export const useSiteInfoStore = defineStore('siteInfo', {
           },
           socialLinks: Array.isArray(data?.socialLinks) ? data.socialLinks : [],
         }
+        this.lastFetchTime = Date.now()
       } catch (error: any) {
         this.error = error?.message || '获取网站信息失败'
       } finally {
@@ -69,10 +82,16 @@ export const useSiteInfoStore = defineStore('siteInfo', {
           ...(partial.footerContact || {}),
         },
       }
+      this.lastFetchTime = Date.now()
     },
 
     clearError() {
       this.error = null
     },
+  },
+
+  persist: {
+    key: 'site-info',
+    pick: ['info', 'lastFetchTime'],
   },
 })
