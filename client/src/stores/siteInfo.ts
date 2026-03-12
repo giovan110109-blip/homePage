@@ -37,7 +37,7 @@ export const useSiteInfoStore = defineStore('siteInfo', {
   }),
 
   getters: {
-    shouldRefetch: (state) => {
+    shouldRefetch: (state): boolean => {
       const CACHE_DURATION = 5 * 60 * 1000
       return Date.now() - state.lastFetchTime > CACHE_DURATION
     },
@@ -92,6 +92,6 @@ export const useSiteInfoStore = defineStore('siteInfo', {
 
   persist: {
     key: 'site-info',
-    pick: ['info', 'lastFetchTime'],
+    paths: ['info', 'lastFetchTime'],
   },
 })

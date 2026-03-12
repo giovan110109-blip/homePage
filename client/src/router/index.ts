@@ -177,6 +177,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '赞助管理', icon: 'Heart', showInMenu: true, requiresAuth: true }
       },
       {
+        path: 'nps',
+        name: 'admin-nps',
+        component: () => import('@/pages/admin/NpsPage.vue'),
+        meta: { title: '内网穿透', icon: 'Wifi', showInMenu: true, requiresAuth: true }
+      },
+      {
         path: 'settings',
         name: 'admin-settings',
         component: () => import('@/pages/admin/SettingsPage.vue'),

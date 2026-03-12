@@ -18,7 +18,6 @@ const shareUrl = computed(() => {
   }
   return ''
 })
-console.log(shareUrl,'shareUrl');
 
 const shareText = computed(() => {
   const title = props.photo.title || '美丽的照片'

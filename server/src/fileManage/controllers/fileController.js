@@ -1,3 +1,5 @@
+const BaseController = require('../../utils/baseController');
+const { HttpStatus } = require('../../utils/response');
 const FileItem = require('../models/FileItem')
 const mongoose = require('mongoose')
 const path = require('path')
@@ -61,7 +63,7 @@ const formatItem = (item) => {
   }
 }
 
-class FileController {
+class FileController extends BaseController {
   async list(ctx) {
     try {
       const { folderId } = ctx.query
@@ -92,17 +94,12 @@ class FileController {
 
       const data = items.map(formatItem)
 
-      ctx.body = {
-        success: true,
+      this.ok(ctx, {
         data,
         parentFolder: parentFolder ? formatItem(parentFolder) : null
-      }
+      })
     } catch (error) {
-      ctx.status = 500
-      ctx.body = {
-        success: false,
-        message: error.message
-      }
+      this.fail(ctx, error)
     }
   }
 
@@ -112,24 +109,14 @@ class FileController {
       const userId = ctx.state.user._id
 
       if (!name || !name.trim()) {
-        ctx.status = 400
-        ctx.body = {
-          success: false,
-          message: '文件夹名称不能为空'
-        }
-        return
+        this.throwHttpError('文件夹名称不能为空', HttpStatus.BAD_REQUEST)
       }
 
       const parentPath = '/'
       if (parentId) {
         const parent = await FileItem.findById(parentId)
         if (!parent || parent.type !== 'folder') {
-          ctx.status = 400
-          ctx.body = {
-            success: false,
-            message: '父文件夹不存在'
-          }
-          return
+          this.throwHttpError('父文件夹不存在', HttpStatus.BAD_REQUEST)
         }
       }
 
@@ -141,12 +128,7 @@ class FileController {
       })
 
       if (existingFolder) {
-        ctx.status = 400
-        ctx.body = {
-          success: false,
-          message: '同名文件夹已存在'
-        }
-        return
+        this.throwHttpError('同名文件夹已存在', HttpStatus.BAD_REQUEST)
       }
 
       const folderData = {
@@ -168,17 +150,9 @@ class FileController {
       const folderResponse = formatItem(folder)
       folderResponse.hasPassword = !!folder.password
 
-      ctx.body = {
-        success: true,
-        data: folderResponse,
-        message: '文件夹创建成功'
-      }
+      this.ok(ctx, folderResponse, '文件夹创建成功')
     } catch (error) {
-      ctx.status = 500
-      ctx.body = {
-        success: false,
-        message: error.message
-      }
+      this.fail(ctx, error)
     }
   }
 
@@ -189,12 +163,7 @@ class FileController {
       const userId = ctx.state.user._id
 
       if (!name || !name.trim()) {
-        ctx.status = 400
-        ctx.body = {
-          success: false,
-          message: '名称不能为空'
-        }
-        return
+        this.throwHttpError('名称不能为空', HttpStatus.BAD_REQUEST)
       }
 
       const item = await FileItem.findOne({
@@ -204,12 +173,7 @@ class FileController {
       })
 
       if (!item) {
-        ctx.status = 404
-        ctx.body = {
-          success: false,
-          message: '文件或文件夹不存在'
-        }
-        return
+        this.throwHttpError('文件或文件夹不存在', HttpStatus.NOT_FOUND)
       }
 
       const existing = await FileItem.findOne({
@@ -221,28 +185,15 @@ class FileController {
       })
 
       if (existing) {
-        ctx.status = 400
-        ctx.body = {
-          success: false,
-          message: '同名文件或文件夹已存在'
-        }
-        return
+        this.throwHttpError('同名文件或文件夹已存在', HttpStatus.BAD_REQUEST)
       }
 
       item.name = name.trim()
       await item.save()
 
-      ctx.body = {
-        success: true,
-        data: formatItem(item),
-        message: '重命名成功'
-      }
+      this.ok(ctx, formatItem(item), '重命名成功')
     } catch (error) {
-      ctx.status = 500
-      ctx.body = {
-        success: false,
-        message: error.message
-      }
+      this.fail(ctx, error)
     }
   }
 
@@ -252,12 +203,7 @@ class FileController {
       const userId = ctx.state.user._id
 
       if (!ids || !Array.isArray(ids) || ids.length === 0) {
-        ctx.status = 400
-        ctx.body = {
-          success: false,
-          message: '请选择要删除的文件或文件夹'
-        }
-        return
+        this.throwHttpError('请选择要删除的文件或文件夹', HttpStatus.BAD_REQUEST)
       }
 
       const objectIds = ids.map(id => new mongoose.Types.ObjectId(id))
@@ -269,12 +215,7 @@ class FileController {
       })
 
       if (items.length === 0) {
-        ctx.status = 404
-        ctx.body = {
-          success: false,
-          message: '未找到要删除的文件'
-        }
-        return
+        this.throwHttpError('未找到要删除的文件', HttpStatus.NOT_FOUND)
       }
 
       const now = new Date()
@@ -290,16 +231,9 @@ class FileController {
 
       await Promise.all(updatePromises)
 
-      ctx.body = {
-        success: true,
-        message: `已将 ${items.length} 个项目移入回收站`
-      }
+      this.ok(ctx, null, `已将 ${items.length} 个项目移入回收站`)
     } catch (error) {
-      ctx.status = 500
-      ctx.body = {
-        success: false,
-        message: error.message
-      }
+      this.fail(ctx, error)
     }
   }
 
@@ -309,16 +243,9 @@ class FileController {
 
       const items = await FileItem.findDeleted(userId)
 
-      ctx.body = {
-        success: true,
-        data: items.map(formatItem)
-      }
+      this.ok(ctx, items.map(formatItem))
     } catch (error) {
-      ctx.status = 500
-      ctx.body = {
-        success: false,
-        message: error.message
-      }
+      this.fail(ctx, error)
     }
   }
 
@@ -328,12 +255,7 @@ class FileController {
       const userId = ctx.state.user._id
 
       if (!ids || !Array.isArray(ids) || ids.length === 0) {
-        ctx.status = 400
-        ctx.body = {
-          success: false,
-          message: '请选择要恢复的文件'
-        }
-        return
+        this.throwHttpError('请选择要恢复的文件', HttpStatus.BAD_REQUEST)
       }
 
       const objectIds = ids.map(id => new mongoose.Types.ObjectId(id))
@@ -346,16 +268,9 @@ class FileController {
         }
       )
 
-      ctx.body = {
-        success: true,
-        message: `已恢复 ${result.modifiedCount} 个项目`
-      }
+      this.ok(ctx, null, `已恢复 ${result.modifiedCount} 个项目`)
     } catch (error) {
-      ctx.status = 500
-      ctx.body = {
-        success: false,
-        message: error.message
-      }
+      this.fail(ctx, error)
     }
   }
 
@@ -365,12 +280,7 @@ class FileController {
       const userId = ctx.state.user._id
 
       if (!ids || !Array.isArray(ids) || ids.length === 0) {
-        ctx.status = 400
-        ctx.body = {
-          success: false,
-          message: '请选择要永久删除的文件'
-        }
-        return
+        this.throwHttpError('请选择要永久删除的文件', HttpStatus.BAD_REQUEST)
       }
 
       const objectIds = ids.map(id => new mongoose.Types.ObjectId(id))
@@ -394,16 +304,9 @@ class FileController {
         owner: userId
       })
 
-      ctx.body = {
-        success: true,
-        message: `已永久删除 ${items.length} 个项目`
-      }
+      this.ok(ctx, null, `已永久删除 ${items.length} 个项目`)
     } catch (error) {
-      ctx.status = 500
-      ctx.body = {
-        success: false,
-        message: error.message
-      }
+      this.fail(ctx, error)
     }
   }
 
@@ -413,25 +316,14 @@ class FileController {
       const userId = ctx.state.user._id
 
       if (!keyword) {
-        ctx.body = {
-          success: true,
-          data: []
-        }
-        return
+        return this.ok(ctx, [])
       }
 
       const items = await FileItem.search(userId, keyword, { type })
 
-      ctx.body = {
-        success: true,
-        data: items
-      }
+      this.ok(ctx, items)
     } catch (error) {
-      ctx.status = 500
-      ctx.body = {
-        success: false,
-        message: error.message
-      }
+      this.fail(ctx, error)
     }
   }
 
@@ -447,28 +339,15 @@ class FileController {
       })
 
       if (!item) {
-        ctx.status = 404
-        ctx.body = {
-          success: false,
-          message: '文件不存在'
-        }
-        return
+        this.throwHttpError('文件不存在', HttpStatus.NOT_FOUND)
       }
 
       item.isFavorite = !item.isFavorite
       await item.save()
 
-      ctx.body = {
-        success: true,
-        data: { isFavorite: item.isFavorite },
-        message: item.isFavorite ? '已添加到收藏' : '已取消收藏'
-      }
+      this.ok(ctx, { isFavorite: item.isFavorite }, item.isFavorite ? '已添加到收藏' : '已取消收藏')
     } catch (error) {
-      ctx.status = 500
-      ctx.body = {
-        success: false,
-        message: error.message
-      }
+      this.fail(ctx, error)
     }
   }
 
@@ -482,16 +361,9 @@ class FileController {
         isDeleted: false
       }).sort({ updatedAt: -1 }).lean()
 
-      ctx.body = {
-        success: true,
-        data: items.map(formatItem)
-      }
+      this.ok(ctx, items.map(formatItem))
     } catch (error) {
-      ctx.status = 500
-      ctx.body = {
-        success: false,
-        message: error.message
-      }
+      this.fail(ctx, error)
     }
   }
 
@@ -525,16 +397,9 @@ class FileController {
 
       const tree = buildTree(folders)
 
-      ctx.body = {
-        success: true,
-        data: tree
-      }
+      this.ok(ctx, tree)
     } catch (error) {
-      ctx.status = 500
-      ctx.body = {
-        success: false,
-        message: error.message
-      }
+      this.fail(ctx, error)
     }
   }
 
@@ -545,12 +410,7 @@ class FileController {
       const userId = ctx.state.user._id
 
       if (!file) {
-        ctx.status = 400
-        ctx.body = {
-          success: false,
-          message: '请选择要上传的文件'
-        }
-        return
+        this.throwHttpError('请选择要上传的文件', HttpStatus.BAD_REQUEST)
       }
 
       const baseUploadDir = process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads')
@@ -672,22 +532,13 @@ class FileController {
         owner: userId
       })
 
-      ctx.body = {
-        success: true,
-        data: {
-          file: formatItem(fileItem),
-          folders: createdFolders
-        },
-        message: '文件上传成功'
-      }
+      this.ok(ctx, {
+        file: formatItem(fileItem),
+        folders: createdFolders
+      }, '文件上传成功')
     } catch (error) {
       console.error('上传文件错误:', error)
-      ctx.status = 500
-      ctx.body = {
-        success: false,
-        message: error.message,
-        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
-      }
+      this.fail(ctx, error)
     }
   }
 
@@ -703,12 +554,7 @@ class FileController {
       })
 
       if (!item || item.type !== 'file') {
-        ctx.status = 404
-        ctx.body = {
-          success: false,
-          message: '文件不存在'
-        }
-        return
+        this.throwHttpError('文件不存在', HttpStatus.NOT_FOUND)
       }
 
       const baseUploadDir = process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads')
@@ -717,12 +563,7 @@ class FileController {
       try {
         await fsp.access(filePath)
       } catch {
-        ctx.status = 404
-        ctx.body = {
-          success: false,
-          message: '文件不存在'
-        }
-        return
+        this.throwHttpError('文件不存在', HttpStatus.NOT_FOUND)
       }
 
       ctx.set('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(item.name)}`)
@@ -732,11 +573,7 @@ class FileController {
       const fileStream = fs.createReadStream(filePath)
       ctx.body = fileStream
     } catch (error) {
-      ctx.status = 500
-      ctx.body = {
-        success: false,
-        message: error.message
-      }
+      this.fail(ctx, error)
     }
   }
 
@@ -751,21 +588,11 @@ class FileController {
       }).lean()
 
       if (!item || item.type !== 'file') {
-        ctx.status = 404
-        ctx.body = {
-          success: false,
-          message: '文件不存在'
-        }
-        return
+        this.throwHttpError('文件不存在', HttpStatus.NOT_FOUND)
       }
 
       if (item.isPrivate && String(item.owner) !== String(userId)) {
-        ctx.status = 403
-        ctx.body = {
-          success: false,
-          message: '无权访问此文件'
-        }
-        return
+        this.throwHttpError('无权访问此文件', HttpStatus.FORBIDDEN)
       }
 
       const baseUploadDir = process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads')
@@ -774,12 +601,7 @@ class FileController {
       try {
         await fsp.access(filePath)
       } catch {
-        ctx.status = 404
-        ctx.body = {
-          success: false,
-          message: '文件不存在'
-        }
-        return
+        this.throwHttpError('文件不存在', HttpStatus.NOT_FOUND)
       }
 
       const stat = await fsp.stat(filePath)
@@ -826,11 +648,7 @@ class FileController {
         ctx.body = stream
       }
     } catch (error) {
-      ctx.status = 500
-      ctx.body = {
-        success: false,
-        message: error.message
-      }
+      this.fail(ctx, error)
     }
   }
 
@@ -845,21 +663,11 @@ class FileController {
       }).lean()
 
       if (!item) {
-        ctx.status = 404
-        ctx.body = {
-          success: false,
-          message: '文件不存在'
-        }
-        return
+        this.throwHttpError('文件不存在', HttpStatus.NOT_FOUND)
       }
 
       if (item.isPrivate && String(item.owner) !== String(userId)) {
-        ctx.status = 403
-        ctx.body = {
-          success: false,
-          message: '无权访问此文件'
-        }
-        return
+        this.throwHttpError('无权访问此文件', HttpStatus.FORBIDDEN)
       }
 
       const mimeType = item.mimeType || 'application/octet-stream'
@@ -872,19 +680,12 @@ class FileController {
         item.extension && ['txt', 'md', 'json', 'js', 'ts', 'vue', 'jsx', 'tsx', 'css', 'scss', 'html', 'xml', 'yaml', 'yml', 'sh', 'py', 'java', 'c', 'cpp', 'h', 'go', 'rs', 'rb', 'php', 'sql', 'conf', 'log', 'env', 'gitignore'].includes(item.extension.toLowerCase())
       const isOffice = ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'].includes(item.extension?.toLowerCase() || '')
 
-      ctx.body = {
-        success: true,
-        data: {
-          ...formatItem(item),
-          previewType: isImage ? 'image' : isVideo ? 'video' : isAudio ? 'audio' : isPdf ? 'pdf' : isText ? 'text' : isOffice ? 'office' : 'download'
-        }
-      }
+      this.ok(ctx, {
+        ...formatItem(item),
+        previewType: isImage ? 'image' : isVideo ? 'video' : isAudio ? 'audio' : isPdf ? 'pdf' : isText ? 'text' : isOffice ? 'office' : 'download'
+      })
     } catch (error) {
-      ctx.status = 500
-      ctx.body = {
-        success: false,
-        message: error.message
-      }
+      this.fail(ctx, error)
     }
   }
 
@@ -899,30 +700,15 @@ class FileController {
       }).lean()
 
       if (!item || item.type !== 'file') {
-        ctx.status = 404
-        ctx.body = {
-          success: false,
-          message: '文件不存在'
-        }
-        return
+        this.throwHttpError('文件不存在', HttpStatus.NOT_FOUND)
       }
 
       if (item.isPrivate && String(item.owner) !== String(userId)) {
-        ctx.status = 403
-        ctx.body = {
-          success: false,
-          message: '无权访问此文件'
-        }
-        return
+        this.throwHttpError('无权访问此文件', HttpStatus.FORBIDDEN)
       }
 
       if (!item.thumbnailKey) {
-        ctx.status = 404
-        ctx.body = {
-          success: false,
-          message: '缩略图不存在'
-        }
-        return
+        this.throwHttpError('缩略图不存在', HttpStatus.NOT_FOUND)
       }
 
       const baseUploadDir = process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads')
@@ -931,23 +717,14 @@ class FileController {
       try {
         await fsp.access(thumbnailPath)
       } catch {
-        ctx.status = 404
-        ctx.body = {
-          success: false,
-          message: '缩略图不存在'
-        }
-        return
+        this.throwHttpError('缩略图不存在', HttpStatus.NOT_FOUND)
       }
 
       ctx.set('Content-Type', 'image/webp')
       ctx.set('Cache-Control', 'public, max-age=31536000')
       ctx.body = fs.createReadStream(thumbnailPath)
     } catch (error) {
-      ctx.status = 500
-      ctx.body = {
-        success: false,
-        message: error.message
-      }
+      this.fail(ctx, error)
     }
   }
 
@@ -957,12 +734,7 @@ class FileController {
       const userId = ctx.state.user._id
 
       if (!ids || !Array.isArray(ids) || ids.length === 0) {
-        ctx.status = 400
-        ctx.body = {
-          success: false,
-          message: '请选择要复制的文件'
-        }
-        return
+        this.throwHttpError('请选择要复制的文件', HttpStatus.BAD_REQUEST)
       }
 
       const objectIds = ids.map(id => new mongoose.Types.ObjectId(id))
@@ -974,12 +746,7 @@ class FileController {
       })
 
       if (items.length === 0) {
-        ctx.status = 404
-        ctx.body = {
-          success: false,
-          message: '未找到要复制的文件'
-        }
-        return
+        this.throwHttpError('未找到要复制的文件', HttpStatus.NOT_FOUND)
       }
 
       const copiedItems = []
@@ -1029,17 +796,9 @@ class FileController {
         copiedItems.push(copiedItem)
       }
 
-      ctx.body = {
-        success: true,
-        data: copiedItems,
-        message: `已复制 ${copiedItems.length} 个项目`
-      }
+      this.ok(ctx, copiedItems, `已复制 ${copiedItems.length} 个项目`)
     } catch (error) {
-      ctx.status = 500
-      ctx.body = {
-        success: false,
-        message: error.message
-      }
+      this.fail(ctx, error)
     }
   }
 
@@ -1049,12 +808,7 @@ class FileController {
       const userId = ctx.state.user._id
 
       if (!ids || !Array.isArray(ids) || ids.length === 0) {
-        ctx.status = 400
-        ctx.body = {
-          success: false,
-          message: '请选择要移动的文件'
-        }
-        return
+        this.throwHttpError('请选择要移动的文件', HttpStatus.BAD_REQUEST)
       }
 
       const objectIds = ids.map(id => new mongoose.Types.ObjectId(id))
@@ -1066,12 +820,7 @@ class FileController {
       })
 
       if (items.length === 0) {
-        ctx.status = 404
-        ctx.body = {
-          success: false,
-          message: '未找到要移动的文件'
-        }
-        return
+        this.throwHttpError('未找到要移动的文件', HttpStatus.NOT_FOUND)
       }
 
       const movedItems = []
@@ -1094,17 +843,9 @@ class FileController {
         movedItems.push(item)
       }
 
-      ctx.body = {
-        success: true,
-        data: movedItems,
-        message: `已移动 ${movedItems.length} 个项目`
-      }
+      this.ok(ctx, movedItems, `已移动 ${movedItems.length} 个项目`)
     } catch (error) {
-      ctx.status = 500
-      ctx.body = {
-        success: false,
-        message: error.message
-      }
+      this.fail(ctx, error)
     }
   }
 
@@ -1131,23 +872,16 @@ class FileController {
 
       const usedSize = result.length > 0 ? result[0].totalSize : 0
       const fileCount = result.length > 0 ? result[0].fileCount : 0
-      const totalSize = 5 * 1024 * 1024 * 1024 * 1024 // 5TB
+      const totalSize = 5 * 1024 * 1024 * 1024 * 1024
 
-      ctx.body = {
-        success: true,
-        data: {
-          usedSize,
-          totalSize,
-          fileCount,
-          usedPercent: Math.round((usedSize / totalSize) * 100 * 100) / 100
-        }
-      }
+      this.ok(ctx, {
+        usedSize,
+        totalSize,
+        fileCount,
+        usedPercent: Math.round((usedSize / totalSize) * 100 * 100) / 100
+      })
     } catch (error) {
-      ctx.status = 500
-      ctx.body = {
-        success: false,
-        message: error.message
-      }
+      this.fail(ctx, error)
     }
   }
 
@@ -1157,55 +891,29 @@ class FileController {
       const userId = ctx.state.user._id
 
       if (!folderId) {
-        ctx.status = 400
-        ctx.body = {
-          success: false,
-          message: '文件夹ID不能为空'
-        }
-        return
+        this.throwHttpError('文件夹ID不能为空', HttpStatus.BAD_REQUEST)
       }
 
       const folder = await FileItem.findById(folderId)
 
       if (!folder || folder.type !== 'folder') {
-        ctx.status = 404
-        ctx.body = {
-          success: false,
-          message: '文件夹不存在'
-        }
-        return
+        this.throwHttpError('文件夹不存在', HttpStatus.NOT_FOUND)
       }
 
       if (!folder.password) {
-        ctx.body = {
-          success: true,
-          data: { verified: true }
-        }
-        return
+        return this.ok(ctx, { verified: true })
       }
 
       if (!password) {
-        ctx.status = 400
-        ctx.body = {
-          success: false,
-          message: '请输入密码'
-        }
-        return
+        this.throwHttpError('请输入密码', HttpStatus.BAD_REQUEST)
       }
 
       const bcrypt = require('bcryptjs')
       const isValid = await bcrypt.compare(password, folder.password)
 
-      ctx.body = {
-        success: true,
-        data: { verified: isValid }
-      }
+      this.ok(ctx, { verified: isValid })
     } catch (error) {
-      ctx.status = 500
-      ctx.body = {
-        success: false,
-        message: error.message
-      }
+      this.fail(ctx, error)
     }
   }
 
@@ -1222,12 +930,7 @@ class FileController {
       })
 
       if (!folder) {
-        ctx.status = 404
-        ctx.body = {
-          success: false,
-          message: '文件夹不存在'
-        }
-        return
+        this.throwHttpError('文件夹不存在', HttpStatus.NOT_FOUND)
       }
 
       const getAllDescendants = async (parentId) => {
@@ -1257,23 +960,16 @@ class FileController {
       const fileCount = descendants.filter(item => item.type === 'file').length
       const folderCount = descendants.filter(item => item.type === 'folder').length
 
-      ctx.body = {
-        success: true,
-        data: {
-          folderId: id,
-          folderName: folder.name,
-          totalSize,
-          fileCount,
-          folderCount,
-          directChildren: descendants.filter(item => String(item.parentId) === String(id)).length
-        }
-      }
+      this.ok(ctx, {
+        folderId: id,
+        folderName: folder.name,
+        totalSize,
+        fileCount,
+        folderCount,
+        directChildren: descendants.filter(item => String(item.parentId) === String(id)).length
+      })
     } catch (error) {
-      ctx.status = 500
-      ctx.body = {
-        success: false,
-        message: error.message
-      }
+      this.fail(ctx, error)
     }
   }
 }

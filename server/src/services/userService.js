@@ -1,6 +1,6 @@
 const BaseService = require('../utils/baseService');
 const User = require('../models/user');
-const { hashPassword } = require('../utils/password');
+const { hashPassword, comparePassword } = require('../utils/password');
 
 class UserService extends BaseService {
   constructor() {
@@ -88,7 +88,7 @@ class UserService extends BaseService {
     const user = await this.getById(id);
     if (!user) return null;
 
-    return await this.updateById(id, { passwordHash: hashPassword(newPassword) });
+    return await this.updateById(id, { passwordHash: await hashPassword(newPassword) });
   }
 
   async deleteUser(id) {
@@ -123,14 +123,14 @@ class UserService extends BaseService {
     const finalUpdateData = { ...otherData };
 
     if (oldPassword && newPassword) {
-      const isMatch = hashPassword(oldPassword) === user.passwordHash;
+      const isMatch = await comparePassword(oldPassword, user.passwordHash);
       if (!isMatch) {
         throw new Error('原密码错误');
       }
       if (newPassword.length < 6) {
         throw new Error('新密码长度不能少于6位');
       }
-      finalUpdateData.passwordHash = hashPassword(newPassword);
+      finalUpdateData.passwordHash = await hashPassword(newPassword);
     }
 
     if (userId) {

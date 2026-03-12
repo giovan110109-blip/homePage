@@ -143,6 +143,8 @@ const handleMouseMove = (event: MouseEvent) => {
   }
 }
 
+const rippleTimer = ref<ReturnType<typeof setTimeout> | null>(null)
+
 const handleClick = (event: MouseEvent) => {
   if (!props.clickEffect || props.disableAnimations || isMobile.value || !cardRef.value) return
   
@@ -151,8 +153,12 @@ const handleClick = (event: MouseEvent) => {
   ripple.y = event.clientY - rect.top
   ripple.show = true
   
-  setTimeout(() => {
+  if (rippleTimer.value) {
+    clearTimeout(rippleTimer.value)
+  }
+  rippleTimer.value = setTimeout(() => {
     ripple.show = false
+    rippleTimer.value = null
   }, 600)
 }
 
@@ -163,5 +169,9 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('resize', checkMobile)
+  if (rippleTimer.value) {
+    clearTimeout(rippleTimer.value)
+    rippleTimer.value = null
+  }
 })
 </script>

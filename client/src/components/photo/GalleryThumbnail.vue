@@ -102,30 +102,41 @@ const onScrollWheel = (event: WheelEvent) => {
   galleryScrollContainer.value.scrollLeft += deltaAmount
 }
 
+const sizeObserver = ref<ResizeObserver | null>(null)
+const scrollTimeout = ref<ReturnType<typeof setTimeout> | null>(null)
+
 onMounted(() => {
   updateContainerSize()
 
   // 观察容器尺寸变化
   if (galleryScrollContainer.value) {
-    const sizeObserver = new ResizeObserver(updateContainerSize)
-    sizeObserver.observe(galleryScrollContainer.value)
+    sizeObserver.value = new ResizeObserver(updateContainerSize)
+    sizeObserver.value.observe(galleryScrollContainer.value)
 
     // 绑定滚轮事件
     galleryScrollContainer.value.addEventListener('wheel', onScrollWheel, {
       passive: false,
     })
-
-    onUnmounted(() => {
-      sizeObserver.disconnect()
-      if (galleryScrollContainer.value) {
-        galleryScrollContainer.value.removeEventListener('wheel', onScrollWheel)
-      }
-    })
   }
 
-  setTimeout(() => {
+  scrollTimeout.value = setTimeout(() => {
     scrollToActiveThumbnail()
+    scrollTimeout.value = null
   }, 500)
+})
+
+onUnmounted(() => {
+  if (sizeObserver.value) {
+    sizeObserver.value.disconnect()
+    sizeObserver.value = null
+  }
+  if (galleryScrollContainer.value) {
+    galleryScrollContainer.value.removeEventListener('wheel', onScrollWheel)
+  }
+  if (scrollTimeout.value) {
+    clearTimeout(scrollTimeout.value)
+    scrollTimeout.value = null
+  }
 })
 
 watch(

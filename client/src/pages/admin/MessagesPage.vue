@@ -53,7 +53,7 @@
                 alt="avatar"
                 class="w-11 h-11 rounded-full object-cover"
               />
-              <div v-else v-html="scope.row.avatar"></div>
+              <div v-else v-html="sanitizeAvatar(scope.row.avatar)"></div>
             </div>
 
             <el-avatar :size="36" v-else>{{
@@ -190,7 +190,7 @@
                 alt="avatar"
                 class="w-11 h-11 rounded-full object-cover"
               />
-              <div v-else v-html="currentRow.avatar"></div>
+              <div v-else v-html="sanitizeAvatar(currentRow.avatar)"></div>
             </div>
             <el-avatar
               v-else
@@ -372,6 +372,7 @@ import AppButton from "@/components/ui/AppButton.vue";
 import { useMessageFilterForm } from "@/composables/useMessageFilterForm";
 import { useTableFetch } from "@/composables/useTableFetch";
 import { formatDate } from "@/utils/format";
+import { sanitizeSvg } from "@/utils/sanitize";
 import {
   Globe,
   Monitor,
@@ -531,6 +532,11 @@ const getDeviceIcon = (device?: string) => {
 };
 const isHttpAvatar = (avatar: string) => {
   return typeof avatar === "string" && avatar.startsWith("http");
+};
+
+const sanitizeAvatar = (avatar: string) => {
+  if (isHttpAvatar(avatar)) return avatar;
+  return sanitizeSvg(avatar);
 };
 onMounted(() => {
   handleFetch();

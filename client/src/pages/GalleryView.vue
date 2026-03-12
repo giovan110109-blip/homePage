@@ -181,19 +181,16 @@ const loadPhotos = async () => {
           }));
 
         if (livePhotos.length > 0) {
-          console.log(`📷 预加载 ${livePhotos.length} 个 LivePhoto 视频...`);
           preloadVideosInViewport(livePhotos, {
             maxConcurrent: 1,
             prioritizeVisible: false,
             prefetchDistance: 2,
-          }).catch((err) => {
-            console.warn("⚠️ LivePhoto 预加载出错:", err);
-          });
+          }).catch(() => {});
         }
       }
     }
-  } catch (error: any) {
-    console.error("加载照片失败:", error);
+  } catch {
+    // ignore
   } finally {
     loading.value = false;
   }

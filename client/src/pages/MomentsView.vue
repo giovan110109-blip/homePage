@@ -48,66 +48,34 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { onMounted } from 'vue'
 import { Camera } from 'lucide-vue-next'
 import Loading from '@/components/ui/Loading.vue'
 import AppButton from '@/components/ui/AppButton.vue'
 import MomentCard from '@/components/moment/MomentCard.vue'
 import request from '@/api/request'
+import { usePagination } from '@/composables/usePagination'
 import type { Moment } from '@/types'
 
-const moments = ref<Moment[]>([])
-const loading = ref(true)
-const loadingMore = ref(false)
-const hasMore = ref(false)
-const page = ref(1)
-const pagination = ref({
-  page: 1,
-  pageSize: 10,
-  total: 0,
-  pageCount: 1,
-})
-
-const fetchMoments = async (isLoadMore = false) => {
-  try {
-    if (isLoadMore) {
-      loadingMore.value = true
-    } else {
-      loading.value = true
-    }
-
+const {
+  data: moments,
+  loading,
+  loadingMore,
+  hasMore,
+  fetch: fetchMoments,
+  loadMore,
+} = usePagination<Moment>({
+  fetcher: async (page, pageSize) => {
     const res: any = await request.get('/moments', {
-      params: {
-        page: page.value,
-        limit: 10,
-      },
+      params: { page, limit: pageSize },
     })
-
-    if (res?.code === 200) {
-      const data = res.data || []
-      const meta = res.meta || { page: 1, pageSize: 10, total: 0, pageCount: 1 }
-
-      if (isLoadMore) {
-        moments.value = [...moments.value, ...data]
-      } else {
-        moments.value = data
-      }
-
-      pagination.value = meta
-      hasMore.value = page.value < meta.pageCount
+    return {
+      data: res?.data || [],
+      meta: res?.meta || { page, pageSize, total: 0, pageCount: 1 },
     }
-  } catch (error) {
-    console.error('获取说说失败:', error)
-  } finally {
-    loading.value = false
-    loadingMore.value = false
-  }
-}
-
-const loadMore = () => {
-  page.value++
-  fetchMoments(true)
-}
+  },
+  pageSize: 10,
+})
 
 const handleLike = async (momentId: string) => {
   try {

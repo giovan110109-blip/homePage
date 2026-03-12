@@ -89,12 +89,9 @@ const handleSlideChange = (swiper: any) => {
   // 👉 当切换照片时，智能预加载相邻 LivePhoto 视频
   preloadAdjacentLivePhotos(activeIndex.value);
 
-  // ✅ 动态加载下一页：当用户滑动到倒数第 3 张照片时，自动加载下一页
+  // 动态加载下一页：当用户滑动到倒数第 3 张照片时，自动加载下一页
   const remainingPhotos = props.photos.length - activeIndex.value;
   if (remainingPhotos <= 3 && props.hasMore && !props.loadingMore) {
-    console.log(
-      `📄 即将到达末尾 (剩余 ${remainingPhotos} 张)，自动加载下一页...`,
-    );
     emit("loadMore");
   }
 };
@@ -179,11 +176,9 @@ const preloadAdjacentLivePhotos = (currentIndex: number) => {
   // 预加载：单张场景，降低并发数，避免占用过多资源
   preloadVideosInViewport(livePhotos, {
     maxConcurrent: 1,
-    prioritizeVisible: true,
+    prioritizeVisible: false,
     prefetchDistance: 2,
-  }).catch((err) => {
-    console.warn("⚠️ LivePhoto 预加载出错:", err);
-  });
+  }).catch(() => {});
 };
 
 const handleLivePhotoMouseEnter = () => {
@@ -394,6 +389,14 @@ onBeforeUnmount(() => {
   }
   if (typeof window !== "undefined") {
     window.removeEventListener("keydown", handleEscClose);
+  }
+  if (zoomLevelTimer.value) {
+    clearTimeout(zoomLevelTimer.value);
+    zoomLevelTimer.value = null;
+  }
+  if (longPressTimer.value) {
+    clearTimeout(longPressTimer.value);
+    longPressTimer.value = null;
   }
 });
 </script>

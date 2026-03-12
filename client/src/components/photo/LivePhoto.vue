@@ -191,6 +191,8 @@ const isMuted = ref(true); // 默认静音
 const isTouching = ref(false);
 const isHovering = ref(false);
 const longPressTimer = ref<number | null>(null);
+const stopVideoTimer = ref<number | null>(null);
+const playVideoTimeout = ref<number | null>(null);
 
 // 防止重复触发的标志
 let isPlayingNow = false;
@@ -225,7 +227,6 @@ const onVideoTimeUpdate = () => {
 
 // 视频加载错误
 const onVideoError = (e: Event) => {
-  console.error("❌ 视频加载错误", e);
   videoCanPlay.value = false;
   isPlaying.value = false;
   isPlayingNow = false;
@@ -336,14 +337,21 @@ const playVideo = async () => {
         playVideo().then(resolve);
       };
 
-      const timeout = setTimeout(() => {
+      if (playVideoTimeout.value !== null) {
+        clearTimeout(playVideoTimeout.value);
+      }
+      playVideoTimeout.value = window.setTimeout(() => {
+        playVideoTimeout.value = null;
         videoRef.value?.removeEventListener("loadedmetadata", handler);
         isPlayingNow = false;
         resolve();
       }, 3000); // 3秒超时
 
       videoRef.value?.addEventListener("loadedmetadata", () => {
-        clearTimeout(timeout);
+        if (playVideoTimeout.value !== null) {
+          clearTimeout(playVideoTimeout.value);
+          playVideoTimeout.value = null;
+        }
         handler();
       });
     });
@@ -370,7 +378,6 @@ const playVideo = async () => {
     }
 
     // 其他错误需要重置状态
-    console.error("❌ 播放失败:", error);
     isPlaying.value = false;
     isPlayingNow = false;
   }
@@ -384,11 +391,17 @@ const stopVideo = () => {
     if (!videoRef.value.paused) {
       videoRef.value.pause();
     }
-    setTimeout(() => {
-      videoRef.value.currentTime = 0;
+    if (stopVideoTimer.value !== null) {
+      clearTimeout(stopVideoTimer.value);
+    }
+    stopVideoTimer.value = window.setTimeout(() => {
+      stopVideoTimer.value = null;
+      if (videoRef.value) {
+        videoRef.value.currentTime = 0;
+      }
     }, 300);
   } catch (error) {
-    console.error("⚠️ 停止视频出错:", error);
+    // ignore
   }
 
   isPlaying.value = false;
@@ -436,6 +449,15 @@ const toggleMute = () => {
 onUnmounted(() => {
   if (longPressTimer.value !== null) {
     clearTimeout(longPressTimer.value);
+    longPressTimer.value = null;
+  }
+  if (stopVideoTimer.value !== null) {
+    clearTimeout(stopVideoTimer.value);
+    stopVideoTimer.value = null;
+  }
+  if (playVideoTimeout.value !== null) {
+    clearTimeout(playVideoTimeout.value);
+    playVideoTimeout.value = null;
   }
 
   // 释放缓存的 URL
@@ -451,24 +473,15 @@ watch(
   async (newUrl) => {
     if (!newUrl || !props.photoId || !props.isLive) return;
 
-    console.log(`👀 开始缓存: ${props.photoId}`);
-
     try {
       const blob = await loadLivePhoto(newUrl, props.photoId);
       if (blob) {
-        // 释放旧的 URL
         if (cachedVideoUrl.value) {
-          console.log(`🗑️ 释放旧的 Object URL: ${props.photoId}`);
           URL.revokeObjectURL(cachedVideoUrl.value);
         }
 
-        // 创建新的 object URL
         cachedVideoUrl.value = URL.createObjectURL(blob);
-        console.log(
-          `🎬 Object URL 已创建: ${cachedVideoUrl.value.substring(0, 50)}...`,
-        );
 
-        // 移动端预加载元数据，避免首次播放卡住
         if (isMobile.value && videoRef.value) {
           await nextTick();
           try {
@@ -477,11 +490,9 @@ watch(
             // ignore
           }
         }
-      } else {
-        console.warn(`⚠️ 缓存失败: ${props.photoId} (blob 为 null)`);
       }
-    } catch (error) {
-      console.error("❌ 缓存异常:", error);
+    } catch {
+      // ignore
     }
   },
   {

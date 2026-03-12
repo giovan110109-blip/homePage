@@ -1,10 +1,11 @@
-import { defineConfig, loadEnv, splitVendorChunkPlugin } from "vite";
+import { defineConfig, loadEnv } from "vite";
 import vue from "@vitejs/plugin-vue";
 import path from "path";
 import Inspector from "unplugin-vue-dev-locator/vite";
 import AutoImport from "unplugin-auto-import/vite";
 import Components from "unplugin-vue-components/vite";
 import { ElementPlusResolver } from "unplugin-vue-components/resolvers";
+import viteImagemin from "vite-plugin-imagemin";
 
 const coreDeps = ["vue", "vue-router", "pinia"];
 const elementDeps = ["element-plus"];
@@ -12,11 +13,9 @@ const iconDeps = ["lucide-vue-next", "@heroicons/vue"];
 const headlessDeps = ["@headlessui/vue"];
 const motionDeps = ["gsap"];
 
-// https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const envDir = path.resolve(__dirname, "..");
   const env = loadEnv(mode, envDir, "");
-  // 开发环境优先使用本地 API，生产环境使用线上 API
   const apiTarget = env.VITE_API_BASE_URL_LOCAL || env.VITE_API_BASE_URL || "http://localhost:8998";
 
   return {
@@ -85,33 +84,34 @@ export default defineConfig(({ mode }) => {
     plugins: [
       vue(),
       Inspector(),
-      splitVendorChunkPlugin(),
       AutoImport({
-        imports: [
-          "vue",
-          "vue-router",
-          "pinia",
-        ],
+        imports: ["vue", "vue-router", "pinia"],
         resolvers: [ElementPlusResolver()],
         dts: path.resolve(__dirname, "src/auto-imports.d.ts"),
       }),
       Components({
         resolvers: [ElementPlusResolver()],
       }),
+      viteImagemin({
+        gifsicle: { optimizationLevel: 3 },
+        optipng: { optimizationLevel: 5 },
+        mozjpeg: { quality: 80 },
+        svgo: {
+          plugins: [
+            { name: "removeViewBox", active: false },
+            { name: "removeEmptyAttrs", active: false },
+          ],
+        },
+        webp: { quality: 80 },
+      }),
     ],
     resolve: {
       alias: {
-        "@": path.resolve(__dirname, "./src"), // ✅ 定义 @ = src
+        "@": path.resolve(__dirname, "./src"),
       },
     },
     optimizeDeps: {
-      include: [
-        ...coreDeps,
-        ...elementDeps,
-        ...headlessDeps,
-        ...iconDeps,
-        ...motionDeps,
-      ],
+      include: [...coreDeps, ...elementDeps, ...headlessDeps, ...iconDeps, ...motionDeps],
     },
     server: {
       host: "0.0.0.0",

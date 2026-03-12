@@ -369,7 +369,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { Plus, Edit, Send, Trash2, Heart, Eye, FileText, X, Pin, Save } from 'lucide-vue-next'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import AppButton from '@/components/ui/AppButton.vue'
@@ -689,5 +689,12 @@ watch([() => form.value.title, () => form.value.coverImage, () => form.value.sum
 
 onMounted(() => {
   fetchArticles()
+})
+
+onUnmounted(() => {
+  if (autoSaveTimer) {
+    clearTimeout(autoSaveTimer)
+    autoSaveTimer = null
+  }
 })
 </script>

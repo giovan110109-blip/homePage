@@ -59,7 +59,6 @@ watch(
 
 // 使用 photoData 或 currentPhoto
 const displayPhoto = computed(() => photoData.value || props.currentPhoto);
-console.log(displayPhoto.value);
 
 const isMobile = computed(
   () => typeof window !== "undefined" && window.innerWidth < 768,

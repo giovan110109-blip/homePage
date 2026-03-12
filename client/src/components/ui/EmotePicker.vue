@@ -102,8 +102,10 @@ onUnmounted(() => {
 
 <style scoped>
 .emote-picker {
-  width: 100%;
+  width: 400px;
+  min-width: 320px;
   max-width: 600px;
+  height: 500px;
   max-height: 80vh;
   background: white;
   border-radius: 12px;
@@ -126,6 +128,7 @@ onUnmounted(() => {
   padding: 12px 16px;
   border-bottom: 1px solid #e5e7eb;
   overflow-x: auto;
+  flex-shrink: 0;
 }
 
 .dark .emote-groups {
@@ -164,9 +167,9 @@ onUnmounted(() => {
 
 .emote-grid {
   padding: 16px;
-  height: 450px;
-  flex: 1;
-  min-height: 0;
+  height: 400px;
+  min-height: 300px;
+  overflow: auto;
 }
 
 .emote-item {
@@ -216,13 +219,15 @@ onUnmounted(() => {
 
 @media (max-width: 640px) {
   .emote-picker {
+    width: calc(100vw - 32px);
+    min-width: unset;
     max-width: calc(100vw - 32px);
+    height: 400px;
     max-height: 70vh;
   }
 
   .emote-grid {
     padding: 12px;
-    height: calc(70vh - 80px);
   }
 
   .emote-groups {

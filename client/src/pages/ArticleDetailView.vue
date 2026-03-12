@@ -250,7 +250,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, nextTick, watch, computed } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick, watch, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Eye, Heart, Calendar, Share2, FileText, ArrowLeft, Link, Image } from 'lucide-vue-next'
 import { ElMessage } from 'element-plus'
@@ -291,6 +291,7 @@ const loading = ref(false)
 const hasLiked = ref(false)
 const showShareModal = ref(false)
 const showCardPreview = ref(false)
+const copyButtonHandlers: Array<{ btn: HTMLButtonElement; handler: () => Promise<void> }> = []
 
 useArticleSeo(article)
 
@@ -344,7 +345,8 @@ const addCopyButtons = () => {
         <path d="M16 1H6a2 2 0 0 0-2 2v12h2V3h10V1zm3 4H10a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm0 16H10V7h9v14z"/>
       </svg>
     `
-    btn.addEventListener('click', async () => {
+    
+    const handler = async () => {
       const code = container.querySelector('code')?.textContent ?? ''
       try {
         await navigator.clipboard.writeText(code)
@@ -374,8 +376,10 @@ const addCopyButtons = () => {
           `
         }, 1500)
       }
-    })
-
+    }
+    
+    btn.addEventListener('click', handler)
+    copyButtonHandlers.push({ btn, handler })
     container.appendChild(btn)
   })
 }
@@ -468,6 +472,13 @@ watch(
 
 onMounted(() => {
   fetchArticle()
+})
+
+onUnmounted(() => {
+  copyButtonHandlers.forEach(({ btn, handler }) => {
+    btn.removeEventListener('click', handler)
+  })
+  copyButtonHandlers.length = 0
 })
 </script>
 

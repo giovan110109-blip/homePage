@@ -161,7 +161,7 @@ import AppButton from "@/components/ui/AppButton.vue";
 import CommentItem from "@/components/ui/CommentItem.vue";
 import EmotePicker from "@/components/ui/EmotePicker.vue";
 import RichTextarea from "@/components/ui/RichTextarea.vue";
-import { useEmotes } from "@/composables/useEmotes";
+import { useEmotePicker } from "@/composables/useEmotePicker";
 
 interface CommentType {
   id: string;
@@ -207,81 +207,26 @@ const replyTo = ref<CommentType | null>(null);
 const submitting = ref(false);
 const loading = ref(false);
 const comments = ref<CommentType[]>([]);
-const showEmotePicker = ref(false);
 const richTextareaRef = ref<InstanceType<typeof RichTextarea> | null>(null);
-const emotePickerRef = ref<HTMLDivElement | null>(null);
-const emoteButtonRef = ref<HTMLButtonElement | null>(null);
-const emotePickerPosition = ref({ top: 0, right: 0 });
 
-const { getEmoteUrl } = useEmotes();
-
-const updateEmotePickerPosition = () => {
-  if (!emoteButtonRef.value) return;
-
-  const rect = emoteButtonRef.value.getBoundingClientRect();
-  const pickerWidth = Math.min(window.innerWidth - 32, 600);
-  const pickerHeight = Math.min(window.innerHeight - 32, 450);
-
-  let top = rect.top - pickerHeight - 8;
-  let right = window.innerWidth - rect.right;
-
-  if (top < 16) {
-    top = rect.bottom + 8;
-  }
-
-  if (right < 16) {
-    right = 16;
-  }
-
-  emotePickerPosition.value = {
-    top,
-    right,
-  };
-};
-
-const toggleEmotePicker = () => {
-  showEmotePicker.value = !showEmotePicker.value;
-  if (showEmotePicker.value) {
-    nextTick(() => {
-      updateEmotePickerPosition();
-    });
-  }
-};
+const {
+  showEmotePicker,
+  emotePickerRef,
+  emoteButtonRef,
+  emotePickerPosition,
+  toggleEmotePicker,
+  selectEmote,
+} = useEmotePicker({
+  onInsert: (emoteName, emoteUrl) => {
+    if (richTextareaRef.value) {
+      richTextareaRef.value.insertEmote(emoteName, emoteUrl);
+    }
+  },
+});
 
 const insertEmote = (emoteName: string) => {
-  const emoteUrl = getEmoteUrl(emoteName);
-  if (richTextareaRef.value && emoteUrl) {
-    richTextareaRef.value.insertEmote(emoteName, emoteUrl);
-  }
-  showEmotePicker.value = false;
+  selectEmote(emoteName);
 };
-
-const handleClickOutside = (event: MouseEvent) => {
-  const target = event.target as Node;
-  if (emotePickerRef.value && !emotePickerRef.value.contains(target)) {
-    showEmotePicker.value = false;
-  }
-};
-
-const handleScroll = () => {
-  if (showEmotePicker.value) {
-    updateEmotePickerPosition();
-  }
-};
-
-onMounted(() => {
-  nextTick(() => {
-    document.addEventListener("click", handleClickOutside);
-    window.addEventListener("scroll", handleScroll, true);
-    window.addEventListener("resize", handleScroll);
-  });
-});
-
-onUnmounted(() => {
-  document.removeEventListener("click", handleClickOutside);
-  window.removeEventListener("scroll", handleScroll, true);
-  window.removeEventListener("resize", handleScroll);
-});
 
 const fetchComments = async () => {
   if (!props.targetId) return;

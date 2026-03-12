@@ -8,6 +8,7 @@ class WsService {
   private maxReconnectAttempts = 5
   private reconnectDelay = 1000
   private manualClose = false
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null
 
   constructor() {
     const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:'
@@ -56,7 +57,8 @@ class WsService {
     this.reconnectAttempts++
     const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1)
 
-    setTimeout(() => {
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = null
       this.connect().catch(() => {})
     }, delay)
   }
@@ -81,6 +83,10 @@ class WsService {
 
   close() {
     this.manualClose = true
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer)
+      this.reconnectTimer = null
+    }
     if (this.ws) {
       this.ws.close()
       this.ws = null

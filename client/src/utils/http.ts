@@ -53,6 +53,27 @@ const shouldRefreshToken = (): boolean => {
   }
 };
 
+const ERROR_MESSAGES: Record<number, string> = {
+  400: "请求参数错误",
+  401: "登录已过期，请重新登录",
+  403: "无权访问该资源",
+  404: "请求的资源不存在",
+  405: "请求方法不允许",
+  408: "请求超时",
+  409: "资源冲突",
+  422: "参数验证失败",
+  429: "请求过于频繁，请稍后重试",
+  500: "服务器内部错误",
+  502: "网关错误",
+  503: "服务暂时不可用",
+  504: "网关超时",
+};
+
+const getErrorMessage = (status: number, serverMessage?: string): string => {
+  if (serverMessage) return serverMessage;
+  return ERROR_MESSAGES[status] || `请求失败 (${status})`;
+};
+
 export function createHttpClient(): AxiosInstance {
   const service: AxiosInstance = axios.create({
     baseURL: BASE_URL,
@@ -123,31 +144,40 @@ export function createHttpClient(): AxiosInstance {
     (error) => {
       const status = error?.response?.status;
       const url = error?.config?.url || "";
+      const serverMessage = error?.response?.data?.message || error?.response?.data?.error;
 
       if (status === 401) {
         const needsAuth = url.startsWith("/admin") || url.startsWith("/photos/upload") || url.startsWith("/photos/batch-delete");
         if (needsAuth && url !== "/admin/login") {
-          error.message = "登录已过期，请重新登录";
           const authStore = useAuthStore();
           authStore.logout();
           router.replace({
             name: "admin-login",
             query: { redirect: "/admin" },
           });
-        } else {
-          error.message = "未授权，请先登录";
         }
+        error.message = getErrorMessage(401, serverMessage || "未授权，请先登录");
       } else if (status === 403) {
-        error.message = "无权访问";
+        error.message = getErrorMessage(403, serverMessage);
       } else if (status === 404) {
-        error.message = "请求的资源不存在";
-      } else if (status === 500) {
-        error.message = "服务器错误，请稍后重试";
+        error.message = getErrorMessage(404, serverMessage);
+      } else if (status === 429) {
+        error.message = getErrorMessage(429, serverMessage);
+      } else if (status >= 500) {
+        error.message = getErrorMessage(status, serverMessage);
+      } else if (status >= 400) {
+        error.message = getErrorMessage(status, serverMessage);
       } else if (!status) {
-        error.message = "网络连接失败，请检查网络";
+        error.message = "网络连接失败，请检查网络设置";
       }
 
-      return Promise.reject(error.response?.data || error);
+      const errorData = error?.response?.data;
+      if (errorData && typeof errorData === "object") {
+        errorData.message = error.message;
+        return Promise.reject(errorData);
+      }
+
+      return Promise.reject({ message: error.message, status });
     }
   );
 

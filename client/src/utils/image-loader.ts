@@ -1,4 +1,5 @@
 import { LRUCache } from './lru'
+import { APP_CONFIG } from '@/config'
 
 export interface ImageLoaderState {
   isVisible: boolean
@@ -30,53 +31,35 @@ export interface ImageLoaderCacheResult {
   blob: Blob
 }
 
-// 图片缓存 (LRU，100 个图片 - 支持更多缓存避免频繁加载)
+const config = APP_CONFIG.cache.image
+
 const normalImageCache: LRUCache<string, ImageLoaderCacheResult> = new LRUCache<
   string,
   ImageLoaderCacheResult
->(100, (cacheItem, cacheKey, reason) => {
+>(config.maxSize, (cacheItem) => {
   try {
     URL.revokeObjectURL(cacheItem.blobSrc)
-    console.log(
-      `🗑️ 已释放 Blob URL - ${cacheKey} (${reason}) | 大小: ${(cacheItem.originalSize / 1024 / 1024).toFixed(2)}MB`
-    )
-  } catch (err) {
-    console.warn(`❌ Blob URL 释放失败 (${cacheKey}):`, err)
+  } catch {
+    // ignore
   }
 })
 
-/**
- * 图片加载管理器
- * 支持内存 LRU 缓存和 Blob 对象管理
- */
 export class ImageLoaderManager {
   private lastXHR: XMLHttpRequest | null = null
   private timer: ReturnType<typeof setTimeout> | null = null
 
-  /**
-   * 验证是否是有效的图片 Blob
-   */
   private async isValidImageBlob(blob: Blob): Promise<boolean> {
     if (blob.size === 0) return false
-
-    // 检查 MIME 类型
-    if (!blob.type.startsWith('image/')) {
-      return false
-    }
-
+    if (!blob.type.startsWith('image/')) return false
     return true
   }
 
-  /**
-   * 加载图片 (带缓存)
-   */
   async loadImage(
     src: string,
     callbacks: ImageLoaderCallbacks = {},
   ): Promise<ImageLoaderResult> {
     const { onProgress, onError, onUpdateLoadingState } = callbacks
 
-    // 检查内存缓存
     const cached = normalImageCache.get(src)
     if (cached) {
       onUpdateLoadingState?.({
@@ -104,11 +87,11 @@ export class ImageLoaderManager {
               const blob = xhr.response as Blob
 
               if (!(await this.isValidImageBlob(blob))) {
-                console.warn(`⚠️ 无效的图片格式: ${src}`)
                 onError?.()
                 onUpdateLoadingState?.({
                   isVisible: false,
                 })
+                this.timer = null
                 reject(new Error('Invalid image format'))
                 return
               }
@@ -118,21 +101,22 @@ export class ImageLoaderManager {
                 src,
                 callbacks,
               )
+              this.timer = null
               resolve(processResult)
             } catch (err) {
-              console.error(`❌ 处理图片失败: ${src}`, err)
               onError?.()
               onUpdateLoadingState?.({
                 isVisible: false,
               })
+              this.timer = null
               reject(err)
             }
           } else {
-            console.error(`❌ 图片加载失败: ${xhr.status}`)
             onError?.()
             onUpdateLoadingState?.({
               isVisible: false,
             })
+            this.timer = null
             reject(new Error(`Failed to load image: ${xhr.status}`))
           }
         }
@@ -150,24 +134,21 @@ export class ImageLoaderManager {
         }
 
         xhr.onerror = () => {
-          console.error(`❌ 图片加载网络错误: ${src}`)
           onError?.()
           onUpdateLoadingState?.({
             isVisible: false,
           })
+          this.timer = null
           reject(new Error(`Failed to load image`))
         }
 
         xhr.send()
 
         this.lastXHR = xhr
-      }, 300)
+      }, config.loadDelay)
     })
   }
 
-  /**
-   * 处理普通图片（创建缓存）
-   */
   async processNormalImage(
     blob: Blob,
     originalUrl: string,
@@ -178,7 +159,6 @@ export class ImageLoaderManager {
     const cacheResult = normalImageCache.get(cacheKey)
 
     if (cacheResult) {
-      console.log(`✅ 从缓存返回: ${cacheKey}`)
       onUpdateLoadingState?.({
         isVisible: false,
       })
@@ -188,7 +168,6 @@ export class ImageLoaderManager {
       }
     }
 
-    // 创建 Object URL
     const url = URL.createObjectURL(blob)
 
     const result: ImageLoaderCacheResult = {
@@ -198,7 +177,6 @@ export class ImageLoaderManager {
       blob,
     }
 
-    // 缓存结果
     normalImageCache.set(cacheKey, result)
     onUpdateLoadingState?.({
       isVisible: false,
@@ -210,27 +188,17 @@ export class ImageLoaderManager {
     }
   }
 
-  /**
-   * 获取缓存统计
-   */
   getCacheStats() {
     return {
       count: normalImageCache.size,
-      maxSize: 100,
+      maxSize: config.maxSize,
     }
   }
 
-  /**
-   * 清空所有缓存
-   */
   clearCache(): void {
     normalImageCache.clear()
-    console.log('🗑️ 已清空所有图片缓存')
   }
 
-  /**
-   * 清理资源
-   */
   cleanup(): void {
     if (this.lastXHR) {
       this.lastXHR.abort()
@@ -244,5 +212,4 @@ export class ImageLoaderManager {
   }
 }
 
-// 全局单例
 export const imageLoaderManager = new ImageLoaderManager()

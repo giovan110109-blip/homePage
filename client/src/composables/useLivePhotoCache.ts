@@ -1,5 +1,6 @@
 import { ref, computed, readonly, onScopeDispose } from 'vue'
 import { useLivePhotoPersist } from './useLivePhotoPersist'
+import { APP_CONFIG } from '@/config'
 
 interface LivePhotoState {
   isProcessing: boolean
@@ -18,41 +19,24 @@ let cleanupTimer: ReturnType<typeof setInterval> | null = null
 let refCount = 0
 
 export const useLivePhotoCache = () => {
-  const MAX_RETRIES = 3
-  const CACHE_EXPIRY = 24 * 60 * 60 * 1000
-  const MAX_CACHE_SIZE = 50
-  const DOWNLOAD_TIMEOUT = 30000
-
+  const config = APP_CONFIG.cache.livePhoto
   const persist = useLivePhotoPersist()
 
-  /**
-   * 加载并缓存 LivePhoto 视频
-   */
   const loadLivePhoto = async (videoUrl: string, photoId: string): Promise<Blob | null> => {
-    // 🚀 请求去重：如果已经在下载，直接返回现有的 Promise
     if (downloadingRequests.has(photoId)) {
-      console.log(`♻️ 请求去重: ${photoId} (复用现有请求)`)
       return downloadingRequests.get(photoId)!
     }
 
-    // 第1步：检查内存缓存
     const cached = livePhotoCache.value.get(photoId)
     const now = Date.now()
 
-    if (cached?.videoBlob && (now - cached.lastAccessed) < CACHE_EXPIRY) {
+    if (cached?.videoBlob && (now - cached.lastAccessed) < config.cacheExpiry) {
       cached.lastAccessed = now
-      console.log(`✅ 内存缓存命中: ${photoId}`, {
-        size: (cached.videoBlob.size / 1024 / 1024).toFixed(2) + 'MB',
-        age: Math.round((now - cached.lastAccessed) / 1000) + 's'
-      })
       return cached.videoBlob
     }
 
-    // 第2步：检查 IndexedDB（持久化缓存）
-    console.log(`🔍 检查 IndexedDB: ${photoId}`)
     const persistedBlob = await persist.loadVideo(photoId)
     if (persistedBlob) {
-      // 恢复到内存缓存
       const state: LivePhotoState = {
         isProcessing: false,
         progress: 100,
@@ -62,26 +46,19 @@ export const useLivePhotoCache = () => {
         retryCount: 0
       }
       livePhotoCache.value.set(photoId, state)
-      console.log(`📥 已从 IndexedDB 恢复: ${photoId}`)
       return persistedBlob
     }
 
-    // 第3步：等待正在处理的任务
     if (cached?.isProcessing) {
-      console.log(`⏳ 等待处理: ${photoId}`)
       return waitForProcessing(photoId)
     }
 
-    // 第4步：检查重试次数
     const currentRetry = cached?.retryCount || 0
-    if (currentRetry >= MAX_RETRIES) {
-      console.warn(`❌ 重试次数已满: ${photoId}`)
+    if (currentRetry >= config.maxRetries) {
       return null
     }
 
-    // 创建并缓存此请求的 Promise
     const loadPromise = (async () => {
-      // 第5步：初始化处理状态
       const state: LivePhotoState = {
         isProcessing: true,
         progress: 0,
@@ -91,22 +68,15 @@ export const useLivePhotoCache = () => {
         retryCount: currentRetry
       }
       livePhotoCache.value.set(photoId, state)
-      console.log(`🔄 开始加载: ${photoId} (尝试 ${currentRetry + 1}/${MAX_RETRIES})`)
 
       try {
-        // 下载视频
         const blob = await downloadVideo(videoUrl, (progress) => {
           state.progress = progress
           livePhotoCache.value.set(photoId, { ...state })
         })
 
-        console.log(`📥 下载完成: ${photoId} (${(blob.size / 1024 / 1024).toFixed(2)}MB)`)
-
-        // 验证视频
         await validateVideo(blob)
-        console.log(`✓ 验证通过: ${photoId}`)
 
-        // 缓存成功
         state.isProcessing = false
         state.progress = 100
         state.videoBlob = blob
@@ -114,78 +84,56 @@ export const useLivePhotoCache = () => {
         state.lastAccessed = now
         livePhotoCache.value.set(photoId, { ...state })
 
-        console.log(`💾 已缓存: ${photoId}`)
+        await persist.saveVideo(photoId, blob)
 
-        // 保存到 IndexedDB（必须等待完成）
-        const saved = await persist.saveVideo(photoId, blob)
-        console.log(`${saved ? '✅' : '⚠️'} IndexedDB 持久化: ${photoId}`)
-
-        // 清理过期缓存
         cleanupCache()
 
         return blob
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error'
         
-        // 重试逻辑
-        if (currentRetry < MAX_RETRIES - 1) {
-          console.warn(`⚠️ 加载失败 (${currentRetry + 1}/${MAX_RETRIES}): ${errorMessage}`)
+        if (currentRetry < config.maxRetries - 1) {
           state.retryCount = currentRetry + 1
           state.isProcessing = false
-          state.error = `重试中 (${currentRetry + 1}/${MAX_RETRIES})`
+          state.error = `重试中 (${currentRetry + 1}/${config.maxRetries})`
           livePhotoCache.value.set(photoId, { ...state })
           
-          // 指数退避
           const delay = Math.min(1000 * Math.pow(2, currentRetry), 5000)
-          console.log(`⏸️ 延迟 ${delay}ms 后重试...`)
           await new Promise(resolve => setTimeout(resolve, delay))
           
-          // 移除请求记录，以允许重试
           downloadingRequests.delete(photoId)
           
           return loadLivePhoto(videoUrl, photoId)
         }
         
-        // 最终失败
         state.isProcessing = false
         state.error = errorMessage
         state.lastAccessed = now
         livePhotoCache.value.set(photoId, { ...state })
-        console.error(`❌ 加载失败 (最终): ${photoId}`, error)
         return null
       } finally {
-        // 清理请求记录
         downloadingRequests.delete(photoId)
       }
     })()
 
-    // 缓存此请求
     downloadingRequests.set(photoId, loadPromise)
 
     return loadPromise
   }
 
-  /**
-   * 下载视频（带进度）
-   */
   const downloadVideo = async (
     url: string, 
     onProgress: (progress: number) => void
   ): Promise<Blob> => {
-    console.log(`📡 开始下载: ${url}`)
-    
     const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), DOWNLOAD_TIMEOUT)
+    const timeoutId = setTimeout(() => controller.abort(), config.downloadTimeout)
     
     try {
       const response = await fetch(url, {
         signal: controller.signal
-        // 移除 Cache-Control 头以避免 CORS 预检失败
       })
       
       clearTimeout(timeoutId)
-      
-      console.log(`✅ 响应状态: ${response.status}, Content-Length: ${response.headers.get('content-length')}`)
       
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`)
@@ -193,7 +141,6 @@ export const useLivePhotoCache = () => {
 
       onProgress(10)
 
-      // 流式下载
       const reader = response.body?.getReader()
       if (!reader) throw new Error('No response reader')
 
@@ -209,23 +156,19 @@ export const useLivePhotoCache = () => {
         receivedLength += value.length
         
         if (contentLength > 0) {
-          const progress = 10 + (receivedLength / contentLength) * 80 // 10-90%
+          const progress = 10 + (receivedLength / contentLength) * 80
           onProgress(Math.round(progress))
         }
       }
 
       onProgress(90)
       const blob = new Blob(chunks as any, { type: 'video/mp4' })
-      console.log(`✅ 下载完成: ${(blob.size / 1024 / 1024).toFixed(2)}MB`)
       return blob
     } finally {
       clearTimeout(timeoutId)
     }
   }
 
-  /**
-   * 验证视频可播放性
-   */
   const validateVideo = (blob: Blob): Promise<void> => {
     return new Promise((resolve, reject) => {
       const url = URL.createObjectURL(blob)
@@ -234,7 +177,7 @@ export const useLivePhotoCache = () => {
       const timeout = setTimeout(() => {
         URL.revokeObjectURL(url)
         reject(new Error('Video validation timeout'))
-      }, 5000)
+      }, config.validationTimeout)
       
       video.onloadedmetadata = () => {
         clearTimeout(timeout)
@@ -253,17 +196,24 @@ export const useLivePhotoCache = () => {
     })
   }
 
-  /**
-   * 等待正在处理的任务
-   */
   const waitForProcessing = (photoId: string): Promise<Blob | null> => {
     return new Promise((resolve) => {
-      const timeout = setTimeout(() => resolve(null), 30000) // 30秒超时
+      let checkInterval: ReturnType<typeof setInterval> | null = null
+      const timeout = setTimeout(() => {
+        if (checkInterval) {
+          clearInterval(checkInterval)
+          checkInterval = null
+        }
+        resolve(null)
+      }, config.downloadTimeout)
       
-      const checkInterval = setInterval(() => {
+      checkInterval = setInterval(() => {
         const state = livePhotoCache.value.get(photoId)
         if (state && !state.isProcessing) {
-          clearInterval(checkInterval)
+          if (checkInterval) {
+            clearInterval(checkInterval)
+            checkInterval = null
+          }
           clearTimeout(timeout)
           resolve(state.videoBlob)
         }
@@ -271,25 +221,20 @@ export const useLivePhotoCache = () => {
     })
   }
 
-  /**
-   * 清理过期缓存
-   */
   const cleanupCache = () => {
     const now = Date.now()
     const entries = Array.from(livePhotoCache.value.entries())
     
-    // 清理过期条目
     entries.forEach(([photoId, state]) => {
-      if (now - state.lastAccessed > CACHE_EXPIRY) {
+      if (now - state.lastAccessed > config.cacheExpiry) {
         livePhotoCache.value.delete(photoId)
       }
     })
     
-    // 限制缓存大小
-    if (livePhotoCache.value.size > MAX_CACHE_SIZE) {
+    if (livePhotoCache.value.size > config.maxCacheSize) {
       const sorted = entries
         .sort((a, b) => a[1].lastAccessed - b[1].lastAccessed)
-        .slice(0, livePhotoCache.value.size - MAX_CACHE_SIZE)
+        .slice(0, livePhotoCache.value.size - config.maxCacheSize)
       
       sorted.forEach(([photoId]) => {
         livePhotoCache.value.delete(photoId)
@@ -297,12 +242,9 @@ export const useLivePhotoCache = () => {
     }
   }
 
-  /**
-   * 批量预加载（简化版，保持向后兼容）
-   */
   const preloadVideos = async (
     videos: Array<{ id: string; videoUrl: string }>,
-    maxConcurrent = 2
+    maxConcurrent = APP_CONFIG.livePhoto.preloadBatchSize
   ) => {
     for (let i = 0; i < videos.length; i += maxConcurrent) {
       const batch = videos.slice(i, i + maxConcurrent)
@@ -316,9 +258,6 @@ export const useLivePhotoCache = () => {
     }
   }
 
-  /**
-   * 智能预加载：基于视口和用户行为预测
-   */
   const preloadVideosInViewport = async (
     videos: Array<{ id: string; videoUrl: string; isVisible?: boolean }>,
     options: {
@@ -327,21 +266,18 @@ export const useLivePhotoCache = () => {
       prefetchDistance?: number
     } = {}
   ) => {
-    const { maxConcurrent = 2, prioritizeVisible = true, prefetchDistance = 3 } = options
+    const { maxConcurrent = APP_CONFIG.livePhoto.preloadBatchSize, prioritizeVisible = true, prefetchDistance = APP_CONFIG.livePhoto.prefetchDistance } = options
     
     const liveVideos = videos.filter(video => video.videoUrl)
     
     if (prioritizeVisible) {
-      // 优先处理可见的视频
       const visibleVideos = liveVideos.filter(video => video.isVisible)
       const nearbyVideos = liveVideos.filter(video => !video.isVisible).slice(0, prefetchDistance)
       
-      // 先处理可见的
       if (visibleVideos.length > 0) {
         await processBatch(visibleVideos, maxConcurrent)
       }
       
-      // 然后预加载附近的（降低并发数）
       if (nearbyVideos.length > 0) {
         processBatch(nearbyVideos, Math.min(maxConcurrent, 1))
       }
@@ -350,9 +286,6 @@ export const useLivePhotoCache = () => {
     }
   }
 
-  /**
-   * 处理批次的辅助函数
-   */
   const processBatch = async (
     videos: Array<{ id: string; videoUrl: string }>,
     maxConcurrent: number
@@ -363,23 +296,16 @@ export const useLivePhotoCache = () => {
         batch.map(video => loadLivePhoto(video.videoUrl, video.id))
       )
       
-      // 添加小延迟避免过度占用资源
       if (i + maxConcurrent < videos.length) {
         await new Promise(resolve => setTimeout(resolve, 100))
       }
     }
   }
 
-  /**
-   * 获取处理状态
-   */
   const getState = (photoId: string) => {
     return computed(() => livePhotoCache.value.get(photoId) || null)
   }
 
-  /**
-   * 获取缓存统计
-   */
   const getStats = () => {
     let processed = 0
     let processing = 0
@@ -406,16 +332,13 @@ export const useLivePhotoCache = () => {
     }
   }
 
-  /**
-   * 清空所有缓存
-   */
   const clearCache = () => {
     livePhotoCache.value.clear()
   }
 
   const startCleanupTimer = () => {
     if (cleanupTimer) return
-    cleanupTimer = setInterval(cleanupCache, 10 * 60 * 1000)
+    cleanupTimer = setInterval(cleanupCache, config.cleanupInterval)
   }
 
   const stopCleanupTimer = () => {

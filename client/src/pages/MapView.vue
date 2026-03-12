@@ -148,6 +148,17 @@ const loadMapData = async () => {
 
 const popupApps: any[] = []
 
+const cleanupPopupApps = () => {
+  popupApps.forEach(app => {
+    try {
+      app.unmount()
+    } catch (e) {
+      // ignore
+    }
+  })
+  popupApps.length = 0
+}
+
 const createPhotoPopupContent = (location: MapLocation): HTMLElement => {
   const container = document.createElement('div')
   container.className = 'photo-popup'
@@ -479,6 +490,7 @@ const addClusterLayer = () => {
 
     if (currentPopup.value) {
       currentPopup.value.remove()
+      cleanupPopupApps()
     }
 
     const popupContent = createPhotoPopupContent(location)
@@ -545,6 +557,7 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  cleanupPopupApps()
   currentPopup.value?.remove()
   map.value?.remove()
 })

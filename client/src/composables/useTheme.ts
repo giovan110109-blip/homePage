@@ -1,3 +1,4 @@
+import { ref, computed, watchEffect, onMounted, onUnmounted } from 'vue'
 
 type Theme = 'light' | 'dark'
 
@@ -9,9 +10,16 @@ const getPreferredTheme = (): Theme => {
   return typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
 }
 
+let transitionTimer: ReturnType<typeof setTimeout> | null = null
+
 const applyTheme = (t: Theme, transition = false) => {
   if (typeof document !== 'undefined') {
     const root = document.documentElement
+    
+    if (transitionTimer) {
+      clearTimeout(transitionTimer)
+      transitionTimer = null
+    }
     
     if (transition && 'startViewTransition' in document) {
       (document as any).startViewTransition(() => {
@@ -25,8 +33,9 @@ const applyTheme = (t: Theme, transition = false) => {
       root.classList.add(t)
       root.style.colorScheme = t
       
-      setTimeout(() => {
+      transitionTimer = setTimeout(() => {
         root.classList.remove('theme-transition')
+        transitionTimer = null
       }, 300)
     }
   }
@@ -35,6 +44,7 @@ const applyTheme = (t: Theme, transition = false) => {
 const globalTheme = ref<Theme>(getPreferredTheme())
 let isUserSet = false
 let initialized = false
+let mediaQueryHandler: (() => void) | null = null
 
 applyTheme(globalTheme.value)
 
@@ -46,12 +56,12 @@ export function useTheme() {
       }
       
       const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
-      const handleChange = () => {
+      mediaQueryHandler = () => {
         if (!isUserSet) {
           globalTheme.value = mediaQuery.matches ? 'dark' : 'light'
         }
       }
-      mediaQuery.addEventListener('change', handleChange)
+      mediaQuery.addEventListener('change', mediaQueryHandler)
       
       initialized = true
     }
@@ -70,6 +80,18 @@ export function useTheme() {
     applyTheme(newTheme, true)
     globalTheme.value = newTheme
   }
+
+  onUnmounted(() => {
+    if (transitionTimer) {
+      clearTimeout(transitionTimer)
+      transitionTimer = null
+    }
+    if (mediaQueryHandler) {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+      mediaQuery.removeEventListener('change', mediaQueryHandler)
+      mediaQueryHandler = null
+    }
+  })
 
   return {
     theme: globalTheme,

@@ -167,8 +167,8 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  window.removeEventListener('mousemove', handleMouseMove as any)
-  window.removeEventListener('mouseleave', handleMouseLeaveWindow as any)
+  window.removeEventListener('mousemove', handleMouseMove)
+  window.removeEventListener('mouseleave', handleMouseLeaveWindow)
   if (rafId) cancelAnimationFrame(rafId)
   rafId = null
 })

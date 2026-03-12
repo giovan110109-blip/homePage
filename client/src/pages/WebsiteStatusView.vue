@@ -162,7 +162,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, onUnmounted } from "vue";
 import { ExternalLink, RotateCw } from "lucide-vue-next";
 import AppButton from "@/components/ui/AppButton.vue";
 import request from "@/api/request";
@@ -284,6 +284,8 @@ const averageLatency = computed(() => {
   return Math.round(latencies.reduce((a, b) => a + b, 0) / latencies.length);
 });
 
+const checkTimers = ref<ReturnType<typeof setTimeout>[]>([])
+
 const addWebsite = () => {
   if (!newWebsite.value.name || !newWebsite.value.url) {
     alert("请填写网站名称和URL");
@@ -305,10 +307,10 @@ const addWebsite = () => {
 
   const index = websites.value.length - 1;
 
-  // 模拟检测
-  setTimeout(() => {
+  const timer = setTimeout(() => {
     checkWebsite(index);
   }, 500);
+  checkTimers.value.push(timer);
 
   newWebsite.value = {
     name: "",
@@ -352,6 +354,13 @@ onMounted(() => {
   websites.value.forEach((_, index) => {
     checkWebsite(index);
   });
+});
+
+onUnmounted(() => {
+  checkTimers.value.forEach(timer => {
+    clearTimeout(timer);
+  });
+  checkTimers.value = [];
 });
 
 const getStatusText = (status: string) => {

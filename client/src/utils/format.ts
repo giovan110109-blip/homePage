@@ -59,6 +59,8 @@ export const formatFileSize = (bytes?: number): string => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
 }
 
+export const formatBytes = formatFileSize
+
 export const highlightJSON = (json: string): string => {
   return json
     .replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?)/g, (match) => {

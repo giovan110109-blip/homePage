@@ -58,7 +58,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onUnmounted } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useSiteInfoStore } from '@/stores/siteInfo'
 
 const siteInfoStore = useSiteInfoStore()

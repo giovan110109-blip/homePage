@@ -1,8 +1,12 @@
 const AipImageClassifyClient = require('baidu-aip-sdk').imageClassify
 
-const APP_ID = '117186214'
-const API_KEY = 'DcsDB1pmg8U5QQvG8OrSjiDM'
-const SECRET_KEY = 'cXBYKtEMlKFgJrlB7PT0npQzZxYlF5nn'
+const APP_ID = process.env.BAIDU_APP_ID || ''
+const API_KEY = process.env.BAIDU_API_KEY || ''
+const SECRET_KEY = process.env.BAIDU_SECRET_KEY || ''
+
+if (!APP_ID || !API_KEY || !SECRET_KEY) {
+  console.warn('⚠️ 百度 AI API 密钥未配置，图片标签识别功能将不可用')
+}
 
 const client = new AipImageClassifyClient(APP_ID, API_KEY, SECRET_KEY)
 

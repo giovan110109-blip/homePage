@@ -122,24 +122,32 @@ class AdminAuthController extends BaseController {
         this.throwHttpError('用户不存在', HttpStatus.NOT_FOUND);
       }
 
-      let menuIds = [];
-      if (user.roleIds && user.roleIds.length > 0) {
-        const roles = await Role.find({ 
-          _id: { $in: user.roleIds.map(r => r._id) },
-          status: 'active'
-        }).populate('menuIds');
-        
-        roles.forEach(role => {
-          if (role.menuIds) {
-            role.menuIds.forEach(menu => {
-              if (!menuIds.includes(String(menu._id))) {
-                menuIds.push(String(menu._id));
-              }
-            });
-          }
-        });
+      if (!user.roleIds || user.roleIds.length === 0) {
+        const tree = this.buildMenuTree([]);
+        return this.ok(ctx, tree, '获取菜单成功');
       }
 
+      const roles = await Role.find({ 
+        _id: { $in: user.roleIds },
+        status: 'active'
+      }).populate('menuIds');
+
+      if (roles.length === 0) {
+        const tree = this.buildMenuTree([]);
+        return this.ok(ctx, tree, '获取菜单成功');
+      }
+
+      const menuIdSet = new Set();
+      roles.forEach(role => {
+        if (role.menuIds) {
+          role.menuIds.forEach(menu => {
+            menuIdSet.add(String(menu._id));
+          });
+        }
+      });
+
+      const menuIds = Array.from(menuIdSet);
+      
       let menus = [];
       if (menuIds.length > 0) {
         menus = await Menu.find({ 
