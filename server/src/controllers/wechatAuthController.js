@@ -216,13 +216,23 @@ class WechatAuthController extends BaseController {
         this.throwHttpError('登录已过期，请重新登录', HttpStatus.UNAUTHORIZED);
       }
       
-      const user = await User.findById(tokenUser._id).select('-passwordHash -wechatSessionKey');
+      const user = await User.findById(tokenUser._id)
+        .select('-passwordHash -wechatSessionKey')
+        .populate('roleIds', 'name code');
       
       if (!user) {
         this.throwHttpError('用户不存在', HttpStatus.NOT_FOUND);
       }
 
-      this.ok(ctx, user);
+      const userResponse = user.toObject();
+      userResponse.roles = (user.roleIds || []).map(r => ({
+        _id: r._id,
+        name: r.name,
+        code: r.code
+      }));
+      delete userResponse.roleIds;
+
+      this.ok(ctx, userResponse);
     } catch (err) {
       this.fail(ctx, err);
     }

@@ -11,42 +11,61 @@ class WsService {
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null
 
   constructor() {
-    const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:'
     if (import.meta.env.DEV) {
       const api = import.meta.env.VITE_API_BASE_URL_LOCAL || 'http://localhost:8999'
-      this.url = `${protocol}//${api.replace(/^https?:\/\//, '')}`
+      const host = api.replace(/^https?:\/\//, '')
+      const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:'
+      this.url = `${protocol}//${host}/ws`
+      console.log('[WS] 开发环境 WebSocket URL:', this.url)
     } else {
       const api = import.meta.env.VITE_API_BASE_URL || ''
-      this.url = api ? `${protocol}//${api.replace(/^https?:\/\//, '')}` : `${protocol}//${location.host}`
+      if (api) {
+        const host = api.replace(/^https?:\/\//, '')
+        this.url = `wss://${host}/ws`
+      } else {
+        const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:'
+        this.url = `${protocol}//${location.host}/ws`
+      }
+      console.log('[WS] 生产环境 WebSocket URL:', this.url)
     }
   }
 
   connect(): Promise<void> {
-    if (this.ws?.readyState === WebSocket.OPEN) return Promise.resolve()
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      console.log('[WS] 已经连接，跳过')
+      return Promise.resolve()
+    }
     
     this.manualClose = false
+    console.log('[WS] 正在连接:', this.url)
     
     return new Promise((resolve, reject) => {
       this.ws = new WebSocket(this.url)
       
       this.ws.onopen = () => {
+        console.log('[WS] 连接成功')
         this.reconnectAttempts = 0
         resolve()
       }
       
       this.ws.onmessage = (e) => {
         const msg = JSON.parse(e.data)
+        console.log('[WS] 收到消息:', msg.type, msg)
         this.handlers.get(msg.type)?.forEach(h => h(msg.data ?? msg))
       }
       
       this.ws.onclose = () => {
+        console.log('[WS] 连接关闭')
         this.ws = null
         if (!this.manualClose) {
           this.reconnect()
         }
       }
       
-      this.ws.onerror = (e) => reject(e)
+      this.ws.onerror = (e) => {
+        console.error('[WS] 连接错误:', e)
+        reject(e)
+      }
     })
   }
 
@@ -56,6 +75,7 @@ class WsService {
 
     this.reconnectAttempts++
     const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1)
+    console.log(`[WS] 重连中... 第 ${this.reconnectAttempts} 次，延迟 ${delay}ms`)
 
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null
@@ -65,7 +85,10 @@ class WsService {
 
   send(type: string, data?: any) {
     if (this.ws?.readyState === WebSocket.OPEN) {
+      console.log('[WS] 发送消息:', type, data)
       this.ws.send(JSON.stringify({ type, data }))
+    } else {
+      console.warn('[WS] 未连接，无法发送消息:', type)
     }
   }
 
@@ -77,6 +100,7 @@ class WsService {
   }
 
   subscribe(token: string, cb: Handler) {
+    console.log('[WS] 订阅任务更新')
     this.send('subscribe:tasks', { token })
     return this.on('task:update', cb)
   }
