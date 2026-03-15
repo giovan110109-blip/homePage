@@ -285,6 +285,8 @@ class WechatAuthController extends BaseController {
       const { qrToken } = ctx.request.body || {};
       const authHeader = ctx.headers.authorization;
 
+      console.log('[scanQr] 收到请求, qrToken:', qrToken ? '有' : '无');
+
       if (!authHeader || !authHeader.startsWith('Bearer ')) {
         this.throwHttpError('未登录', HttpStatus.UNAUTHORIZED);
       }
@@ -296,11 +298,15 @@ class WechatAuthController extends BaseController {
       const token = authHeader.slice(7);
       const tokenUser = await verifyToken(token);
 
+      console.log('[scanQr] tokenUser:', JSON.stringify(tokenUser));
+
       if (!tokenUser) {
         this.throwHttpError('登录已过期', HttpStatus.UNAUTHORIZED);
       }
 
       const session = await QrSession.findOne({ qrToken });
+      console.log('[scanQr] session:', session ? `找到, status=${session.status}` : '未找到');
+
       if (!session) {
         this.throwHttpError('二维码已过期', HttpStatus.BAD_REQUEST);
       }
@@ -309,7 +315,10 @@ class WechatAuthController extends BaseController {
         this.throwHttpError('二维码已被使用', HttpStatus.BAD_REQUEST);
       }
 
-      const user = await User.findById(tokenUser.userId).populate('roleIds', 'name code');
+      console.log('[scanQr] 查找用户, tokenUser._id:', tokenUser._id);
+      const user = await User.findById(tokenUser._id).populate('roleIds', 'name code');
+      console.log('[scanQr] user:', user ? user.nickname : '未找到');
+
       if (!user) {
         this.throwHttpError('用户不存在', HttpStatus.NOT_FOUND);
       }
@@ -318,6 +327,7 @@ class WechatAuthController extends BaseController {
       session.userId = user._id;
       session.userInfo = {
         _id: user._id.toString(),
+        username: user.username || user.nickname,
         nickname: user.nickname,
         avatar: user.avatar,
         roles: (user.roleIds || []).map(r => ({
@@ -328,8 +338,10 @@ class WechatAuthController extends BaseController {
       };
       await session.save();
 
+      console.log('[scanQr] 扫码成功');
       this.ok(ctx, { status: 'scanned' }, '扫码成功');
     } catch (err) {
+      console.error('[scanQr] 错误:', err);
       this.fail(ctx, err);
     }
   }
@@ -338,6 +350,8 @@ class WechatAuthController extends BaseController {
     try {
       const { qrToken } = ctx.request.body || {};
       const authHeader = ctx.headers.authorization;
+
+      console.log('[confirmQr] 收到请求, qrToken:', qrToken ? '有' : '无');
 
       if (!authHeader || !authHeader.startsWith('Bearer ')) {
         this.throwHttpError('未登录', HttpStatus.UNAUTHORIZED);
@@ -350,28 +364,49 @@ class WechatAuthController extends BaseController {
       const token = authHeader.slice(7);
       const tokenUser = await verifyToken(token);
 
+      console.log('[confirmQr] tokenUser:', JSON.stringify(tokenUser));
+
       if (!tokenUser) {
         this.throwHttpError('登录已过期', HttpStatus.UNAUTHORIZED);
       }
 
       const session = await QrSession.findOne({ qrToken });
+      console.log('[confirmQr] session:', session ? `找到, status=${session.status}, userId=${session.userId}` : '未找到');
+
       if (!session || session.status !== 'scanned') {
         this.throwHttpError('无效的授权请求', HttpStatus.BAD_REQUEST);
       }
 
-      if (tokenUser.userId.toString() !== session.userId.toString()) {
+      console.log('[confirmQr] 比较用户: tokenUser._id=', tokenUser._id, ', session.userId=', session.userId);
+
+      if (tokenUser._id.toString() !== session.userId.toString()) {
         this.throwHttpError('用户不匹配', HttpStatus.FORBIDDEN);
       }
 
       session.status = 'confirmed';
       session.confirmedAt = new Date();
 
-      const pcToken = await issueToken(session.userInfo);
+      console.log('[confirmQr] session.userInfo:', JSON.stringify(session.userInfo));
+      
+      // 兼容旧数据：如果 userInfo 没有 username，从数据库获取
+      let userInfo = session.userInfo;
+      if (!userInfo.username) {
+        const user = await User.findById(session.userId);
+        if (user) {
+          userInfo.username = user.username || user.nickname;
+        }
+      }
+      
+      const pcToken = await issueToken(userInfo);
+      console.log('[confirmQr] pcToken:', pcToken ? '生成成功' : '生成失败');
+
       session.pcToken = pcToken;
       await session.save();
 
+      console.log('[confirmQr] 授权成功');
       this.ok(ctx, { status: 'confirmed' }, '授权成功');
     } catch (err) {
+      console.error('[confirmQr] 错误:', err);
       this.fail(ctx, err);
     }
   }
