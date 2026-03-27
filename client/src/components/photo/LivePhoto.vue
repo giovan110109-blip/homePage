@@ -1,5 +1,6 @@
 <template>
   <div
+    ref="containerRef"
     class="relative w-full overflow-hidden select-none outline-none focus:outline-none border-0 ring-0 group"
     :style="{ aspectRatio: `${width} / ${height}` }"
     @click="handleClick"
@@ -20,6 +21,8 @@
         :width="width || 1"
         :height="height || 1"
         class="w-full h-full transition-transform duration-500 group-hover:scale-100"
+        @load="handleCoverLoad"
+        @error="handleCoverError"
       />
     </div>
 
@@ -155,7 +158,9 @@
 
 <script setup lang="ts">
 import LazyImage from "./LazyImage.vue";
+import { APP_CONFIG } from "@/config";
 import { useLivePhotoCache } from "@/composables/useLivePhotoCache";
+import { observeSharedVisibility } from "@/composables/useSharedVisibilityObserver";
 
 interface Props {
   imageUrl: string;
@@ -178,14 +183,17 @@ const emit = defineEmits<{
 }>();
 
 // LivePhoto 缓存
-const { loadLivePhoto,  } = useLivePhotoCache();
+const { loadLivePhoto } = useLivePhotoCache();
 const cachedVideoUrl = ref<string | null>(null);
+const containerRef = ref<HTMLDivElement | null>(null);
 
 // Refs
 const videoRef = ref<HTMLVideoElement | null>(null);
 const isPlaying = ref(false);
 const videoCanPlay = ref(false);
 const isMuted = ref(true); // 默认静音
+const coverLoaded = ref(false);
+const coverLoadFailed = ref(false);
 
 // Touch interaction state
 const isTouching = ref(false);
@@ -193,15 +201,88 @@ const isHovering = ref(false);
 const longPressTimer = ref<number | null>(null);
 const stopVideoTimer = ref<number | null>(null);
 const playVideoTimeout = ref<number | null>(null);
+const isPreloadVisible = ref(false);
 
 // 防止重复触发的标志
 let isPlayingNow = false;
+let stopObservingVisibility: (() => void) | null = null;
+let preloadPromise: Promise<boolean> | null = null;
 
 // Mobile detection - 简化版
 const isMobile = computed(() => {
   if (typeof window === "undefined") return false;
   return window.matchMedia("(max-width: 768px)").matches;
 });
+
+const releaseCachedVideoUrl = () => {
+  if (cachedVideoUrl.value) {
+    URL.revokeObjectURL(cachedVideoUrl.value);
+    cachedVideoUrl.value = null;
+  }
+};
+
+const canStartPlayback = () => {
+  return Boolean(
+    props.isLive &&
+      props.videoUrl &&
+      coverLoaded.value &&
+      !coverLoadFailed.value,
+  );
+};
+
+const handleCoverLoad = () => {
+  coverLoaded.value = true;
+  coverLoadFailed.value = false;
+};
+
+const handleCoverError = () => {
+  coverLoaded.value = false;
+  coverLoadFailed.value = true;
+  stopVideo();
+};
+
+const ensureVideoLoaded = async () => {
+  if (!props.videoUrl || !props.photoId || !props.isLive) {
+    return false;
+  }
+
+  if (cachedVideoUrl.value) {
+    return true;
+  }
+
+  if (preloadPromise) {
+    return preloadPromise;
+  }
+
+  preloadPromise = (async () => {
+    try {
+      const blob = await loadLivePhoto(props.videoUrl!, props.photoId!);
+      if (!blob) {
+        return false;
+      }
+
+      releaseCachedVideoUrl();
+      cachedVideoUrl.value = URL.createObjectURL(blob);
+      await nextTick();
+
+      if (videoRef.value) {
+        try {
+          videoRef.value.load();
+        } catch {
+          // ignore
+        }
+      }
+
+      return true;
+    } catch {
+      return false;
+    } finally {
+      preloadPromise = null;
+    }
+  })();
+
+  return preloadPromise;
+};
 
 // 视频元数据加载完成
 const onVideoCanPlay = () => {
@@ -235,17 +316,19 @@ const onVideoError = (e: Event) => {
 // 桌面端 - 鼠标悬停播放
 const handleMouseEnter = async () => {
   if (isMobile.value || !props.isLive || !props.videoUrl) return;
+  if (!canStartPlayback()) return;
 
   // 已经在悬停状态，直接返回
   if (isHovering.value) return;
 
   isHovering.value = true;
 
-  // 如果视频已经加载好，立即播放
-  if (videoCanPlay.value) {
-    isPlayingNow = true;
-    await playVideo();
+  if (!videoCanPlay.value) {
+    void ensureVideoLoaded();
   }
+
+  isPlayingNow = true;
+  await playVideo();
 };
 
 const handleMouseLeave = (event: MouseEvent) => {
@@ -254,10 +337,10 @@ const handleMouseLeave = (event: MouseEvent) => {
   // 简单粗暴：直接停止播放
   // 因为 mouseleave 事件本身就表示鼠标离开了容器
   isHovering.value = false;
+  isPlayingNow = false;
 
   // 如果正在播放，停止
   if (isPlaying.value) {
-    isPlayingNow = false;
     stopVideo();
   }
 };
@@ -265,9 +348,12 @@ const handleMouseLeave = (event: MouseEvent) => {
 // 移动端 - 长按触发 (350ms)
 const handleTouchStart = (event: TouchEvent) => {
   if (!isMobile.value || !props.isLive || !props.videoUrl) return;
+  if (!canStartPlayback()) return;
 
   // 已经在播放，不要重复调用
   if (isPlayingNow) return;
+
+  void ensureVideoLoaded();
 
   // 只处理单指触摸
   if (event.touches.length === 1) {
@@ -295,6 +381,7 @@ const handleTouchEnd = () => {
   if (!isMobile.value) return;
 
   isTouching.value = false;
+  isPlayingNow = false;
 
   // 清除长按定时器
   if (longPressTimer.value !== null) {
@@ -319,45 +406,80 @@ const playVideo = async () => {
     isPlayingNow = false;
     return;
   }
+  if (!canStartPlayback()) {
+    isPlayingNow = false;
+    return;
+  }
 
   // 如果视频还没准备好，触发加载
   if (!videoCanPlay.value) {
+    if (preloadPromise) {
+      await preloadPromise.catch(() => false);
+      await nextTick();
+    }
+
     try {
       videoRef.value.load();
     } catch {
       // ignore
     }
 
-    // 等待视频元数据加载
-    return new Promise<void>((resolve) => {
-      const handler = () => {
-        videoRef.value?.removeEventListener("loadedmetadata", handler);
-        videoCanPlay.value = true;
-        // 元数据加载完成后，再次调用 playVideo
-        playVideo().then(resolve);
-      };
-
-      if (playVideoTimeout.value !== null) {
-        clearTimeout(playVideoTimeout.value);
+    const ready = await new Promise<boolean>((resolve) => {
+      const video = videoRef.value;
+      if (!video) {
+        resolve(false);
+        return;
       }
-      playVideoTimeout.value = window.setTimeout(() => {
-        playVideoTimeout.value = null;
-        videoRef.value?.removeEventListener("loadedmetadata", handler);
-        isPlayingNow = false;
-        resolve();
-      }, 3000); // 3秒超时
 
-      videoRef.value?.addEventListener("loadedmetadata", () => {
+      const cleanup = () => {
+        video.removeEventListener("loadedmetadata", handleReady);
+        video.removeEventListener("canplay", handleReady);
+        video.removeEventListener("error", handleFailure);
         if (playVideoTimeout.value !== null) {
           clearTimeout(playVideoTimeout.value);
           playVideoTimeout.value = null;
         }
-        handler();
-      });
+      };
+
+      const handleReady = () => {
+        cleanup();
+        videoCanPlay.value = true;
+        resolve(true);
+      };
+
+      const handleFailure = () => {
+        cleanup();
+        resolve(false);
+      };
+
+      if (video.readyState >= 1) {
+        videoCanPlay.value = true;
+        resolve(true);
+        return;
+      }
+
+      playVideoTimeout.value = window.setTimeout(() => {
+        cleanup();
+        resolve(false);
+      }, 3000);
+
+      video.addEventListener("loadedmetadata", handleReady, { once: true });
+      video.addEventListener("canplay", handleReady, { once: true });
+      video.addEventListener("error", handleFailure, { once: true });
     });
+
+    if (!ready || !isPlayingNow || !canStartPlayback()) {
+      isPlayingNow = false;
+      return;
+    }
   }
 
   try {
+    if (!isPlayingNow || !canStartPlayback()) {
+      isPlayingNow = false;
+      return;
+    }
+
     // 重置到开头
     videoRef.value.currentTime = 0;
     isPlaying.value = true;
@@ -460,50 +582,60 @@ onUnmounted(() => {
     playVideoTimeout.value = null;
   }
 
-  // 释放缓存的 URL
-  if (cachedVideoUrl.value) {
-    URL.revokeObjectURL(cachedVideoUrl.value);
-    cachedVideoUrl.value = null;
+  if (stopObservingVisibility) {
+    stopObservingVisibility();
+    stopObservingVisibility = null;
   }
+
+  releaseCachedVideoUrl();
 });
 
-// 监听视频 URL 变化，预加载到缓存
+onMounted(() => {
+  if (!containerRef.value || !props.isLive || !props.videoUrl) return;
+
+  stopObservingVisibility = observeSharedVisibility(
+    containerRef.value,
+    () => {
+      isPreloadVisible.value = true;
+      void ensureVideoLoaded();
+    },
+    {
+      rootMargin: APP_CONFIG.livePhoto.viewportPreloadMargin,
+    },
+  );
+});
+
+// 监听视频参数变化，仅在进入预加载区域后主动缓存
 watch(
-  () => props.videoUrl,
-  async (newUrl) => {
-    if (!newUrl || !props.photoId || !props.isLive) return;
+  [() => props.videoUrl, () => props.photoId, () => props.isLive, () => props.imageUrl],
+  async (newValues, oldValues) => {
+    const [newUrl, newPhotoId, isLive, newImageUrl] = newValues;
+    const [oldUrl, oldPhotoId, oldIsLive, oldImageUrl] = oldValues || [];
 
-    try {
-      const blob = await loadLivePhoto(newUrl, props.photoId);
-      if (blob) {
-        if (cachedVideoUrl.value) {
-          URL.revokeObjectURL(cachedVideoUrl.value);
-        }
-
-        cachedVideoUrl.value = URL.createObjectURL(blob);
-
-        if (isMobile.value && videoRef.value) {
-          await nextTick();
-          try {
-            videoRef.value.load();
-          } catch {
-            // ignore
-          }
-        }
-      }
-    } catch {
-      // ignore
+    if (
+      newUrl !== oldUrl ||
+      newPhotoId !== oldPhotoId ||
+      isLive !== oldIsLive ||
+      newImageUrl !== oldImageUrl
+    ) {
+      videoCanPlay.value = false;
+      coverLoaded.value = false;
+      coverLoadFailed.value = false;
+      releaseCachedVideoUrl();
+      stopVideo();
     }
+
+    if (!newUrl || !newPhotoId || !isLive || !isPreloadVisible.value) {
+      return;
+    }
+
+    await ensureVideoLoaded();
   },
   {
     immediate: true,
-    flush: "post", // 后置刷新，避免快速重复触发
+    flush: "post",
   },
 );
-
-// 组件挂载时预加载
-// ⚠️ 注意：watch with immediate: true 已经会在挂载时加载，不需要再在 onMounted 中加载
-// onMounted 的加载已移除以避免重复请求
 </script>
 
 <style scoped>

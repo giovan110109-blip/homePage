@@ -43,7 +43,7 @@
     <!-- 实际图片 - 仅在进入可视区域时加载 - 淡入覆盖占位符 -->
     <img
       v-if="isVisible && showImage"
-      :src="webpSrc"
+      :src="imageSrc"
       class="w-full h-full group-hover:scale-105"
       :style="{
         objectFit: 'cover',
@@ -54,7 +54,9 @@
         transition: 'opacity 0.4s ease-in-out, transform 0.5s ease',
         zIndex: 2,
       }"
+      loading="lazy"
       decoding="async"
+      fetchpriority="low"
       @load="onImageLoad"
       @error="onImageError"
     />
@@ -63,7 +65,7 @@
 
 <script setup lang="ts">
 import { thumbHashToDataURL } from "thumbhash";
-import { useImageLoader } from "@/composables/useImageLoader";
+import { observeSharedVisibility } from "@/composables/useSharedVisibilityObserver";
 
 interface Props {
   /** 图片 URL */
@@ -83,43 +85,23 @@ const props = withDefaults(defineProps<Props>(), {
   height: 9,
   mimeType: "image/jpeg",
 });
+const emit = defineEmits<{
+  load: [event: Event];
+  error: [event: Event];
+}>();
 
-const { loadImage } = useImageLoader();
 const imageLoaded = ref(false);
 const thumbHashDataUrl = ref("");
 const showImage = ref(false); // 控制何时开始加载实际图片
 const isVisible = ref(false); // 是否在可视区域内
-const cachedImageUrl = ref<string>("");
-const isLoadingImage = ref(false);
-const requestId = ref(0);
 const wrapper = ref<HTMLDivElement>();
-const intersectionObserver = ref<IntersectionObserver | null>(null);
-
-// 计算 WebP 版本的 URL
-const rawWebpUrl = computed(() => {
-  const url = props.src;
-
-  // 如果已经是 webp 格式，直接返回
-  if (url.toLowerCase().endsWith(".webp")) {
-    return url;
-  }
-
-  // 否则替换扩展名为 .webp
-  const lastDot = url.lastIndexOf(".");
-  if (lastDot > 0) {
-    return url.substring(0, lastDot) + ".webp";
-  }
-  return url + ".webp";
-});
-
-const webpSrc = computed(() => {
-  return cachedImageUrl.value || rawWebpUrl.value;
-});
+const imageSrc = computed(() => props.src);
+let stopObserving: (() => void) | null = null;
 
 /**
  * 生成 ThumbHash 占位符图片 URL
  */
-const generateThumbHashDataUrl = async () => {
+const generateThumbHashDataUrl = () => {
   // 重置状态
   imageLoaded.value = false;
   showImage.value = false;
@@ -137,116 +119,49 @@ const generateThumbHashDataUrl = async () => {
       bytes[i] = binaryString.charCodeAt(i);
     }
 
-    // 使用 thumbhash 库的 thumbHashToDataURL 生成占位图
     thumbHashDataUrl.value = thumbHashToDataURL(bytes);
-
-    // 等待一小段时间确保占位符渲染，然后再允许加载实际图片
-    await new Promise((resolve) => setTimeout(resolve, 100));
-  } catch (error) {
+  } catch {
     thumbHashDataUrl.value = "";
   }
 };
 
-/**
- * 预加载 WebP 版本的图片到缓存
- */
-const preloadWebpImage = async () => {
-  if (!props.src) return;
-
-  const currentId = ++requestId.value;
-  const webpUrl = rawWebpUrl.value;
-
-  isLoadingImage.value = true;
-  try {
-    const result = await loadImage(webpUrl, {
-      onProgress: (progress) => {
-        // console.log(`📥 图片加载进度: ${progress.toFixed(0)}%`);
-      },
-      onError: () => {
-        console.warn(`⚠️ WebP 图片加载失败: ${webpUrl}`);
-      },
-    });
-
-    if (currentId !== requestId.value) return;
-
-    if (result.blobSrc) {
-      cachedImageUrl.value = result.blobSrc;
-    }
-  } catch (error) {
-    if (currentId !== requestId.value) return;
-    console.error(`❌ 图片加载异常: ${webpUrl}`, error);
-    cachedImageUrl.value = webpUrl;
-  } finally {
-    if (currentId !== requestId.value) return;
-    isLoadingImage.value = false;
-    showImage.value = true;
-  }
-};
-
-const onImageLoad = () => {
+const onImageLoad = (event: Event) => {
   // 立即标记图片已加载，触发淡入/淡出动画
   imageLoaded.value = true;
+  emit("load", event);
 };
 
-const onImageError = () => {
+const onImageError = (event: Event) => {
   showImage.value = true;
   imageLoaded.value = false;
+  emit("error", event);
 };
 
 // 监听 src 和 thumbHash 变化，重新生成
 watch(
   [() => props.src, () => props.thumbHash],
   () => {
-    cachedImageUrl.value = ""; // 清除缓存 URL
     generateThumbHashDataUrl();
-    // 如果已进入可视区域，才继续加载真实图片
-    if (isVisible.value) {
-      showImage.value = false;
-      imageLoaded.value = false;
-      preloadWebpImage();
-    } else {
-      showImage.value = false;
-      imageLoaded.value = false;
-    }
+    showImage.value = isVisible.value && Boolean(props.src);
+    imageLoaded.value = false;
   },
   { immediate: true },
 );
 
-// Intersection Observer - 监听是否进入可视区域
 onMounted(() => {
   if (!wrapper.value) return;
 
-  intersectionObserver.value = new IntersectionObserver(
-    (entries) => {
-      for (const entry of entries) {
-        if (entry.isIntersecting) {
-          // 进入可视区域
-          isVisible.value = true;
-          if (!isLoadingImage.value && !imageLoaded.value) {
-            preloadWebpImage();
-          }
-          // 监听到了就可以停止监听了（因为图片已经加载）
-          if (intersectionObserver.value) {
-            intersectionObserver.value.unobserve(entry.target);
-          }
-        }
-      }
-    },
-    {
-      // 提前 200px 开始加载（还未完全进入视口时）
-      rootMargin: "200px",
-      threshold: 0,
-    },
-  );
-
-  intersectionObserver.value.observe(wrapper.value);
+  stopObserving = observeSharedVisibility(wrapper.value, () => {
+    isVisible.value = true;
+    showImage.value = Boolean(props.src);
+  });
 });
 
 // 清理
 onUnmounted(() => {
-  if (intersectionObserver.value) {
-    intersectionObserver.value.disconnect();
-    intersectionObserver.value = null;
+  if (stopObserving) {
+    stopObserving();
+    stopObserving = null;
   }
 });
 </script>

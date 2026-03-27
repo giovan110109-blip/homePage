@@ -15,7 +15,7 @@ export const APP_CONFIG = {
     },
     image: {
       maxSize: 100,
-      loadDelay: 300,
+      loadDelay: 0,
     },
     geocoding: {
       cacheExpiry: 24 * 60 * 60 * 1000,
@@ -37,10 +37,12 @@ export const APP_CONFIG = {
     stopDelay: 300,
     preloadBatchSize: 2,
     prefetchDistance: 3,
+    viewportPreloadMargin: "500px 0px",
   },
 
   gallery: {
-    maxPhotos: 10000,
+    pageSize: 60,
+    loadMoreThreshold: 1200,
     preloadDistance: 3,
   },
 

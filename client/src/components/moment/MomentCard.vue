@@ -57,7 +57,7 @@
               :is-live="true"
               :width="img.width || 1"
               :height="img.height || 1"
-              :photo-id="img.photoId || moment._id"
+              :photo-id="img.photoId || `${moment._id}:${index}`"
               class="w-full h-full"
             />
             <!-- 静态图片使用 LazyImage -->

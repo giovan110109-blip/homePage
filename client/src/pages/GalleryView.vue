@@ -1,8 +1,55 @@
 <template>
   <div class="min-h-screen bg-black" ref="containerRef">
+    <Teleport to="body">
+      <div
+        v-show="showViewportSummary"
+        class="pointer-events-none fixed z-[45]"
+        style="
+          position: fixed;
+          top: calc(env(safe-area-inset-top, 0px) + 4rem + 12px);
+          left: 16px;
+          width: min(calc(100vw - 32px), 560px);
+        "
+      >
+        <div
+          class="rounded-[1.6rem] border border-white/24 bg-[linear-gradient(135deg,rgba(255,255,255,0.18),rgba(255,255,255,0.08))] px-4 py-3 text-white shadow-[0_20px_60px_rgba(0,0,0,0.2)] ring-1 ring-white/14 backdrop-blur-[30px] sm:px-5 sm:py-3.5"
+        >
+          <div class="flex flex-col gap-2.5">
+            <div
+              v-if="viewportDateRangeText"
+              class="flex min-w-0 items-center gap-3 rounded-2xl border border-white/14 bg-white/8 px-3.5 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]"
+            >
+              <div
+                class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/14 text-white/78"
+              >
+                <CalendarRange class="h-4 w-4" />
+              </div>
+              <div class="min-w-0 truncate text-[15px] font-semibold leading-6 text-white/94 sm:text-[17px]">
+                {{ viewportDateRangeText }}
+              </div>
+            </div>
+
+            <div
+              v-if="viewportLocationText"
+              class="flex min-w-0 items-center gap-3 rounded-2xl border border-white/14 bg-white/8 px-3.5 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]"
+            >
+              <div
+                class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/14 text-white/76"
+              >
+                <MapPin class="h-4 w-4" />
+              </div>
+              <div class="min-w-0 truncate text-[15px] font-medium leading-6 text-white/88 sm:text-[17px]">
+                {{ viewportLocationText }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
     <!-- 居中 loading -->
     <div
-      v-if="loading"
+      v-if="showInitialLoading"
       class="min-h-screen w-full py-24 flex flex-col items-center justify-start"
     >
       <Loading />
@@ -20,7 +67,11 @@
         class="masonry p-1 sm:p-2"
       >
         <template #default="{ item: photo }">
-          <div class="group cursor-pointer" @click="viewPhoto(photo)">
+          <div
+            :data-photo-id="photo._id"
+            class="group cursor-pointer"
+            @click="viewPhoto(photo)"
+          >
             <div
               class="relative overflow-hidden rounded-md shadow-lg transition-all bg-gray-900"
             >
@@ -67,6 +118,9 @@
           </div>
         </template>
       </MasonryWall>
+      <div v-if="loadingMore" class="flex justify-center py-8">
+        <Loading />
+      </div>
     </div>
 
     <!-- 照片查看器 -->
@@ -74,34 +128,82 @@
       :modelValue="photoDialogVisible"
       :photos="photos"
       :currentPhoto="currentPhoto"
+      :hasMore="hasMore"
+      :loadingMore="loadingMore"
+      @loadMore="handleLoadMore"
       @update:modelValue="photoDialogVisible = $event"
     />
   </div>
 </template>
 
 <script setup lang="ts">
-import { MapPin } from "lucide-vue-next";
+import { CalendarRange, MapPin } from "lucide-vue-next";
 import MasonryWall from "@yeger/vue-masonry-wall";
 import Loading from "@/components/ui/Loading.vue";
 import request from "@/api/request";
-import { formatDate as formatDateUtil } from "@/utils/format";
+import { APP_CONFIG } from "@/config";
+import { usePagination } from "@/composables/usePagination";
+import { formatDate as formatDateUtil, formatDateShort } from "@/utils/format";
 import { getPhotoOriginalUrl } from "@/utils";
-import { useLivePhotoCache } from "@/composables/useLivePhotoCache";
 import type { Photo } from "@/types/api";
 
 interface PhotoWithLoaded extends Photo {
   loaded?: boolean;
 }
 
-const photos = ref<PhotoWithLoaded[]>([]);
-const loading = ref(false);
 const photoDialogVisible = ref(false);
-const currentPhoto = ref<PhotoWithLoaded | null>(null);
 const containerRef = ref<HTMLElement | null>(null);
+const currentPhotoId = ref<string | null>(null);
+const visiblePhotoIds = ref<Set<string>>(new Set());
+const scrolledBeyondTop = ref(false);
+const summaryPhotos = ref<PhotoWithLoaded[]>([]);
+let visibilityFrame: number | null = null;
 
-const { preloadVideosInViewport } = useLivePhotoCache();
+const {
+  data: photos,
+  loading,
+  loadingMore,
+  hasMore,
+  fetch,
+  loadMore,
+} = usePagination<PhotoWithLoaded>({
+  fetcher: async (page, pageSize) => {
+    const res: any = await request.get("/photos", {
+      params: {
+        page,
+        limit: pageSize,
+        visibility: "public",
+        sortBy: "dateTaken",
+        sortOrder: "desc",
+      },
+    });
+
+    const payload = res?.data || {};
+    const pagination = payload.pagination || {};
+
+    return {
+      data: Array.isArray(payload.photos)
+        ? payload.photos.map((photo: Photo) => ({
+            ...photo,
+            loaded: false,
+            thumbHash: photo.thumbHash || photo.thumbnailHash,
+            originalUrl: photo.originalUrl,
+            videoUrl: photo.videoUrl || undefined,
+          }))
+        : [],
+      meta: {
+        page: pagination.page || page,
+        pageSize: pagination.limit || pageSize,
+        total: pagination.total || 0,
+        pageCount: pagination.totalPages || pagination.pages || 1,
+      },
+    };
+  },
+  pageSize: APP_CONFIG.gallery.pageSize,
+});
 
 const windowWidth = ref(window.innerWidth);
+const showInitialLoading = computed(() => loading.value && photos.value.length === 0);
 
 const gridConfig = computed(() => {
   const width = windowWidth.value;
@@ -123,11 +225,82 @@ const minColumns = computed(() => gridConfig.value.minColumns);
 const maxColumns = computed(() => gridConfig.value.maxColumns);
 const gridGap = computed(() => gridConfig.value.gap);
 
-const isMobile = computed(() => {
-  return windowWidth.value < 768;
-});
-
 const formattedDateCache = new Map<string, string>();
+const currentPhoto = computed(() => {
+  if (!currentPhotoId.value) return null;
+
+  return (
+    photos.value.find((photo) => photo._id === currentPhotoId.value) || null
+  );
+});
+const summaryDisplayPhotos = computed(() => {
+  if (summaryPhotos.value.length > 0) {
+    return summaryPhotos.value;
+  }
+
+  return photos.value.slice(0, Math.min(12, photos.value.length));
+});
+const visiblePhotos = computed(() => {
+  if (visiblePhotoIds.value.size === 0) return [];
+  return photos.value.filter((photo) => visiblePhotoIds.value.has(photo._id));
+});
+const viewportDateRangeText = computed(() => {
+  const timestamps = summaryDisplayPhotos.value
+    .map((photo) => {
+      const value = new Date(photo.dateTaken).getTime();
+      return Number.isFinite(value) ? value : null;
+    })
+    .filter((value): value is number => value !== null)
+    .sort((a, b) => a - b);
+
+  if (timestamps.length === 0) return "";
+
+  const start = formatViewportDate(timestamps[0]);
+  const end = formatViewportDate(timestamps[timestamps.length - 1]);
+
+  return start === end ? start : `${start} 到 ${end}`;
+});
+const viewportLocationText = computed(() => {
+  const locationMeta = new Map<string, { count: number; firstIndex: number }>();
+
+  summaryDisplayPhotos.value.forEach((photo, index) => {
+    const label = getPhotoLocationLabel(photo);
+    if (!label) return;
+
+    const existing = locationMeta.get(label);
+    if (existing) {
+      existing.count += 1;
+      return;
+    }
+
+    locationMeta.set(label, { count: 1, firstIndex: index });
+  });
+
+  if (locationMeta.size === 0) return "";
+
+  const sortedLocations = Array.from(locationMeta.entries())
+    .sort((a, b) => {
+      if (b[1].count !== a[1].count) {
+        return b[1].count - a[1].count;
+      }
+      return a[1].firstIndex - b[1].firstIndex;
+    })
+    .map(([label]) => label);
+
+  const topLocations = sortedLocations.slice(0, 4);
+  if (sortedLocations.length <= topLocations.length) {
+    return topLocations.join(" · ");
+  }
+
+  return `${topLocations.join(" · ")} 等 ${sortedLocations.length} 地`;
+});
+const showViewportSummary = computed(() => {
+  return (
+    scrolledBeyondTop.value &&
+    photos.value.length > 0 &&
+    Boolean(viewportDateRangeText.value || viewportLocationText.value)
+  );
+});
 
 const formatDate = (date: string): string => {
   if (formattedDateCache.has(date)) {
@@ -141,82 +314,164 @@ const formatDate = (date: string): string => {
 
 const keyMapper = (item: PhotoWithLoaded) => item._id;
 
+const syncVisiblePhotos = () => {
+  if (typeof window === "undefined") return;
+
+  visibilityFrame = null;
+
+  const viewportHeight = window.innerHeight;
+  const nextVisiblePhotoIds = new Set<string>();
+  const photoElements = containerRef.value?.querySelectorAll<HTMLElement>(
+    "[data-photo-id]",
+  );
+
+  if (!photoElements?.length) {
+    if (!scrolledBeyondTop.value) {
+      visiblePhotoIds.value = nextVisiblePhotoIds;
+      summaryPhotos.value = [];
+    }
+    return;
+  }
+
+  for (const element of photoElements) {
+    const photoId = element.dataset.photoId;
+    if (!photoId) continue;
+
+    const rect = element.getBoundingClientRect();
+    const visibleHeight =
+      Math.min(rect.bottom, viewportHeight) - Math.max(rect.top, 0);
+    const isVisible = visibleHeight > Math.min(120, rect.height * 0.12);
+
+    if (isVisible) {
+      nextVisiblePhotoIds.add(photoId);
+    }
+  }
+
+  const currentIds = visiblePhotoIds.value;
+  const hasSameSize = currentIds.size === nextVisiblePhotoIds.size;
+  const hasSameValues =
+    hasSameSize &&
+    Array.from(nextVisiblePhotoIds).every((photoId) => currentIds.has(photoId));
+
+  if (nextVisiblePhotoIds.size > 0) {
+    if (!hasSameValues) {
+      visiblePhotoIds.value = nextVisiblePhotoIds;
+    }
+
+    summaryPhotos.value = photos.value.filter((photo) =>
+      nextVisiblePhotoIds.has(photo._id),
+    );
+    return;
+  }
+
+  if (!scrolledBeyondTop.value) {
+    visiblePhotoIds.value = nextVisiblePhotoIds;
+    summaryPhotos.value = [];
+  }
+};
+
+const scheduleVisiblePhotoSync = () => {
+  if (typeof window === "undefined") return;
+  if (visibilityFrame !== null) return;
+
+  visibilityFrame = window.requestAnimationFrame(() => {
+    syncVisiblePhotos();
+  });
+};
+
+const formatViewportDate = (timestamp: number) => {
+  const formatted = formatDateShort(new Date(timestamp));
+  return formatted.replace(/\//g, "-");
+};
+
+const getPhotoLocationLabel = (photo: PhotoWithLoaded) => {
+  return (
+    photo.geoinfo?.city ||
+    photo.geoinfo?.region ||
+    photo.geoinfo?.country ||
+    photo.geoinfo?.locationName ||
+    ""
+  );
+};
+
+const handleLoadMore = async () => {
+  if (!hasMore.value || loading.value || loadingMore.value) return;
+
+  try {
+    await loadMore();
+  } catch {
+    // ignore
+  }
+};
+
+const handleScroll = () => {
+  if (typeof document === "undefined") return;
+
+  const { scrollTop, scrollHeight, clientHeight } = document.documentElement;
+  scrolledBeyondTop.value = scrollTop > 56;
+  scheduleVisiblePhotoSync();
+  if (
+    scrollHeight - scrollTop - clientHeight <
+    APP_CONFIG.gallery.loadMoreThreshold
+  ) {
+    void handleLoadMore();
+  }
+};
+
 const loadPhotos = async () => {
-  loading.value = true;
   formattedDateCache.clear();
 
   try {
-    const params: any = {
-      limit: 10000,
-      visibility: "public",
-    };
-
-    const res: any = await request.get("/photos", { params });
-
-    if (res?.data) {
-      photos.value = res.data.photos
-        .map((p: Photo) => {
-          const photo = {
-            ...p,
-            loaded: false,
-            thumbHash: p.thumbHash || p.thumbnailHash,
-            originalUrl: p.originalUrl,
-            videoUrl: p.videoUrl ? p.videoUrl : undefined,
-          };
-          return photo;
-        })
-        .sort((a: PhotoWithLoaded, b: PhotoWithLoaded) => {
-          return (
-            new Date(b.dateTaken).getTime() - new Date(a.dateTaken).getTime()
-          );
-        });
-
-      if (photos.value.length > 0) {
-        const livePhotos = photos.value
-          .filter((p: PhotoWithLoaded) => p.isLive && p.videoUrl)
-          .map((p: PhotoWithLoaded) => ({
-            id: p._id,
-            videoUrl: p.videoUrl,
-            isVisible: false,
-          }));
-
-        if (livePhotos.length > 0) {
-          preloadVideosInViewport(livePhotos, {
-            maxConcurrent: 1,
-            prioritizeVisible: false,
-            prefetchDistance: 2,
-          }).catch(() => {});
-        }
-      }
-    }
+    await fetch();
   } catch {
     // ignore
-  } finally {
-    loading.value = false;
   }
 };
 
 const viewPhoto = async (photo: Photo) => {
-  currentPhoto.value = photo;
+  currentPhotoId.value = photo._id;
   photoDialogVisible.value = true;
 };
 
 const handleResize = () => {
   windowWidth.value = window.innerWidth;
+  scheduleVisiblePhotoSync();
 };
 
 onMounted(() => {
   loadPhotos();
   window.addEventListener("resize", handleResize, { passive: true });
+  window.addEventListener("scroll", handleScroll, { passive: true });
+  handleScroll();
 });
 
 onBeforeUnmount(() => {
   window.removeEventListener("resize", handleResize);
+  window.removeEventListener("scroll", handleScroll);
+  if (visibilityFrame !== null) {
+    window.cancelAnimationFrame(visibilityFrame);
+    visibilityFrame = null;
+  }
+  visiblePhotoIds.value = new Set();
+  summaryPhotos.value = [];
 });
+
+watch(
+  () => photos.value.length,
+  () => {
+    if (typeof window === "undefined") return;
+    window.requestAnimationFrame(() => {
+      handleScroll();
+      scheduleVisiblePhotoSync();
+    });
+  },
+  { flush: "post" },
+);
 </script>
 
 <style scoped>
 .masonry {
   margin: 0 auto;
 }
+
 </style>

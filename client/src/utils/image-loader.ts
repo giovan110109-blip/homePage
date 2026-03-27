@@ -28,7 +28,6 @@ export interface ImageLoaderCacheResult {
   blobSrc: string
   originalSize: number
   format: string
-  blob: Blob
 }
 
 const config = APP_CONFIG.cache.image
@@ -174,7 +173,6 @@ export class ImageLoaderManager {
       blobSrc: url,
       originalSize: blob.size,
       format: blob.type,
-      blob,
     }
 
     normalImageCache.set(cacheKey, result)

@@ -587,10 +587,17 @@ class PhotoController {
         startDate,
         endDate,
         visibility,
+        sortBy,
+        sortOrder,
       } = ctx.query;
 
       const query = { status: "completed" };
       const isAdminRequest = this.isAdminRequest(ctx);
+      const parsedPage = Math.max(parseInt(page, 10) || 1, 1);
+      const parsedLimit = Math.min(
+        Math.max(parseInt(limit, 10) || 20, 1),
+        200,
+      );
 
       if (isAdminRequest && visibility) {
         query.visibility = visibility;
@@ -612,13 +619,23 @@ class PhotoController {
         if (endDate) query.dateTaken.$lte = new Date(endDate);
       }
 
-      const skip = (parseInt(page) - 1) * parseInt(limit);
+      const skip = (parsedPage - 1) * parsedLimit;
+      const normalizedSortBy = ["sort", "dateTaken", "createdAt", "updatedAt"].includes(sortBy)
+        ? sortBy
+        : "sort";
+      const normalizedSortOrder = sortOrder === "asc" ? 1 : -1;
+      const sortQuery = normalizedSortBy === "sort"
+        ? { sort: normalizedSortOrder, createdAt: normalizedSortOrder }
+        : {
+            [normalizedSortBy]: normalizedSortOrder,
+            createdAt: normalizedSortOrder,
+          };
 
       const [photos, total] = await Promise.all([
         Photo.find(query)
-          .sort({ sort: -1 })
+          .sort(sortQuery)
           .skip(skip)
-          .limit(parseInt(limit))
+          .limit(parsedLimit)
           .select("-exif")
           .lean(),
         Photo.countDocuments(query),
@@ -630,9 +647,10 @@ class PhotoController {
         photos: updatedPhotos,
         pagination: {
           total,
-          page: parseInt(page),
-          limit: parseInt(limit),
-          pages: Math.ceil(total / parseInt(limit)),
+          page: parsedPage,
+          limit: parsedLimit,
+          pages: Math.ceil(total / parsedLimit),
+          totalPages: Math.ceil(total / parsedLimit),
         },
       };
 

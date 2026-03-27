@@ -90,6 +90,7 @@ export interface PhotoListResponse {
     page: number
     limit: number
     total: number
+    pages: number
     totalPages: number
   }
 }
@@ -141,4 +142,3 @@ export interface FriendLinkReviewData {
   status: 'approved' | 'rejected'
   reason?: string
 }
-
