@@ -93,7 +93,11 @@ export function createHttpClient(): AxiosInstance {
       config.headers["x-request-timestamp"] = Date.now().toString();
 
       const url = config.url || "";
-      const needsAuth = url.startsWith("/admin") || url.startsWith("/photos/upload") || url.startsWith("/photos/batch-delete");
+      const needsAuth =
+        url.startsWith("/admin") ||
+        url.startsWith("/photos/upload") ||
+        url.startsWith("/photos/batch-delete") ||
+        url.startsWith("/photos/tasks");
       if (needsAuth && !url.includes("/refresh")) {
         const authStore = useAuthStore();
         if (authStore.token) {
@@ -147,7 +151,11 @@ export function createHttpClient(): AxiosInstance {
       const serverMessage = error?.response?.data?.message || error?.response?.data?.error;
 
       if (status === 401) {
-        const needsAuth = url.startsWith("/admin") || url.startsWith("/photos/upload") || url.startsWith("/photos/batch-delete");
+        const needsAuth =
+          url.startsWith("/admin") ||
+          url.startsWith("/photos/upload") ||
+          url.startsWith("/photos/batch-delete") ||
+          url.startsWith("/photos/tasks");
         if (needsAuth && url !== "/admin/login") {
           const authStore = useAuthStore();
           authStore.logout();

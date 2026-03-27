@@ -9,7 +9,77 @@ const path = require("path");
 const fs = require("fs");
 const fsp = fs.promises;
 
+const extractMomentUploadName = (value) => {
+  if (!value || typeof value !== "string") {
+    return null;
+  }
+
+  try {
+    const pathname = new URL(value, "http://localhost").pathname;
+    const marker = "/uploads/moments/";
+    const markerIndex = pathname.indexOf(marker);
+
+    if (markerIndex === -1) {
+      return null;
+    }
+
+    const relativePath = pathname.slice(markerIndex + marker.length);
+    const fileName = path.basename(relativePath);
+    return fileName && fileName !== "." ? fileName : null;
+  } catch {
+    return null;
+  }
+};
+
 class MomentController extends BaseController {
+  async deleteMomentFiles(moment) {
+    const baseUploadDir =
+      process.env.UPLOAD_DIR || path.join(process.cwd(), "uploads");
+    const momentDir = path.join(baseUploadDir, "moments");
+    const fileNames = new Set();
+
+    const addStorageKey = (storageKey) => {
+      if (!storageKey || typeof storageKey !== "string") {
+        return;
+      }
+
+      const fileName = path.basename(storageKey);
+      if (fileName && fileName !== ".") {
+        fileNames.add(fileName);
+      }
+    };
+
+    const addMomentUrl = (value) => {
+      const fileName = extractMomentUploadName(value);
+      if (fileName) {
+        fileNames.add(fileName);
+      }
+    };
+
+    addStorageKey(moment.video?.storageKey);
+    addMomentUrl(moment.video?.url);
+    addMomentUrl(moment.video?.thumbnailUrl);
+
+    if (Array.isArray(moment.media)) {
+      moment.media.forEach(item => {
+        addMomentUrl(item?.url);
+        addMomentUrl(item?.thumbnailUrl);
+        addMomentUrl(item?.videoUrl);
+      });
+    }
+
+    if (moment.livePhoto) {
+      addMomentUrl(moment.livePhoto.imageUrl);
+      addMomentUrl(moment.livePhoto.videoUrl);
+    }
+
+    await Promise.all(
+      Array.from(fileNames).map(fileName =>
+        fsp.unlink(path.join(momentDir, fileName)).catch(() => {})
+      )
+    );
+  }
+
   async getMoments(ctx) {
     try {
       const { page = 1, limit = 10 } = ctx.query;
@@ -206,6 +276,7 @@ class MomentController extends BaseController {
         this.throwHttpError("说说不存在", HttpStatus.NOT_FOUND);
       }
 
+      await this.deleteMomentFiles(moment);
       await Moment.deleteOne({ _id: id });
 
       this.ok(ctx, null, "删除成功");

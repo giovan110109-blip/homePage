@@ -27,6 +27,9 @@ class UploadQueueManager extends EventEmitter {
     this.concurrency = parseInt(process.env.UPLOAD_CONCURRENCY || "4");
     this.activeWorkers = 0;
     this.pollInterval = null;
+    this.isClaiming = false;
+    this.isQueueWorker =
+      !process.env.WORKER_ID || process.env.WORKER_ID === "0";
 
     const baseUploadDir =
       process.env.UPLOAD_DIR || path.join(process.cwd(), "uploads");
@@ -58,6 +61,13 @@ class UploadQueueManager extends EventEmitter {
   }
 
   async start() {
+    if (!this.isQueueWorker) {
+      console.log(
+        `Worker ${process.pid} skipping upload queue startup (not queue worker)`
+      );
+      return;
+    }
+
     if (this.isRunning) {
       console.log("队列管理器已在运行");
       return;
@@ -85,17 +95,28 @@ class UploadQueueManager extends EventEmitter {
   }
 
   async processQueue() {
-    if (this.activeWorkers >= this.concurrency) {
+    if (!this.isQueueWorker) {
       return;
     }
 
+    if (this.isClaiming) {
+      return;
+    }
+
+    const availableSlots = this.concurrency - this.activeWorkers;
+    if (availableSlots <= 0) {
+      return;
+    }
+
+    this.isClaiming = true;
+
     try {
-      const tasks = await UploadTask.find({
-        status: { $in: ["pending", "failed"] },
-        $expr: { $lt: ["$attempts", "$maxAttempts"] },
-      })
-        .sort({ priority: -1, createdAt: 1 })
-        .limit(this.concurrency - this.activeWorkers);
+      const tasks = [];
+      for (let i = 0; i < availableSlots; i++) {
+        const task = await this.claimNextTask();
+        if (!task) break;
+        tasks.push(task);
+      }
 
       if (tasks.length === 0) {
         return;
@@ -108,7 +129,32 @@ class UploadQueueManager extends EventEmitter {
       }
     } catch (error) {
       console.error("获取任务列表失败:", error);
+    } finally {
+      this.isClaiming = false;
     }
+  }
+
+  async claimNextTask() {
+    return UploadTask.findOneAndUpdate(
+      {
+        status: { $in: ["pending", "failed"] },
+        $expr: { $lt: ["$attempts", "$maxAttempts"] },
+      },
+      {
+        $set: {
+          status: "processing",
+          error: null,
+          failedAt: null,
+        },
+        $inc: {
+          attempts: 1,
+        },
+      },
+      {
+        sort: { priority: -1, createdAt: 1 },
+        new: true,
+      }
+    );
   }
 
   async processTask(task) {
@@ -118,9 +164,6 @@ class UploadQueueManager extends EventEmitter {
     try {
       console.log(`开始处理任务: ${task.taskId}`);
 
-      task.status = "processing";
-      task.attempts += 1;
-      await task.save();
       await this.broadcast(task);
 
       this.emit("taskStarted", task);
@@ -171,6 +214,9 @@ class UploadQueueManager extends EventEmitter {
     } finally {
       this.activeWorkers--;
       await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
+      this.processQueue().catch((err) => {
+        console.error("补位处理队列出错:", err);
+      });
     }
   }
 
@@ -245,6 +291,10 @@ class UploadQueueManager extends EventEmitter {
 
     await task.save();
 
+    if (!this.isQueueWorker) {
+      return task;
+    }
+
     if (!this.isRunning) {
       await this.start();
     } else {
@@ -254,16 +304,16 @@ class UploadQueueManager extends EventEmitter {
     return task;
   }
 
-  async getTaskStatus(taskId) {
-    return await UploadTask.findOne({ taskId });
+  async getTaskStatus(taskId, filters = {}) {
+    return await UploadTask.findOne({ taskId, ...filters });
   }
 
-  async getStats() {
+  async getStats(filters = {}) {
     const [pending, processing, completed, failed] = await Promise.all([
-      UploadTask.countDocuments({ status: "pending" }),
-      UploadTask.countDocuments({ status: "processing" }),
-      UploadTask.countDocuments({ status: "completed" }),
-      UploadTask.countDocuments({ status: "failed" }),
+      UploadTask.countDocuments({ ...filters, status: "pending" }),
+      UploadTask.countDocuments({ ...filters, status: "processing" }),
+      UploadTask.countDocuments({ ...filters, status: "completed" }),
+      UploadTask.countDocuments({ ...filters, status: "failed" }),
     ]);
 
     return {

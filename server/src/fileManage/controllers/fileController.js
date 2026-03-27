@@ -63,7 +63,88 @@ const formatItem = (item) => {
   }
 }
 
+const dedupeItemsById = (items) => {
+  const itemMap = new Map()
+
+  for (const item of items) {
+    if (!item?._id) continue
+    itemMap.set(String(item._id), item)
+  }
+
+  return Array.from(itemMap.values())
+}
+
 class FileController extends BaseController {
+  async getDescendantItems(parentIds, userId, options = {}) {
+    let currentParentIds = parentIds.filter(Boolean)
+    const descendants = []
+
+    while (currentParentIds.length > 0) {
+      const query = {
+        parentId: { $in: currentParentIds },
+        owner: userId
+      }
+
+      if (typeof options.isDeleted === 'boolean') {
+        query.isDeleted = options.isDeleted
+      }
+
+      const children = await FileItem.find(query).lean()
+      if (children.length === 0) {
+        break
+      }
+
+      descendants.push(...children)
+      currentParentIds = children
+        .filter(item => item.type === 'folder')
+        .map(item => item._id)
+    }
+
+    return descendants
+  }
+
+  async collectItemsWithDescendants(rootItems, userId, options = {}) {
+    const folderIds = rootItems
+      .filter(item => item.type === 'folder')
+      .map(item => item._id)
+
+    if (folderIds.length === 0) {
+      return dedupeItemsById(rootItems)
+    }
+
+    const descendants = await this.getDescendantItems(folderIds, userId, options)
+    return dedupeItemsById([...rootItems, ...descendants])
+  }
+
+  async deleteStoredFiles(items) {
+    const baseUploadDir = process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads')
+    const filesDir = path.join(baseUploadDir, 'files')
+    const thumbnailDir = path.join(baseUploadDir, 'thumbnails')
+    const filePaths = new Set()
+
+    for (const item of items) {
+      if (item.type === 'file' && item.storageKey) {
+        filePaths.add(path.join(filesDir, item.storageKey))
+      }
+
+      if (Array.isArray(item.versions)) {
+        item.versions.forEach(version => {
+          if (version?.storageKey) {
+            filePaths.add(path.join(filesDir, version.storageKey))
+          }
+        })
+      }
+
+      if (item.thumbnailKey) {
+        filePaths.add(path.join(thumbnailDir, item.thumbnailKey))
+      }
+    }
+
+    await Promise.all(
+      Array.from(filePaths).map(filePath => fsp.unlink(filePath).catch(() => {}))
+    )
+  }
+
   async list(ctx) {
     try {
       const { folderId } = ctx.query
@@ -218,20 +299,29 @@ class FileController extends BaseController {
         this.throwHttpError('未找到要删除的文件', HttpStatus.NOT_FOUND)
       }
 
-      const now = new Date()
-      const updatePromises = items.map(item => {
-        item.isDeleted = true
-        item.trashInfo = {
-          deletedAt: now,
-          deletedBy: userId,
-          originalPath: item.path
-        }
-        return item.save()
+      const allItems = await this.collectItemsWithDescendants(items, userId, {
+        isDeleted: false
       })
+      const now = new Date()
+      await FileItem.bulkWrite(
+        allItems.map(item => ({
+          updateOne: {
+            filter: { _id: item._id, owner: userId },
+            update: {
+              $set: {
+                isDeleted: true,
+                trashInfo: {
+                  deletedAt: now,
+                  deletedBy: userId,
+                  originalPath: item.path
+                }
+              }
+            }
+          }
+        }))
+      )
 
-      await Promise.all(updatePromises)
-
-      this.ok(ctx, null, `已将 ${items.length} 个项目移入回收站`)
+      this.ok(ctx, null, `已将 ${allItems.length} 个项目移入回收站`)
     } catch (error) {
       this.fail(ctx, error)
     }
@@ -259,9 +349,26 @@ class FileController extends BaseController {
       }
 
       const objectIds = ids.map(id => new mongoose.Types.ObjectId(id))
+      const items = await FileItem.find({
+        _id: { $in: objectIds },
+        owner: userId,
+        isDeleted: true
+      }).lean()
+
+      if (items.length === 0) {
+        this.throwHttpError('未找到要恢复的文件', HttpStatus.NOT_FOUND)
+      }
+
+      const allItems = await this.collectItemsWithDescendants(items, userId, {
+        isDeleted: true
+      })
 
       const result = await FileItem.updateMany(
-        { _id: { $in: objectIds }, owner: userId, isDeleted: true },
+        {
+          _id: { $in: allItems.map(item => item._id) },
+          owner: userId,
+          isDeleted: true
+        },
         {
           isDeleted: false,
           $unset: { trashInfo: 1 }
@@ -289,22 +396,22 @@ class FileController extends BaseController {
         _id: { $in: objectIds },
         owner: userId,
         isDeleted: true
-      })
+      }
+      ).lean()
 
-      for (const item of items) {
-        if (item.type === 'file' && item.storageKey) {
-          const uploadDir = process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads')
-          const filePath = path.join(uploadDir, 'files', item.storageKey)
-          await fsp.unlink(filePath).catch(() => {})
-        }
+      if (items.length === 0) {
+        this.throwHttpError('未找到要永久删除的文件', HttpStatus.NOT_FOUND)
       }
 
+      const allItems = await this.collectItemsWithDescendants(items, userId)
+      await this.deleteStoredFiles(allItems)
+
       await FileItem.deleteMany({
-        _id: { $in: objectIds },
+        _id: { $in: allItems.map(item => item._id) },
         owner: userId
       })
 
-      this.ok(ctx, null, `已永久删除 ${items.length} 个项目`)
+      this.ok(ctx, null, `已永久删除 ${allItems.length} 个项目`)
     } catch (error) {
       this.fail(ctx, error)
     }

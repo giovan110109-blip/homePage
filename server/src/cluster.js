@@ -4,24 +4,30 @@ const path = require('path');
 
 const numCPUs = os.cpus().length;
 
+const forkWorker = (logicalWorkerId) => {
+  const worker = cluster.fork({ WORKER_ID: String(logicalWorkerId) });
+  worker.logicalWorkerId = String(logicalWorkerId);
+  if (String(logicalWorkerId) === "0") {
+    console.log(
+      `Worker ${worker.process.pid} (ID: ${logicalWorkerId}) will start the upload queue`
+    );
+  }
+  return worker;
+};
+
 if (cluster.isMaster) {
   console.log(`Master ${process.pid} is running`);
   console.log(`Starting ${numCPUs} workers...`);
 
   for (let i = 0; i < numCPUs; i++) {
-    const worker = cluster.fork({ WORKER_ID: i });
-    if (i === 0) {
-      console.log(`Worker ${worker.process.pid} (ID: ${i}) will start the upload queue`);
-    }
+    forkWorker(i);
   }
 
   cluster.on('exit', (worker, code, signal) => {
     console.log(`Worker ${worker.process.pid} died with code ${code} and signal ${signal}`);
     console.log('Restarting worker...');
-    const newWorker = cluster.fork({ WORKER_ID: worker.id });
-    if (worker.id === 0) {
-      console.log(`Worker ${newWorker.process.pid} (ID: ${worker.id}) will start the upload queue`);
-    }
+    const logicalWorkerId = worker.logicalWorkerId ?? "0";
+    forkWorker(logicalWorkerId);
   });
 
   cluster.on('listening', (worker, address) => {

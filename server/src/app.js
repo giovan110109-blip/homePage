@@ -41,8 +41,11 @@ const websocketService = require("./services/websocket");
 // 连接数据库
 connectDB();
 
-// 仅在第一个 Worker 进程中启动上传队列管理器
-if (process.env.WORKER_ID === "0") {
+// 单进程模式或第一个 Worker 进程负责启动上传队列管理器
+const shouldStartUploadQueue =
+  !process.env.WORKER_ID || process.env.WORKER_ID === "0";
+
+if (shouldStartUploadQueue) {
   uploadQueue.start().catch((err) => {
     appLogger.error("Failed to start upload queue:", err);
   });

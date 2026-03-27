@@ -1,6 +1,11 @@
+const { replaceEmotes } = require('./emoteHelper');
+
 function getEmailTemplate(data) {
   const { type, name, content, commenterName } = data;
   let template = "";
+  
+  const processedContent = replaceEmotes(content, { size: 32 });
+  
   switch (type) {
     case 5:
       template = `
@@ -12,7 +17,7 @@ function getEmailTemplate(data) {
                         感谢您给 Giovan 留下宝贵留言，我们超重视的～
                     </p>
                     <p style="margin: 8px 0 0 0; font-size: 15px; color: #666; line-height: 1.6;">
-                        您的留言内容是：${content}
+                        您的留言内容是：${processedContent}
                     </p>
                 </td>
             </tr>
@@ -51,7 +56,7 @@ function getEmailTemplate(data) {
                         <span style="color: #10b981; font-weight: 500;">${commenterName || "有人"}</span> 对您的留言进行了评论，快来看看吧～
                     </p>
                     <p style="margin: 8px 0 0 0; font-size: 15px; color: #666; line-height: 1.6;">
-                        评论内容：${content}
+                        评论内容：${processedContent}
                     </p>
                 </td>
             </tr>
@@ -83,7 +88,7 @@ function getEmailTemplate(data) {
                         <span style="color: #f59e0b; font-weight: 500;">${commenterName || "有人"}</span> 回复了您的评论，快来互动吧～
                     </p>
                     <p style="margin: 8px 0 0 0; font-size: 15px; color: #666; line-height: 1.6;">
-                        回复内容：${content}
+                        回复内容：${processedContent}
                     </p>
                 </td>
             </tr>
@@ -115,7 +120,7 @@ function getEmailTemplate(data) {
                         您的站点已成功加入 Giovan 友情链接，欢迎与我们共同成长、交流！
                     </p>
                     <p style="margin: 8px 0 0 0; font-size: 15px; color: #666; line-height: 1.6;">
-                        申请信息：${content}
+                        申请信息：${processedContent}
                     </p>
                 </td>
             </tr>
@@ -147,7 +152,7 @@ function getEmailTemplate(data) {
                         留言人：${name}
                     </p>
                     <p style="margin: 8px 0 0 0; font-size: 15px; color: #666; line-height: 1.6;">
-                        留言内容：${content}
+                        留言内容：${processedContent}
                     </p>
                 </td>
             </tr>
@@ -174,7 +179,7 @@ function getEmailTemplate(data) {
                         申请人：${name}
                     </p>
                     <p style="margin: 8px 0 0 0; font-size: 15px; color: #666; line-height: 1.6;">
-                        申请地址：${content}
+                        申请地址：${processedContent}
                     </p>
                 </td>
             </tr>
@@ -191,7 +196,7 @@ function getEmailTemplate(data) {
                         很抱歉，${name}您的友链申请未通过审核。
                     </p>
                     <p style="margin: 8px 0 0 0; font-size: 15px; color: #666; line-height: 1.6;">
-                        审核未通过原因：${content || "内容不符或不满足本站友链要求"}。
+                        审核未通过原因：${processedContent || "内容不符或不满足本站友链要求"}。
                     </p>
                 </td>
             </tr>

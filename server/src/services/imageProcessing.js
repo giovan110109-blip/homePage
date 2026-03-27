@@ -63,8 +63,16 @@ class ImageProcessingService {
     return sharp(buffer, { ...SHARP_DEFAULT_OPTIONS, ...options });
   }
 
+  getOrientationValue(orientation) {
+    const orientNum = parseInt(orientation, 10);
+    if (!Number.isInteger(orientNum) || orientNum < 1 || orientNum > 8) {
+      return 1;
+    }
+    return orientNum;
+  }
+
   applyOrientationRotation(image, orientation) {
-    const orientNum = parseInt(orientation);
+    const orientNum = this.getOrientationValue(orientation);
     if (!orientNum || orientNum === 1 || !ORIENTATION_ROTATIONS[orientNum]) {
       return image;
     }
@@ -79,6 +87,58 @@ class ImageProcessingService {
 
   getOrientationDescription(orientation) {
     return ORIENTATION_DESCRIPTIONS[orientation] || "未知";
+  }
+
+  normalizeDimensionsForOrientation(width, height, orientation = 1) {
+    if (!width || !height) {
+      return { width, height };
+    }
+
+    const orientNum = this.getOrientationValue(orientation);
+    if ([5, 6, 7, 8].includes(orientNum)) {
+      return {
+        width: height,
+        height: width,
+      };
+    }
+
+    return { width, height };
+  }
+
+  updateExifOrientationAndDimensions(exifData = {}, width, height) {
+    const nextExif = { ...(exifData || {}) };
+
+    nextExif.Orientation = 1;
+    if ("orientation" in nextExif) {
+      nextExif.orientation = 1;
+    }
+
+    if (Number.isFinite(width) && Number.isFinite(height)) {
+      const nextWidth = Math.round(width);
+      const nextHeight = Math.round(height);
+
+      [
+        "ImageWidth",
+        "ExifImageWidth",
+        "PixelXDimension",
+        "SourceImageWidth",
+      ].forEach((key) => {
+        nextExif[key] = nextWidth;
+      });
+
+      [
+        "ImageHeight",
+        "ExifImageHeight",
+        "PixelYDimension",
+        "SourceImageHeight",
+      ].forEach((key) => {
+        nextExif[key] = nextHeight;
+      });
+
+      nextExif.ImageSize = `${nextWidth}x${nextHeight}`;
+    }
+
+    return nextExif;
   }
 
   async detectFileType(buffer) {
@@ -432,12 +492,17 @@ class ImageProcessingService {
     return null;
   }
 
-  async getImageMetadata(buffer) {
+  async getImageMetadata(buffer, orientation = 1) {
     const metadata = await this.createSharpInstance(buffer).metadata();
+    const normalizedDimensions = this.normalizeDimensionsForOrientation(
+      metadata.width,
+      metadata.height,
+      orientation
+    );
 
     return {
-      width: metadata.width,
-      height: metadata.height,
+      width: normalizedDimensions.width,
+      height: normalizedDimensions.height,
       format: metadata.format,
       space: metadata.space,
       channels: metadata.channels,
@@ -635,7 +700,10 @@ class ImageProcessingService {
         `📐 EXIF Orientation: ${orientation} (${this.getOrientationDescription(orientation)}) - 保留原始方向`
       );
 
-      result.metadata = await this.getImageMetadata(result.processedBuffer);
+      result.metadata = await this.getImageMetadata(
+        result.processedBuffer,
+        orientation
+      );
 
       result.thumbnail = await this.generateThumbnail(result.processedBuffer, {
         width: 800,

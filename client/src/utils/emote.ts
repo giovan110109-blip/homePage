@@ -3,7 +3,7 @@ import type { EmoteGroup } from "@/types/emote";
 export const EMOTE_GROUPS: EmoteGroup[] = [
   {
     name: "抽象",
-    emotes: Array.from({ length: 293 }, (_, i) => ({
+    emotes: Array.from({ length: 291 }, (_, i) => ({
       name: `${String(i + 1).padStart(3, "0")}-网络抽象静态表情包.webp`,
       url: `/emote-webp/抽象/${String(i + 1).padStart(3, "0")}-网络抽象静态表情包.webp`,
       group: "抽象",
@@ -11,7 +11,7 @@ export const EMOTE_GROUPS: EmoteGroup[] = [
   },
   {
     name: "牛牛",
-    emotes: Array.from({ length: 319 }, (_, i) => ({
+    emotes: Array.from({ length: 114 }, (_, i) => ({
       name: `${String(i + 1).padStart(3, "0")}-草地牛牛静态表情包.webp`,
       url: `/emote-webp/牛牛/${String(i + 1).padStart(3, "0")}-草地牛牛静态表情包.webp`,
       group: "牛牛",

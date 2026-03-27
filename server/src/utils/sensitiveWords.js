@@ -1,7 +1,7 @@
 const sensitiveWords = [
   '傻逼', '煞笔', '沙比', '煞逼', '沙逼', 'sb', 'SB', 'Sb', 'sB',
   '操你妈', '草你妈', '肏你妈', '干你妈', '他妈的', 'TMD', 'tmd',
-  '操', '草', '肏', '日', '靠', '艹',
+  '操', '肏', '日', '靠', '艹',
   '妈的', '妈逼', '妈比', 'MB', 'mb',
   '傻叉', '煞叉', '沙叉', 'sc', 'SC', 'Sc',
   '王八蛋', '王八', '乌龟', '绿帽', '绿帽子',
@@ -57,6 +57,9 @@ const containsSensitiveWords = (text) => {
       found.push(word);
     }
   }
+  
+  console.log(`[敏感词检测] 检测文本: ${text.substring(0, 50)}...`);
+  console.log(`[敏感词检测] 发现的敏感词: ${found.join(', ')}`);
   
   return {
     hasSensitive: found.length > 0,

@@ -9,9 +9,11 @@ const videoOptimizer = require("../videoOptimizer");
 const {
   extractBaseName,
   VIDEO_EXTENSIONS,
-  isLikelyLiveVideo,
-  LIVEPHOTO_MAX_TIME_DIFF_MS,
 } = require("./photoUtils");
+
+function escapeRegex(value = "") {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
 
 class VideoProcessor {
   constructor(config) {
@@ -49,7 +51,7 @@ class VideoProcessor {
       }
     }
 
-    const existingPhoto = await this.findExistingPhoto(derivedBaseName);
+    const existingPhoto = await this.findExistingPhoto(derivedBaseName, task);
 
     if (existingPhoto) {
       return await this.updateExistingPhoto(
@@ -67,16 +69,31 @@ class VideoProcessor {
     }
   }
 
-  async findExistingPhoto(baseName) {
+  async findExistingPhoto(baseName, task) {
     if (!baseName) return null;
 
-    return await Photo.findOne({
+    const baseQuery = {
       $or: [
         { baseName },
-        { originalFileName: { $regex: `^${baseName}\\.` } },
-        { storageKey: { $regex: `^${baseName}_` } },
+        { originalFileName: { $regex: `^${escapeRegex(baseName)}\\.` } },
+        { storageKey: { $regex: `^${escapeRegex(baseName)}_` } },
       ],
-    });
+    };
+
+    if (task?.uploadedBy) {
+      baseQuery.uploadedBy = task.uploadedBy;
+    }
+
+    const completedPhoto = await Photo.findOne({
+      ...baseQuery,
+      status: "completed",
+    }).sort({ createdAt: -1 });
+
+    if (completedPhoto) {
+      return completedPhoto;
+    }
+
+    return await Photo.findOne(baseQuery).sort({ createdAt: -1 });
   }
 
   async updateExistingPhoto(photo, videoKey, baseName, task) {

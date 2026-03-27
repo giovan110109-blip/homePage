@@ -2,6 +2,11 @@ const Photo = require("../models/photo");
 const Album = require("../models/album");
 const UploadTask = require("../models/uploadTask");
 const uploadQueue = require("../services/uploadQueueManager");
+const imageProcessing = require("../services/imageProcessing");
+const geocoding = require("../services/geocoding");
+const {
+  extractBaseNameFromFilename,
+} = require("../services/upload/photoUtils");
 const path = require("path");
 const fs = require("fs");
 const fsp = fs.promises;
@@ -33,6 +38,250 @@ class PhotoController {
 
       return updatedPhoto;
     });
+  }
+
+  getTaskOwnerQuery(ctx) {
+    const uploadedBy = ctx.state.user?._id;
+    if (!uploadedBy) {
+      throw new ValidationError("未登录");
+    }
+    return { uploadedBy };
+  }
+
+  serializeTask(task) {
+    return {
+      taskId: task.taskId,
+      status: task.status,
+      stage: task.stage,
+      progress: task.progress,
+      error: task.error,
+      photoId: task.photoId,
+    };
+  }
+
+  getDateTakenFromExif(exifData = {}) {
+    const candidates = [
+      exifData.DateTimeOriginal,
+      exifData.CreateDate,
+      exifData.DateCreated,
+      exifData.DateTimeDigitized,
+      exifData.ModifyDate,
+    ];
+
+    for (const value of candidates) {
+      if (!value) continue;
+      const date = new Date(value);
+      if (!Number.isNaN(date.getTime())) {
+        return date;
+      }
+    }
+
+    return null;
+  }
+
+  buildPhotoLocation(location) {
+    if (location?.latitude == null || location?.longitude == null) {
+      return null;
+    }
+
+    return {
+      latitude: location.latitude,
+      longitude: location.longitude,
+      altitude: location.altitude,
+      coordinates: [location.longitude, location.latitude],
+    };
+  }
+
+  buildCameraFromExif(exifData = {}) {
+    const camera = {
+      make: exifData.Make,
+      model: exifData.Model,
+      lens: exifData.LensModel,
+      focalLength: exifData.FocalLength,
+      aperture: exifData.FNumber,
+      shutterSpeed: exifData.ExposureTime,
+      iso: exifData.ISO,
+      flash: exifData.Flash,
+      exposureProgram: exifData.ExposureProgram,
+    };
+
+    const hasCameraData = Object.values(camera).some(
+      (value) => value !== undefined && value !== null && value !== ""
+    );
+
+    return hasCameraData ? camera : null;
+  }
+
+  async fileExists(filePath) {
+    return fsp
+      .access(filePath)
+      .then(() => true)
+      .catch(() => false);
+  }
+
+  getPhotoStorageInfo(photo) {
+    const baseUploadDir =
+      process.env.UPLOAD_DIR || path.join(process.cwd(), "uploads");
+    const uploadDir = path.join(baseUploadDir, "photos");
+    const webpDir =
+      process.env.UPLOAD_WEBP_DIR || path.join(baseUploadDir, "photos-webp");
+    const fileKey = photo.originalKey || photo.storageKey;
+    const filePath = path.join(uploadDir, fileKey);
+    const webpFileName = `${path.parse(photo.storageKey).name}.webp`;
+    const webpPath = path.join(webpDir, webpFileName);
+
+    return {
+      baseUploadDir,
+      uploadDir,
+      webpDir,
+      fileKey,
+      filePath,
+      webpFileName,
+      webpPath,
+    };
+  }
+
+  applyImageOutputFormat(image, fileExt, options = {}) {
+    const { keepMetadata = false, metadataOrientation = 1 } = options;
+    let pipeline = image;
+
+    if (keepMetadata) {
+      pipeline = pipeline.withMetadata({ orientation: metadataOrientation });
+    }
+
+    if (fileExt === ".webp") {
+      return pipeline.webp({
+        quality: 90,
+        effort: 6,
+      });
+    }
+
+    if (fileExt === ".png") {
+      return pipeline.png({
+        quality: 90,
+        effort: 9,
+      });
+    }
+
+    if (fileExt === ".jpg" || fileExt === ".jpeg") {
+      return pipeline.jpeg({
+        quality: 90,
+        progressive: true,
+        mozjpeg: true,
+      });
+    }
+
+    if (fileExt === ".gif") {
+      return pipeline.gif();
+    }
+
+    return pipeline;
+  }
+
+  async replaceFileWithBuffer(filePath, buffer) {
+    const backupPath = `${filePath}.backup`;
+    const tempPath = `${filePath}.tmp`;
+
+    if (await this.fileExists(filePath)) {
+      await fsp.copyFile(filePath, backupPath);
+    }
+
+    try {
+      await fsp.writeFile(tempPath, buffer);
+
+      const nextStats = await fsp.stat(tempPath);
+      if (!nextStats.size) {
+        throw new ValidationError("生成的文件为空");
+      }
+
+      await fsp.rename(tempPath, filePath);
+      await fsp.unlink(backupPath).catch(() => {});
+    } catch (error) {
+      await fsp.unlink(tempPath).catch(() => {});
+      if (await this.fileExists(backupPath)) {
+        await fsp.rename(backupPath, filePath).catch(() => {});
+      }
+      throw error;
+    }
+  }
+
+  async syncPhotoExifFields(photo, exifData = {}, options = {}) {
+    const { refreshGeoinfo = false } = options;
+
+    photo.exif = exifData || {};
+
+    const dateTaken = this.getDateTakenFromExif(exifData);
+    if (dateTaken) {
+      photo.dateTaken = dateTaken;
+    }
+
+    const location = imageProcessing.parseGPSCoordinates(exifData);
+    if (location) {
+      photo.location = this.buildPhotoLocation(location);
+
+      if (refreshGeoinfo) {
+        try {
+          const geoinfo = await geocoding.reverseGeocode(
+            location.latitude,
+            location.longitude
+          );
+          if (geoinfo) {
+            photo.geoinfo = geoinfo;
+          }
+        } catch (geoError) {
+          console.warn("反向地理编码失败:", geoError.message);
+        }
+      }
+    }
+
+    const camera = this.buildCameraFromExif(exifData);
+    if (camera) {
+      photo.camera = camera;
+    }
+  }
+
+  async rebuildPhotoDerivedAssets(photo, displayBuffer, options = {}) {
+    const { webpPath } = this.getPhotoStorageInfo(photo);
+    const metadata = await imageProcessing.getImageMetadata(displayBuffer, 1);
+
+    await fsp.mkdir(path.dirname(webpPath), { recursive: true });
+
+    const webpBuffer = await imageProcessing.generateThumbnail(displayBuffer, {
+      width: 600,
+      quality: 85,
+      format: "webp",
+    });
+
+    await this.replaceFileWithBuffer(webpPath, webpBuffer);
+
+    let thumbnailHash = photo.thumbnailHash || null;
+    let thumbnailUrl = photo.thumbnailUrl || null;
+
+    try {
+      const nextThumbnailHash = await imageProcessing.generateThumbHash(
+        displayBuffer,
+        1
+      );
+      if (nextThumbnailHash) {
+        thumbnailHash = nextThumbnailHash;
+        thumbnailUrl = await imageProcessing.thumbHashToDataURL(
+          nextThumbnailHash
+        );
+      }
+    } catch (thumbHashError) {
+      console.warn("ThumbHash 生成失败:", thumbHashError.message);
+    }
+
+    photo.width = metadata.width;
+    photo.height = metadata.height;
+    photo.aspectRatio =
+      metadata.width && metadata.height
+        ? metadata.width / metadata.height
+        : photo.aspectRatio;
+    photo.thumbnailHash = thumbnailHash;
+    photo.thumbnailUrl = thumbnailUrl;
+
+    return metadata;
   }
 
   async deletePhotoFiles(photo) {
@@ -116,27 +365,38 @@ class PhotoController {
       if (isImage || isVideo) {
         // 查找所有文件
         const allFiles = await fsp.readdir(uploadDir);
+        const pairCandidates = [];
 
         // 查找同名但不同类型的文件
         for (const existingFile of allFiles) {
-          // 提取文件的 baseName（去掉结尾的 _时间戳 和扩展名）
-          const existingBaseName = existingFile
-            .replace(/_\d{13}(?=\.[^.]+$)/, "")
-            .replace(/\.[^.]+$/, "");
+          const existingBaseName = extractBaseNameFromFilename(existingFile);
           const existingExt = path.extname(existingFile).toLowerCase();
 
           // 名字匹配且类型不同（比较原始 baseName）
           if (existingBaseName === baseName && existingFile !== filename) {
             if (isImage && VIDEO_EXTS.includes(existingExt)) {
-              pairedFile = existingFile;
-              isLivePhoto = true;
-              break;
+              pairCandidates.push(existingFile);
             } else if (isVideo && IMAGE_EXTS.includes(existingExt)) {
-              pairedFile = existingFile;
-              isLivePhoto = true;
-              break;
+              pairCandidates.push(existingFile);
             }
           }
+        }
+
+        if (pairCandidates.length > 0) {
+          const candidateStats = await Promise.all(
+            pairCandidates.map(async (candidate) => {
+              try {
+                const stats = await fsp.stat(path.join(uploadDir, candidate));
+                return { candidate, mtimeMs: stats.mtimeMs || 0 };
+              } catch {
+                return { candidate, mtimeMs: 0 };
+              }
+            })
+          );
+
+          candidateStats.sort((a, b) => b.mtimeMs - a.mtimeMs);
+          pairedFile = candidateStats[0]?.candidate || null;
+          isLivePhoto = Boolean(pairedFile);
         }
       }
 
@@ -178,23 +438,16 @@ class PhotoController {
   async getTaskStatus(ctx) {
     try {
       const { taskId } = ctx.params;
-      const task = await uploadQueue.getTaskStatus(taskId);
+      const task = await uploadQueue.getTaskStatus(
+        taskId,
+        this.getTaskOwnerQuery(ctx)
+      );
 
       if (!task) {
         throw new NotFoundError("任务不存在");
       }
 
-      ctx.body = Response.success(
-        {
-          taskId: task.taskId,
-          status: task.status,
-          stage: task.stage,
-          progress: task.progress,
-          error: task.error,
-          photoId: task.photoId,
-        },
-        "获取成功",
-      );
+      ctx.body = Response.success(this.serializeTask(task), "获取成功");
     } catch (error) {
       throw error;
     }
@@ -203,12 +456,16 @@ class PhotoController {
   async getTaskStatuses(ctx) {
     try {
       const { taskIds } = ctx.request.body || {};
+      const ownerQuery = this.getTaskOwnerQuery(ctx);
 
       if (!Array.isArray(taskIds) || taskIds.length === 0) {
         throw new ValidationError("taskIds 不能为空");
       }
 
-      const tasks = await UploadTask.find({ taskId: { $in: taskIds } }).lean();
+      const tasks = await UploadTask.find({
+        ...ownerQuery,
+        taskId: { $in: taskIds },
+      }).lean();
 
       const data = taskIds.map((id) => {
         const task = tasks.find((t) => t.taskId === id);
@@ -219,14 +476,7 @@ class PhotoController {
           };
         }
 
-        return {
-          taskId: task.taskId,
-          status: task.status,
-          stage: task.stage,
-          progress: task.progress,
-          error: task.error,
-          photoId: task.photoId,
-        };
+        return this.serializeTask(task);
       });
 
       ctx.body = Response.success({ tasks: data }, "获取成功");
@@ -237,7 +487,7 @@ class PhotoController {
 
   async getQueueStats(ctx) {
     try {
-      const stats = await uploadQueue.getStats();
+      const stats = await uploadQueue.getStats(this.getTaskOwnerQuery(ctx));
       ctx.body = Response.success(stats, "获取成功");
     } catch (error) {
       throw error;
@@ -247,17 +497,18 @@ class PhotoController {
   async getFailedTasks(ctx) {
     try {
       const { page = 1, limit = 20 } = ctx.query;
+      const ownerQuery = this.getTaskOwnerQuery(ctx);
       const pageNum = Math.max(parseInt(page, 10) || 1, 1);
       const limitNum = Math.min(Math.max(parseInt(limit, 10) || 20, 1), 100);
       const skip = (pageNum - 1) * limitNum;
 
       const [tasks, total] = await Promise.all([
-        UploadTask.find({ status: "failed" })
+        UploadTask.find({ ...ownerQuery, status: "failed" })
           .sort({ updatedAt: -1 })
           .skip(skip)
           .limit(limitNum)
           .lean(),
-        UploadTask.countDocuments({ status: "failed" }),
+        UploadTask.countDocuments({ ...ownerQuery, status: "failed" }),
       ]);
 
       ctx.body = Response.success(
@@ -291,7 +542,10 @@ class PhotoController {
   async retryTask(ctx) {
     try {
       const { taskId } = ctx.params;
-      const task = await UploadTask.findOne({ taskId });
+      const task = await UploadTask.findOne({
+        taskId,
+        ...this.getTaskOwnerQuery(ctx),
+      });
 
       if (!task) {
         throw new NotFoundError("任务不存在");
@@ -621,56 +875,32 @@ class PhotoController {
         throw new NotFoundError("照片不存在");
       }
 
-      const baseUploadDir =
-        process.env.UPLOAD_DIR || path.join(process.cwd(), "uploads");
-      const uploadDir = path.join(baseUploadDir, "photos");
-      const fileKey = photo.originalKey || photo.storageKey;
-      const filePath = path.join(uploadDir, fileKey);
+      const { filePath, fileKey } = this.getPhotoStorageInfo(photo);
 
-      if (
-        !(await fsp
-          .access(filePath)
-          .then(() => true)
-          .catch(() => false))
-      ) {
+      if (!(await this.fileExists(filePath))) {
         throw new NotFoundError("原始文件不存在");
       }
 
-      const imageProcessing = require("../services/imageProcessing");
-      const exifData = await imageProcessing.extractExif({
+      const sourceBuffer = await fsp.readFile(filePath);
+      const extractedExif = await imageProcessing.extractExif({
         filePath,
-        originalFileName: photo.originalFileName,
+        originalFileName: photo.originalFileName || fileKey,
       });
+      const exifData = {
+        ...(photo.exif || {}),
+        ...(extractedExif || {}),
+      };
 
-      photo.exif = exifData.exif;
-      if (exifData.dateTaken) {
-        photo.dateTaken = exifData.dateTaken;
-      }
-      if (exifData.location) {
-        photo.location = {
-          latitude: exifData.location.latitude,
-          longitude: exifData.location.longitude,
-          altitude: exifData.location.altitude,
-          coordinates: [
-            exifData.location.longitude,
-            exifData.location.latitude,
-          ],
-        };
+      const orientation = imageProcessing.getOrientationValue(
+        exifData?.Orientation
+      );
+      const displayBuffer =
+        orientation === 1
+          ? sourceBuffer
+          : await imageProcessing.rotateByOrientation(sourceBuffer, orientation);
 
-        const geocoding = require("../services/geocoding");
-        try {
-          const geoinfo = await geocoding.reverseGeocode(
-            exifData.location.latitude,
-            exifData.location.longitude,
-          );
-          photo.geoinfo = geoinfo;
-        } catch (geoError) {
-          console.warn("反向地理编码失败:", geoError.message);
-        }
-      }
-      if (exifData.camera) {
-        photo.camera = exifData.camera;
-      }
+      await this.syncPhotoExifFields(photo, exifData, { refreshGeoinfo: true });
+      await this.rebuildPhotoDerivedAssets(photo, displayBuffer);
 
       await photo.save();
 
@@ -698,164 +928,69 @@ class PhotoController {
         throw new NotFoundError("照片不存在");
       }
 
-      const baseUploadDir =
-        process.env.UPLOAD_DIR || path.join(process.cwd(), "uploads");
-      const uploadDir = path.join(baseUploadDir, "photos");
-      const fileKey = photo.originalKey || photo.storageKey;
-      const filePath = path.join(uploadDir, fileKey);
+      const { filePath, fileKey } = this.getPhotoStorageInfo(photo);
 
-      if (
-        !(await fsp
-          .access(filePath)
-          .then(() => true)
-          .catch(() => false))
-      ) {
+      if (!(await this.fileExists(filePath))) {
         throw new NotFoundError("原始文件不存在");
       }
 
-      const sharp = require("sharp");
+      const originalBuffer = await fsp.readFile(filePath);
+      const extractedCurrentExif = await imageProcessing.extractExif({
+        filePath,
+        originalFileName: photo.originalFileName || fileKey,
+      });
+      const currentExif = {
+        ...(photo.exif || {}),
+        ...(extractedCurrentExif || {}),
+      };
+      const currentOrientation = imageProcessing.getOrientationValue(
+        currentExif?.Orientation ?? photo.exif?.Orientation
+      );
       const fileExt = path.extname(fileKey).toLowerCase();
 
-      let image = sharp(filePath);
-      const metadata = await image.metadata();
+      const displayBuffer =
+        currentOrientation === 1
+          ? originalBuffer
+          : await imageProcessing.rotateByOrientation(
+              originalBuffer,
+              currentOrientation
+            );
 
-      let newWidth = metadata.width;
-      let newHeight = metadata.height;
+      let rotatedImage = imageProcessing.createSharpInstance(displayBuffer);
+      rotatedImage = rotatedImage.rotate(degree);
+      rotatedImage = this.applyImageOutputFormat(rotatedImage, fileExt, {
+        keepMetadata: true,
+        metadataOrientation: 1,
+      });
 
-      if (Math.abs(degree) === 90) {
-        const temp = newWidth;
-        newWidth = newHeight;
-        newHeight = temp;
+      const rotatedOriginalBuffer = await rotatedImage.toBuffer();
+      if (!rotatedOriginalBuffer.length) {
+        throw new ValidationError("旋转后文件为空");
       }
 
-      const backupPath = filePath + ".backup";
-      await fsp.copyFile(filePath, backupPath);
+      await this.replaceFileWithBuffer(filePath, rotatedOriginalBuffer);
 
-      try {
-        let pipeline = sharp(filePath).rotate(degree);
+      const rotatedMetadata = await this.rebuildPhotoDerivedAssets(
+        photo,
+        rotatedOriginalBuffer
+      );
 
-        if (fileExt === ".webp") {
-          pipeline = pipeline.webp({
-            quality: 90,
-            effort: 6,
-          });
-        } else if (fileExt === ".png") {
-          pipeline = pipeline.png({
-            quality: 90,
-            effort: 9,
-          });
-        } else if (fileExt === ".jpg" || fileExt === ".jpeg") {
-          pipeline = pipeline.jpeg({
-            quality: 90,
-            progressive: true,
-            mozjpeg: true,
-          });
-        } else if (fileExt === ".gif") {
-          pipeline = pipeline.gif();
-        } else {
-          pipeline = pipeline.withMetadata();
-        }
+      const syncedExifFromFile = await imageProcessing.extractExif({
+        filePath,
+        originalFileName: photo.originalFileName || fileKey,
+      });
+      const mergedExif = imageProcessing.updateExifOrientationAndDimensions(
+        {
+          ...(currentExif || {}),
+          ...(syncedExifFromFile || {}),
+        },
+        rotatedMetadata.width,
+        rotatedMetadata.height
+      );
 
-        await pipeline.toFile(filePath + ".rotated");
-
-        const rotatedStats = await fsp.stat(filePath + ".rotated");
-        console.log(`[ROTATE] ✓ 旋转文件已创建: ${rotatedStats.size} bytes`);
-
-        if (rotatedStats.size === 0) {
-          throw new ValidationError("旋转后文件为空");
-        }
-
-        await fsp.rename(filePath + ".rotated", filePath);
-
-        const finalStats = await fsp.stat(filePath);
-        console.log(`[ROTATE] ✓ 文件已替换: ${finalStats.size} bytes`);
-
-        await fsp.unlink(backupPath).catch(() => {});
-      } catch (rotateError) {
-        console.error("旋转失败:", rotateError.message);
-        await fsp.rename(backupPath, filePath).catch(() => {});
-        throw rotateError;
-      }
-
-      const webpDir =
-        process.env.UPLOAD_WEBP_DIR || path.join(baseUploadDir, "photos-webp");
-      const webpFileName = `${path.parse(photo.storageKey).name}.webp`;
-      const webpPath = path.join(webpDir, webpFileName);
-
-      if (
-        await fsp
-          .access(webpPath)
-          .then(() => true)
-          .catch(() => false)
-      ) {
-        try {
-          const webpBackupPath = webpPath + ".backup";
-          await fsp.copyFile(webpPath, webpBackupPath);
-
-          await sharp(webpPath)
-            .rotate(degree)
-            .webp({
-              quality: 90,
-              effort: 6,
-            })
-            .toFile(webpPath + ".rotated");
-
-          const webpRotatedStats = await fsp.stat(webpPath + ".rotated");
-          if (webpRotatedStats.size === 0) {
-            throw new ValidationError("WebP 旋转后文件为空");
-          }
-
-          await fsp.rename(webpPath + ".rotated", webpPath);
-          await fsp.unlink(webpBackupPath).catch(() => {});
-        } catch (webpError) {
-          console.warn("WebP 旋转失败:", webpError.message);
-          await fsp.rename(webpPath + ".backup", webpPath).catch(() => {});
-        }
-      }
-
-      const thumbnailDir = path.join(uploadDir, "thumbnails");
-      const thumbnailKey =
-        path.basename(fileKey, path.extname(fileKey)) + "_thumb.jpg";
-      const thumbnailPath = path.join(thumbnailDir, thumbnailKey);
-
-      if (
-        await fsp
-          .access(thumbnailPath)
-          .then(() => true)
-          .catch(() => false)
-      ) {
-        try {
-          await sharp(filePath)
-            .resize(400, 400, { fit: "inside", withoutEnlargement: true })
-            .jpeg({ quality: 85 })
-            .toFile(thumbnailPath + ".rotated");
-
-          await fsp.rename(thumbnailPath + ".rotated", thumbnailPath);
-        } catch (thumbError) {
-          console.warn("重新生成缩略图失败:", thumbError.message);
-        }
-      }
-
-      try {
-        const imageProcessing = require("../services/imageProcessing");
-        const rotatedBuffer = await fsp.readFile(filePath);
-        const newThumbHash =
-          await imageProcessing.generateThumbHash(rotatedBuffer);
-        if (newThumbHash) {
-          photo.thumbnailHash = newThumbHash;
-        }
-      } catch (thumbHashError) {
-        console.warn("ThumbHash 生成失败:", thumbHashError.message);
-      }
-
-      photo.width = newWidth;
-      photo.height = newHeight;
-
-      if (photo.exif) {
-        photo.exif.orientation = 1;
-      }
-
-      photo.updatedAt = new Date();
+      await this.syncPhotoExifFields(photo, mergedExif, {
+        refreshGeoinfo: false,
+      });
 
       await photo.save();
 

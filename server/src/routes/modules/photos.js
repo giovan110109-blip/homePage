@@ -25,11 +25,11 @@ const router = new Router({ prefix: '/api/photos' })
 router.post('/upload', auth, photoController.upload.bind(photoController))
 
 // 任务状态 - 注意：具体路由必须在参数路由之前
-router.post('/tasks/batch', photoController.getTaskStatuses.bind(photoController))
-router.get('/tasks/stats', photoController.getQueueStats.bind(photoController))
-router.get('/tasks/failed', photoController.getFailedTasks.bind(photoController))
-router.get('/tasks/:taskId', photoController.getTaskStatus.bind(photoController))
-router.post('/tasks/:taskId/retry', photoController.retryTask.bind(photoController))
+router.post('/tasks/batch', auth, photoController.getTaskStatuses.bind(photoController))
+router.get('/tasks/stats', auth, photoController.getQueueStats.bind(photoController))
+router.get('/tasks/failed', auth, photoController.getFailedTasks.bind(photoController))
+router.get('/tasks/:taskId', auth, photoController.getTaskStatus.bind(photoController))
+router.post('/tasks/:taskId/retry', auth, photoController.retryTask.bind(photoController))
 
 // 照片列表和详情
 router.get('/', photoController.getPhotos.bind(photoController))

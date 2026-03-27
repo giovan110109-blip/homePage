@@ -6,11 +6,15 @@ const path = require("path");
 const fs = require("fs").promises;
 const sharp = require("sharp");
 const Photo = require("../../models/photo");
+const UploadTask = require("../../models/uploadTask");
 const geocoding = require("../geocoding");
 const imageTagService = require("../imageTagService");
+const imageProcessing = require("../imageProcessing");
 const {
   extractBaseName,
+  extractBaseNameFromFilename,
   isLikelyLiveVideo,
+  detectFileType,
   VIDEO_EXTENSIONS,
   LIVEPHOTO_MAX_TIME_DIFF_MS,
 } = require("./photoUtils");
@@ -110,30 +114,22 @@ class ImageProcessor {
     const imageInfo = await sharp(processed.processedBuffer).metadata();
     const targetWidth = 600;
 
-    const orientation = parseInt(processed.exif?.Orientation) || 1;
+    const orientation = imageProcessing.getOrientationValue(
+      processed.exif?.Orientation
+    );
     console.log(
       `🔄 WebP 生成 - EXIF Orientation: ${processed.exif?.Orientation} (解析后: ${orientation})`
     );
 
-    let webpImage = sharp(processed.processedBuffer, {
-      failOnError: false,
-      limitInputPixels: false,
-      autoRotate: false,
-    });
+    let webpImage = imageProcessing.createSharpInstance(processed.processedBuffer);
 
     if (orientation === 1) {
       console.log(`✅ WebP 无需旋转 (Orientation: ${orientation}, 图片已正确方向)`);
-    } else if (orientation === 3) {
-      console.log(`🔄 WebP 应用旋转: 180°`);
-      webpImage = webpImage.rotate(180);
-    } else if (orientation === 6) {
-      console.log(`🔄 WebP 应用旋转: 90°`);
-      webpImage = webpImage.rotate(90);
-    } else if (orientation === 8) {
-      console.log(`🔄 WebP 应用旋转: 270°`);
-      webpImage = webpImage.rotate(270);
     } else {
-      console.log(`✅ WebP 无需旋转 (Orientation: ${orientation})`);
+      console.log(
+        `🔄 WebP 应用方向修正: ${imageProcessing.getOrientationDescription(orientation)}`
+      );
+      webpImage = imageProcessing.applyOrientationRotation(webpImage, orientation);
     }
 
     const webpBuffer = await webpImage
@@ -216,6 +212,19 @@ class ImageProcessor {
     }
 
     if (!isLive && derivedBaseName) {
+      const result = await this.findMatchingVideoTask(
+        derivedBaseName,
+        dateTaken,
+        task
+      );
+      if (result) {
+        isLive = true;
+        videoKey = result.videoKey;
+        videoUrl = result.videoUrl;
+      }
+    }
+
+    if (!isLive && derivedBaseName) {
       const result = await this.searchForMatchingVideo(
         derivedBaseName,
         dateTaken,
@@ -229,7 +238,27 @@ class ImageProcessor {
     }
 
     if (!isLive && derivedBaseName) {
-      const existingByBase = await Photo.findOne({ baseName: derivedBaseName });
+      const existingBaseQuery = {
+        baseName: derivedBaseName,
+        isLive: true,
+        videoKey: { $exists: true, $ne: null },
+      };
+
+      if (task.uploadedBy) {
+        existingBaseQuery.uploadedBy = task.uploadedBy;
+      }
+
+      let existingByBase = await Photo.findOne({
+        ...existingBaseQuery,
+        status: "completed",
+      }).sort({ createdAt: -1 });
+
+      if (!existingByBase) {
+        existingByBase = await Photo.findOne(existingBaseQuery).sort({
+          createdAt: -1,
+        });
+      }
+
       if (existingByBase?.videoKey && existingByBase?.isLive) {
         const timeDiff =
           existingByBase.createdAt && task.createdAt
@@ -249,14 +278,58 @@ class ImageProcessor {
     return { isLive, videoUrl, videoKey };
   }
 
+  async findMatchingVideoTask(baseName, dateTaken, task) {
+    try {
+      const query = {
+        _id: { $ne: task._id },
+        taskId: { $ne: task.taskId },
+        baseName,
+        status: { $in: ["pending", "processing", "completed"] },
+      };
+
+      if (task.uploadedBy) {
+        query.uploadedBy = task.uploadedBy;
+      }
+
+      const candidates = await UploadTask.find(query)
+        .sort({ createdAt: -1 })
+        .limit(10)
+        .lean();
+
+      for (const candidate of candidates) {
+        const { isVideo } = detectFileType(candidate);
+        if (!isVideo || !candidate.storageKey) continue;
+
+        const videoPath = path.join(this.uploadDir, candidate.storageKey);
+        const valid = await isLikelyLiveVideo(
+          videoPath,
+          dateTaken,
+          task.createdAt
+        );
+
+        if (valid) {
+          console.log(
+            `✨ 通过任务记录检测到 LivePhoto 视频文件: ${candidate.storageKey}`
+          );
+          return {
+            videoKey: candidate.storageKey,
+            videoUrl: `${this.uploadBaseUrl}/photos/${candidate.storageKey}`,
+          };
+        }
+      }
+    } catch (err) {
+      console.error("检查配对视频任务失败:", err);
+    }
+
+    return null;
+  }
+
   async searchForMatchingVideo(baseName, dateTaken, taskCreatedAt) {
     try {
       const uploadedFiles = await fs.readdir(this.uploadDir);
 
       for (const file of uploadedFiles) {
-        const fileBaseName = file
-          .replace(/_\d{13}(?=\.[^.]+$)/, "")
-          .replace(/\.[^.]+$/, "");
+        const fileBaseName = extractBaseNameFromFilename(file);
         const fileExt = path.extname(file).toLowerCase();
 
         if (fileBaseName === baseName && VIDEO_EXTENSIONS.includes(fileExt)) {

@@ -3,13 +3,15 @@
  */
 
 const fs = require("fs").promises;
+const path = require("path");
 const { execFile } = require("child_process");
 const { promisify } = require("util");
 
 const execFileAsync = promisify(execFile);
 
-const LIVEPHOTO_MAX_VIDEO_SIZE = 12 * 1024 * 1024;
-const LIVEPHOTO_MAX_TIME_DIFF_MS = 10 * 60 * 1000;
+const LIVEPHOTO_MAX_VIDEO_SIZE = 40 * 1024 * 1024;
+const LIVEPHOTO_MAX_TIME_DIFF_MS = 30 * 60 * 1000;
+const LIVEPHOTO_MAX_DURATION_SECONDS = 8;
 
 const VIDEO_EXTENSIONS = [".mp4", ".mov", ".avi", ".mkv", ".m4v"];
 const IMAGE_EXTENSIONS = [
@@ -51,10 +53,37 @@ async function isLikelyLiveVideo(videoPath, imageDateTaken, taskCreatedAt) {
     const stats = await fs.stat(videoPath);
     if (stats.size > LIVEPHOTO_MAX_VIDEO_SIZE) return false;
 
-    const refTime = imageDateTaken || taskCreatedAt;
-    if (refTime) {
-      const diff = Math.abs(stats.mtimeMs - new Date(refTime).getTime());
-      if (diff > LIVEPHOTO_MAX_TIME_DIFF_MS) return false;
+    const candidateTimes = [stats.birthtimeMs, stats.mtimeMs].filter(
+      (value) => Number.isFinite(value) && value > 0
+    );
+    const referenceTimes = [taskCreatedAt, imageDateTaken]
+      .map((value) => {
+        if (!value) return null;
+        const time = new Date(value).getTime();
+        return Number.isFinite(time) ? time : null;
+      })
+      .filter((value) => value !== null);
+
+    if (candidateTimes.length > 0 && referenceTimes.length > 0) {
+      const minDiff = Math.min(
+        ...candidateTimes.flatMap((candidateTime) =>
+          referenceTimes.map((referenceTime) =>
+            Math.abs(candidateTime - referenceTime)
+          )
+        )
+      );
+
+      if (minDiff > LIVEPHOTO_MAX_TIME_DIFF_MS) {
+        return false;
+      }
+    }
+
+    const durationSeconds = await getVideoDurationSeconds(videoPath);
+    if (
+      durationSeconds !== null &&
+      durationSeconds > LIVEPHOTO_MAX_DURATION_SECONDS
+    ) {
+      return false;
     }
 
     return true;
@@ -63,16 +92,20 @@ async function isLikelyLiveVideo(videoPath, imageDateTaken, taskCreatedAt) {
   }
 }
 
+function extractBaseNameFromFilename(filename = "") {
+  return path
+    .basename(filename)
+    .replace(/_optimized(?=\.[^.]+$)/i, "")
+    .replace(/_\d{13}(?=\.[^.]+$)/, "")
+    .replace(/\.[^.]+$/, "");
+}
+
 function extractBaseName(task) {
   return (
     task.baseName ||
-    (task.storageKey
-      ? task.storageKey
-          .replace(/_\d{13}(?=\.[^.]+$)/, "")
-          .replace(/\.[^.]+$/, "")
-      : "") ||
+    (task.storageKey ? extractBaseNameFromFilename(task.storageKey) : "") ||
     (task.originalFileName
-      ? task.originalFileName.replace(/\.[^/.]+$/, "")
+      ? extractBaseNameFromFilename(task.originalFileName)
       : "")
   );
 }
@@ -99,10 +132,12 @@ function detectFileType(task) {
 module.exports = {
   getVideoDurationSeconds,
   isLikelyLiveVideo,
+  extractBaseNameFromFilename,
   extractBaseName,
   detectFileType,
   VIDEO_EXTENSIONS,
   IMAGE_EXTENSIONS,
   LIVEPHOTO_MAX_VIDEO_SIZE,
   LIVEPHOTO_MAX_TIME_DIFF_MS,
+  LIVEPHOTO_MAX_DURATION_SECONDS,
 };
