@@ -80,6 +80,7 @@ class WebSocketService {
     );
 
     client.ws.send(JSON.stringify({ type: 'subscribed' }));
+    await this.sendPendingMessages(userId);
     console.log('[WS] Client subscribed:', clientId, 'userId:', userId);
   }
 

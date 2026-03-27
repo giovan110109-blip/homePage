@@ -391,8 +391,11 @@ const startPolling = () => {
       if (res.data.status === "confirmed" && res.data.token) {
         stopPolling();
         stopCountdown();
-        authStore.token = res.data.token;
-        authStore.user = res.data.user || null;
+        authStore.setSession({
+          token: res.data.token,
+          user: res.data.user || null,
+          expiresAt: res.data.expiresAt,
+        });
         ElMessage.success("登录成功");
         const redirect = (route.query.redirect as string) || "/admin";
         router.replace(redirect);

@@ -14,6 +14,7 @@ export interface VerifyResponse {
     nickname?: string
     avatar?: string
     email?: string
+    expiresAt?: string
   }
 }
 
@@ -34,6 +35,7 @@ export interface QrStatusData {
     }>
   }
   token?: string
+  expiresAt?: string
   user?: {
     _id: string
     nickname?: string

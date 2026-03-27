@@ -99,50 +99,50 @@ export interface NpsHost {
 
 export const npsApi = {
   getClientList: (params?: { search?: string; offset?: number; limit?: number }) =>
-    request.post<NpsClientListResponse>('/nps/client/list', params),
+    request.post<NpsClientListResponse>('/admin/nps/client/list', params),
 
   getTunnelList: (params?: { client_id?: number; type?: string; search?: string; offset?: number; limit?: number }) =>
-    request.post<{ rows: NpsTunnel[]; total: number }>('/nps/tunnel/list', params),
+    request.post<{ rows: NpsTunnel[]; total: number }>('/admin/nps/tunnel/list', params),
 
   getHostList: (params?: { search?: string; offset?: number; limit?: number; client_id?: number }) =>
-    request.post<{ rows: NpsHost[]; total: number }>('/nps/host/list', params),
+    request.post<{ rows: NpsHost[]; total: number }>('/admin/nps/host/list', params),
 
   getStats: () =>
-    request.post<{ code: number; data: NpsStats }>('/nps/dashboard/stats'),
+    request.post<{ code: number; data: NpsStats }>('/admin/nps/dashboard/stats'),
 
   getServerTime: () =>
-    request.post<{ time: number }>('/nps/auth/gettime'),
+    request.post<{ time: number }>('/admin/nps/auth/gettime'),
 
   addClient: (data: { Remark: string; VerifyKey?: string }) =>
-    request.post('/nps/client/add', data),
+    request.post('/admin/nps/client/add', data),
 
   editClient: (data: { id: number; Remark?: string; VerifyKey?: string }) =>
-    request.post('/nps/client/edit', data),
+    request.post('/admin/nps/client/edit', data),
 
   deleteClient: (id: number) =>
-    request.post('/nps/client/delete', { id }),
+    request.post('/admin/nps/client/delete', { id }),
 
   addTunnel: (data: { client_id: number; type: string; port: number; target: string; remark?: string }) =>
-    request.post('/nps/tunnel/add', data),
+    request.post('/admin/nps/tunnel/add', data),
 
   editTunnel: (data: { id: number; port?: number; target?: string; remark?: string }) =>
-    request.post('/nps/tunnel/edit', data),
+    request.post('/admin/nps/tunnel/edit', data),
 
   deleteTunnel: (id: number) =>
-    request.post('/nps/tunnel/delete', { id }),
+    request.post('/admin/nps/tunnel/delete', { id }),
 
   startTunnel: (id: number) =>
-    request.post('/nps/tunnel/start', { id }),
+    request.post('/admin/nps/tunnel/start', { id }),
 
   stopTunnel: (id: number) =>
-    request.post('/nps/tunnel/stop', { id }),
+    request.post('/admin/nps/tunnel/stop', { id }),
 
   addHost: (data: { client_id: number; host: string; scheme?: string; target: string; remark?: string }) =>
-    request.post('/nps/host/add', data),
+    request.post('/admin/nps/host/add', data),
 
   editHost: (data: { id: number; host?: string; scheme?: string; target?: string; remark?: string }) =>
-    request.post('/nps/host/edit', data),
+    request.post('/admin/nps/host/edit', data),
 
   deleteHost: (id: number) =>
-    request.post('/nps/host/delete', { id }),
+    request.post('/admin/nps/host/delete', { id }),
 }

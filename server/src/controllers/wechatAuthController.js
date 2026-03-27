@@ -445,8 +445,10 @@ class WechatAuthController extends BaseController {
       }
 
       if (session.status === 'confirmed' && session.pcToken) {
+        const tokenData = await verifyToken(session.pcToken);
         result.token = session.pcToken;
         result.user = session.userInfo;
+        result.expiresAt = tokenData?.expiresAt;
         await QrSession.deleteOne({ qrToken });
       }
 

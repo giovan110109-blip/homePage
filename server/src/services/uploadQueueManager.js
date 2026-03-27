@@ -209,6 +209,7 @@ class UploadQueueManager extends EventEmitter {
         task.failedAt = new Date();
       }
       await task.save();
+      await this.broadcast(task);
 
       this.emit("taskFailed", task, error);
     } finally {

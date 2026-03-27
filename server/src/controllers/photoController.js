@@ -24,6 +24,10 @@ const IMAGE_EXTS = [
 const VIDEO_EXTS = [".mp4", ".mov", ".avi", ".mkv", ".m4v"];
 
 class PhotoController {
+  isAdminRequest(ctx) {
+    return ctx.path.startsWith("/api/admin/");
+  }
+
   processPhotos(photos) {
     return photos.map((photo) => {
       const updatedPhoto = { ...photo };
@@ -586,9 +590,12 @@ class PhotoController {
       } = ctx.query;
 
       const query = { status: "completed" };
+      const isAdminRequest = this.isAdminRequest(ctx);
 
-      if (visibility) {
+      if (isAdminRequest && visibility) {
         query.visibility = visibility;
+      } else if (!isAdminRequest) {
+        query.visibility = "public";
       }
 
       if (tag) {
@@ -638,7 +645,14 @@ class PhotoController {
   async getPhotoDetail(ctx) {
     try {
       const { id } = ctx.params;
-      const photo = await Photo.findById(id).lean();
+      const query = { _id: id };
+
+      if (!this.isAdminRequest(ctx)) {
+        query.status = "completed";
+        query.visibility = "public";
+      }
+
+      const photo = await Photo.findOne(query).lean();
 
       if (!photo) {
         throw new NotFoundError("照片不存在");

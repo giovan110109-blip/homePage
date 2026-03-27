@@ -963,7 +963,7 @@ const getPhotoThumb = (photo: any) => {
 const loadPhotos = async () => {
   photoLoading.value = true;
   try {
-    const res: any = await request.get("/photos", {
+    const res: any = await request.get("/admin/photos", {
       params: {
         page: photoPagination.page,
         limit: photoPagination.pageSize,
@@ -991,7 +991,7 @@ const deletePhoto = async (row: any) => {
         type: "warning",
       },
     );
-    await request.delete(`/photos/${row._id}`);
+    await request.delete(`/admin/photos/${row._id}`);
     ElMessage.success("删除成功");
     await loadPhotos();
   } catch (error: any) {
@@ -1030,7 +1030,7 @@ const batchDeletePhotos = async () => {
     try {
       // 批量删除 - 发送 ID 数组到后端
       const ids = selectedPhotos.value.map((photo) => photo._id);
-      await request.post("/photos/batch-delete", { ids });
+      await request.post("/admin/photos/batch-delete", { ids });
 
       loading.close();
       ElMessage.success(`成功删除 ${selectedPhotos.value.length} 张图片`);
@@ -1068,7 +1068,7 @@ const savePhoto = async () => {
 
   savingPhoto.value = true;
   try {
-    await request.put(`/photos/${photoForm.value._id}`, {
+    await request.put(`/admin/photos/${photoForm.value._id}`, {
       title: photoForm.value.title,
     });
     ElMessage.success("保存成功");
@@ -1083,7 +1083,7 @@ const savePhoto = async () => {
 
 const setVisibility = async (row: any, visibility: string) => {
   try {
-    await request.put(`/photos/${row._id}`, {
+    await request.put(`/admin/photos/${row._id}`, {
       visibility,
     });
     ElMessage.success("更新成功");
@@ -1113,7 +1113,7 @@ const rotatePhotoImage = async (row: any, degree: number) => {
     ElMessage.info(`正在旋转图片 (${degreeText})...`);
 
     // 直接调用后端 API 旋转
-    const res: any = await request.post(`/photos/${row._id}/rotate`, {
+    const res: any = await request.post(`/admin/photos/${row._id}/rotate`, {
       degree,
     });
 
@@ -1149,7 +1149,7 @@ const refreshPhotoExif = async (row: any) => {
       duration: 0,
     });
     try {
-      await request.post(`/photos/${row._id}/refresh-exif`);
+      await request.post(`/admin/photos/${row._id}/refresh-exif`);
       loading.close();
       ElMessage.success("EXIF信息更新成功");
       await loadPhotos();
@@ -1179,7 +1179,7 @@ const refreshPhotoGeoinfo = async (row: any) => {
       duration: 0,
     });
     try {
-      await request.post(`/photos/${row._id}/refresh-geoinfo`);
+      await request.post(`/admin/photos/${row._id}/refresh-geoinfo`);
       loading.close();
       ElMessage.success("位置信息更新成功");
       await loadPhotos();
@@ -1416,7 +1416,7 @@ const saveLocation = async () => {
 
   savingLocation.value = true;
   try {
-    await request.post(`/photos/${locationForm.value.photoId}/location`, {
+    await request.post(`/admin/photos/${locationForm.value.photoId}/location`, {
       latitude: locationForm.value.latitude,
       longitude: locationForm.value.longitude,
     });
@@ -1477,7 +1477,7 @@ const openAlbumDialog = (album?: any) => {
 
 const loadAvailablePhotos = async () => {
   try {
-    const res: any = await request.get("/photos", {
+    const res: any = await request.get("/admin/photos", {
       params: {
         page: 1,
         limit: 1000, // 加载足够多的图片

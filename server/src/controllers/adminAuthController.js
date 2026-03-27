@@ -66,7 +66,12 @@ class AdminAuthController extends BaseController {
         roleIds: user.roleIds
       };
       const token = await issueToken(userInfo);
-      this.ok(ctx, { token, user: userInfo }, '登录成功');
+      const tokenData = await verifyToken(token);
+      this.ok(ctx, {
+        token,
+        user: userInfo,
+        expiresAt: tokenData?.expiresAt,
+      }, '登录成功');
     } catch (err) {
       this.fail(ctx, err, err.statusCode || HttpStatus.UNAUTHORIZED);
     }

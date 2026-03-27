@@ -1,7 +1,10 @@
 const Router = require("@koa/router");
 const npsController = require("../../controllers/npsController");
+const adminAuth = require("../../middleware/adminAuth");
 
-const router = new Router({ prefix: "/api/nps" });
+const router = new Router({ prefix: "/api/admin/nps" });
+
+router.use(adminAuth);
 
 // 认证
 router.post("/auth/gettime", npsController.getServerTime.bind(npsController));

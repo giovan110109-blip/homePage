@@ -4,6 +4,7 @@ class WsService {
   private ws: WebSocket | null = null
   private url: string
   private handlers = new Map<string, Set<Handler>>()
+  private taskSubscriptionToken: string | null = null
   private reconnectAttempts = 0
   private maxReconnectAttempts = 5
   private reconnectDelay = 1000
@@ -45,6 +46,9 @@ class WsService {
       this.ws.onopen = () => {
         console.log('[WS] 连接成功')
         this.reconnectAttempts = 0
+        if (this.taskSubscriptionToken) {
+          this.send('subscribe:tasks', { token: this.taskSubscriptionToken })
+        }
         resolve()
       }
       
@@ -100,13 +104,17 @@ class WsService {
   }
 
   subscribe(token: string, cb: Handler) {
+    this.taskSubscriptionToken = token
     console.log('[WS] 订阅任务更新')
-    this.send('subscribe:tasks', { token })
+    if (this.isConnected) {
+      this.send('subscribe:tasks', { token })
+    }
     return this.on('task:update', cb)
   }
 
   close() {
     this.manualClose = true
+    this.taskSubscriptionToken = null
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer)
       this.reconnectTimer = null

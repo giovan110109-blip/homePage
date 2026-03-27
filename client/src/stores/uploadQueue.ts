@@ -57,21 +57,28 @@ export const useUploadQueueStore = defineStore('uploadQueue', () => {
     const token = useAuthStore().token
     if (!token) return
 
-    await wsService.connect()
-    wsUnsub.value = wsService.subscribe(token, (data: any) => {
-      const f = uploadingFiles.value.find(x => x.taskId === data.taskId)
-      if (!f) return
-      f.status = data.status === 'completed' ? 'completed' : data.status === 'failed' ? 'error' : 'processing'
-      f.stage = data.stage
-      f.progress = Math.max(f.progress, data.progress || 0)
-      if (data.status === 'completed') {
-        f.progress = 100
-        setTimeout(() => {
-          const i = uploadingFiles.value.findIndex(x => x.id === f.id)
-          if (i > -1) uploadingFiles.value.splice(i, 1)
-        }, 2000)
-      }
-    })
+    try {
+      await wsService.connect()
+      wsUnsub.value = wsService.subscribe(token, (data: any) => {
+        const f = uploadingFiles.value.find(x => x.taskId === data.taskId)
+        if (!f) return
+        f.status = data.status === 'completed' ? 'completed' : data.status === 'failed' ? 'error' : 'processing'
+        f.stage = data.stage
+        f.progress = Math.max(f.progress, data.progress || 0)
+        if (data.error?.message) {
+          f.error = data.error.message
+        }
+        if (data.status === 'completed') {
+          f.progress = 100
+          setTimeout(() => {
+            const i = uploadingFiles.value.findIndex(x => x.id === f.id)
+            if (i > -1) uploadingFiles.value.splice(i, 1)
+          }, 2000)
+        }
+      })
+    } catch (error) {
+      console.warn('WebSocket 连接失败，将继续使用轮询/HTTP 上传:', error)
+    }
   }
 
   const enqueueFiles = async (files: File[]) => {

@@ -24,33 +24,15 @@ const BASE_URL = (() => {
 })();
 
 let isRefreshing = false;
-let refreshSubscribers: ((token: string) => void)[] = [];
-
-const subscribeTokenRefresh = (cb: (token: string) => void) => {
-  refreshSubscribers.push(cb);
-};
-
-const onTokenRefreshed = (token: string) => {
-  refreshSubscribers.forEach((cb) => cb(token));
-  refreshSubscribers = [];
-};
+let refreshPromise: Promise<string | null> | null = null;
 
 const REFRESH_THRESHOLD = 2 * 60 * 60 * 1000;
 
 const shouldRefreshToken = (): boolean => {
   const authStore = useAuthStore();
-  if (!authStore.token) return false;
-  const tokenData = localStorage.getItem("admin-auth");
-  if (!tokenData) return false;
-  try {
-    const parsed = JSON.parse(tokenData);
-    const expiresAt = parsed.expiresAt;
-    if (!expiresAt) return false;
-    const timeUntilExpiry = new Date(expiresAt).getTime() - Date.now();
-    return timeUntilExpiry < REFRESH_THRESHOLD && timeUntilExpiry > 0;
-  } catch {
-    return false;
-  }
+  if (!authStore.token || !authStore.expiresAt) return false;
+  const timeUntilExpiry = new Date(authStore.expiresAt).getTime() - Date.now();
+  return timeUntilExpiry < REFRESH_THRESHOLD && timeUntilExpiry > 0;
 };
 
 const ERROR_MESSAGES: Record<number, string> = {
@@ -72,6 +54,51 @@ const ERROR_MESSAGES: Record<number, string> = {
 const getErrorMessage = (status: number, serverMessage?: string): string => {
   if (serverMessage) return serverMessage;
   return ERROR_MESSAGES[status] || `请求失败 (${status})`;
+};
+
+const refreshAccessToken = async (): Promise<string | null> => {
+  if (refreshPromise) {
+    return refreshPromise;
+  }
+
+  refreshPromise = (async () => {
+    const authStore = useAuthStore();
+    if (!authStore.token) {
+      return null;
+    }
+
+    isRefreshing = true;
+    try {
+      const response = await axios.post(
+        `${BASE_URL}/admin/refresh`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${authStore.token}`,
+          },
+        }
+      );
+      const { token, expiresAt, user } = response.data?.data || response.data;
+      if (!token) {
+        return null;
+      }
+
+      authStore.setSession({
+        token,
+        expiresAt,
+        user: user || authStore.user,
+      });
+      return token;
+    } catch (error) {
+      console.error("Token refresh failed:", error);
+      return null;
+    } finally {
+      isRefreshing = false;
+      refreshPromise = null;
+    }
+  })();
+
+  return refreshPromise;
 };
 
 export function createHttpClient(): AxiosInstance {
@@ -100,40 +127,14 @@ export function createHttpClient(): AxiosInstance {
         url.startsWith("/photos/tasks");
       if (needsAuth && !url.includes("/refresh")) {
         const authStore = useAuthStore();
-        if (authStore.token) {
-          config.headers.Authorization = `Bearer ${authStore.token}`;
+        let token = authStore.token;
+
+        if (token && shouldRefreshToken() && !url.includes("/login")) {
+          token = (await refreshAccessToken()) || token;
         }
 
-        if (shouldRefreshToken() && !isRefreshing) {
-          isRefreshing = true;
-          try {
-            const response = await axios.post(
-              `${BASE_URL}/admin/refresh`,
-              {},
-              {
-                headers: {
-                  Authorization: `Bearer ${authStore.token}`,
-                },
-              }
-            );
-            const { token, expiresAt } = response.data?.data || response.data;
-            if (token) {
-              authStore.token = token;
-              localStorage.setItem(
-                "admin-auth",
-                JSON.stringify({
-                  token,
-                  expiresAt,
-                  user: authStore.user,
-                })
-              );
-              onTokenRefreshed(token);
-            }
-          } catch (error) {
-            console.error("Token refresh failed:", error);
-          } finally {
-            isRefreshing = false;
-          }
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`;
         }
       }
       return config;

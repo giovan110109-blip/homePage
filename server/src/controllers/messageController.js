@@ -11,6 +11,10 @@ const { sendEmail } = require("../utils/sendEmail");
 const { containsSensitiveWords, filterSensitiveWords } = require("../utils/sensitiveWords");
 
 class MessageController extends BaseController {
+  isAdminRequest(ctx) {
+    return ctx.path.startsWith("/api/admin/");
+  }
+
   async create(ctx) {
     try {
       const payload = ctx.request.body || {};
@@ -74,7 +78,11 @@ class MessageController extends BaseController {
     try {
       const { page = 1, pageSize = 10, status } = ctx.query;
       const filter = {};
-      if (status) filter.status = status;
+      if (this.isAdminRequest(ctx)) {
+        if (status) filter.status = status;
+      } else {
+        filter.status = "approved";
+      }
 
       const { items, pagination } = await messageService.paginate(filter, {
         page,

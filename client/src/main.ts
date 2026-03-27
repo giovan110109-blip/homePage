@@ -11,9 +11,9 @@ import 'mapbox-gl/dist/mapbox-gl.css'
 import 'highlight.js/styles/github.css'
 import { useSiteInfoStore } from './stores/siteInfo'
 
-const { VITE_SITE_TITLE, VITE_SITE_DESCRIPTION } = import.meta.env
+const { VITE_SITE_TITLE, VITE_SITE_DESCRIPTION, VITE_DISABLE_CONSOLE } = import.meta.env
 
-if (import.meta.env.PROD) {
+if (import.meta.env.PROD && VITE_DISABLE_CONSOLE === 'true') {
   console.clear()
   const noop = () => {}
   console.log = noop

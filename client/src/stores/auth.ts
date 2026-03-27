@@ -8,6 +8,7 @@ interface AdminUser {
   nickname?: string
   avatar?: string
   email?: string
+  expiresAt?: string
   roleIds?: string[]
   roles?: Array<{
     _id: string
@@ -30,6 +31,7 @@ export const useAuthStore = defineStore('auth', {
   state: () => ({
     token: '' as string,
     user: null as AdminUser | null,
+    expiresAt: '' as string,
     menus: [] as MenuItem[],
     menusCacheTime: 0 as number,
   }),
@@ -44,17 +46,25 @@ export const useAuthStore = defineStore('auth', {
   },
 
   actions: {
+    setSession(payload: { token?: string; user?: AdminUser | null; expiresAt?: string | Date | null }) {
+      this.token = payload.token || ''
+      this.user = payload.user || null
+      this.expiresAt = payload.expiresAt ? new Date(payload.expiresAt).toISOString() : ''
+    },
+
     async login(username: string, password: string) {
       const res = await request.post('/admin/login', { username, password })
       const data = res?.data || res
-      this.token = data?.token || ''
-      this.user = data?.user || null
+      this.setSession({
+        token: data?.token,
+        user: data?.user || null,
+        expiresAt: data?.expiresAt,
+      })
       return data
     },
 
     logout() {
-      this.token = ''
-      this.user = null
+      this.setSession({})
       this.menus = []
       this.menusCacheTime = 0
     },
@@ -64,9 +74,11 @@ export const useAuthStore = defineStore('auth', {
         const res = await verifyTokenApi()
         const data = res?.data
         if (data?.valid) {
-          if (data.user) {
-            this.user = data.user
-          }
+          this.setSession({
+            token: this.token,
+            user: data.user || this.user,
+            expiresAt: data.user?.expiresAt || this.expiresAt,
+          })
           return true
         } else {
           this.logout()
@@ -111,6 +123,6 @@ export const useAuthStore = defineStore('auth', {
 
   persist: {
     key: 'admin-auth',
-    paths: ['token', 'user', 'menus', 'menusCacheTime'],
+    paths: ['token', 'user', 'expiresAt', 'menus', 'menusCacheTime'],
   },
 })

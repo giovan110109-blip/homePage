@@ -4,8 +4,8 @@ const appLogger = require('./logger');
 
 class NpsClient {
   constructor() {
-    this.baseUrl = process.env.NPS_API_URL || 'http://118.24.62.237:8081';
-    this.authKey = process.env.NPS_AUTH_KEY || '';
+    this.baseUrl = process.env.NPS_API_URL?.trim() || '';
+    this.authKey = process.env.NPS_AUTH_KEY?.trim() || '';
     this.timeout = 10000;
     this._configured = false;
     this._validateConfig();
@@ -39,7 +39,7 @@ class NpsClient {
 
   async request(method, path, data = {}) {
     if (!this._configured) {
-      throw new Error('NPS Client 未正确配置，请检查 NPS_AUTH_KEY 环境变量');
+      throw new Error('NPS Client 未正确配置，请检查 NPS_API_URL 和 NPS_AUTH_KEY 环境变量');
     }
 
     const authParams = this.generateAuthKey();

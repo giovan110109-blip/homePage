@@ -39,6 +39,7 @@ function registerRoutes(app) {
         'profile.js',
         'photos.js',
         'dashboard.js',
+        'adminPhotos.js',
         'geo.js',
         'comment.js',
         'adminComments.js',
