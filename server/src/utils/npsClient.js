@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const axios = require('axios');
 const appLogger = require('./logger');
+const { HttpStatus } = require('./response');
 
 class NpsClient {
   constructor() {
@@ -67,11 +68,63 @@ class NpsClient {
       }
 
       const response = await axios(config);
-      return response.data;
+      return this.normalizeResponse(response, path);
     } catch (error) {
       appLogger.error('NPS API 请求失败:', error.message);
       throw error;
     }
+  }
+
+  normalizeResponse(response, path) {
+    const contentType = String(response?.headers?.['content-type'] || '').toLowerCase();
+    const responseData = response?.data;
+
+    if (typeof responseData === 'string') {
+      const trimmed = responseData.trim();
+
+      if (this.isHtmlResponse(trimmed, contentType)) {
+        const error = new Error(
+          `NPS 上游返回了 HTML 页面而不是接口数据，请检查 NPS_API_URL 或 NPS_AUTH_KEY 配置。请求路径: ${path}`
+        );
+        error.status = HttpStatus.BAD_GATEWAY;
+        error.details = {
+          path,
+          contentType,
+          preview: trimmed.slice(0, 160),
+        };
+        throw error;
+      }
+
+      if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+        try {
+          return JSON.parse(trimmed);
+        } catch (parseError) {
+          appLogger.warn(`NPS 响应 JSON 解析失败: ${path}`);
+        }
+      }
+    }
+
+    if (this.isHtmlResponse('', contentType)) {
+      const error = new Error(
+        `NPS 上游返回了 HTML 页面而不是接口数据，请检查 NPS_API_URL 配置。请求路径: ${path}`
+      );
+      error.status = HttpStatus.BAD_GATEWAY;
+      error.details = {
+        path,
+        contentType,
+      };
+      throw error;
+    }
+
+    return responseData;
+  }
+
+  isHtmlResponse(body, contentType = '') {
+    return (
+      contentType.includes('text/html') ||
+      /^<!doctype html/i.test(body) ||
+      /^<html/i.test(body)
+    );
   }
 
   async get(path, params = {}) {

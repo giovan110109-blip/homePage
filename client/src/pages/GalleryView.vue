@@ -142,6 +142,7 @@ import MasonryWall from "@yeger/vue-masonry-wall";
 import Loading from "@/components/ui/Loading.vue";
 import request from "@/api/request";
 import { APP_CONFIG } from "@/config";
+import { useLivePhotoCache } from "@/composables/useLivePhotoCache";
 import { usePagination } from "@/composables/usePagination";
 import { formatDate as formatDateUtil, formatDateShort } from "@/utils/format";
 import { getPhotoOriginalUrl } from "@/utils";
@@ -157,7 +158,10 @@ const currentPhotoId = ref<string | null>(null);
 const visiblePhotoIds = ref<Set<string>>(new Set());
 const scrolledBeyondTop = ref(false);
 const summaryPhotos = ref<PhotoWithLoaded[]>([]);
+const { suspendPreloads, resumePreloads } = useLivePhotoCache();
 let visibilityFrame: number | null = null;
+let resumePreloadTimer: number | null = null;
+const LIVE_PHOTO_PRELOAD_RESUME_DELAY = 250;
 
 const {
   data: photos,
@@ -397,10 +401,22 @@ const getPhotoLocationLabel = (photo: PhotoWithLoaded) => {
 const handleLoadMore = async () => {
   if (!hasMore.value || loading.value || loadingMore.value) return;
 
+  suspendPreloads();
+
+  if (resumePreloadTimer !== null) {
+    window.clearTimeout(resumePreloadTimer);
+    resumePreloadTimer = null;
+  }
+
   try {
     await loadMore();
   } catch {
     // ignore
+  } finally {
+    resumePreloadTimer = window.setTimeout(() => {
+      resumePreloads();
+      resumePreloadTimer = null;
+    }, LIVE_PHOTO_PRELOAD_RESUME_DELAY);
   }
 };
 
@@ -439,6 +455,7 @@ const handleResize = () => {
 };
 
 onMounted(() => {
+  resumePreloads();
   loadPhotos();
   window.addEventListener("resize", handleResize, { passive: true });
   window.addEventListener("scroll", handleScroll, { passive: true });
@@ -448,6 +465,11 @@ onMounted(() => {
 onBeforeUnmount(() => {
   window.removeEventListener("resize", handleResize);
   window.removeEventListener("scroll", handleScroll);
+  if (resumePreloadTimer !== null) {
+    window.clearTimeout(resumePreloadTimer);
+    resumePreloadTimer = null;
+  }
+  resumePreloads();
   if (visibilityFrame !== null) {
     window.cancelAnimationFrame(visibilityFrame);
     visibilityFrame = null;

@@ -183,7 +183,7 @@ const emit = defineEmits<{
 }>();
 
 // LivePhoto 缓存
-const { loadLivePhoto } = useLivePhotoCache();
+const { loadLivePhoto, preloadSuspended } = useLivePhotoCache();
 const cachedVideoUrl = ref<string | null>(null);
 const containerRef = ref<HTMLDivElement | null>(null);
 
@@ -207,6 +207,7 @@ const isPreloadVisible = ref(false);
 let isPlayingNow = false;
 let stopObservingVisibility: (() => void) | null = null;
 let preloadPromise: Promise<boolean> | null = null;
+let preloadScheduleTimer: number | null = null;
 
 // Mobile detection - 简化版
 const isMobile = computed(() => {
@@ -241,7 +242,39 @@ const handleCoverError = () => {
   stopVideo();
 };
 
-const ensureVideoLoaded = async () => {
+const clearPreloadSchedule = () => {
+  if (preloadScheduleTimer !== null) {
+    window.clearTimeout(preloadScheduleTimer);
+    preloadScheduleTimer = null;
+  }
+};
+
+const scheduleBackgroundPreload = () => {
+  if (
+    !isPreloadVisible.value ||
+    preloadSuspended.value ||
+    !props.videoUrl ||
+    !props.photoId ||
+    !props.isLive ||
+    cachedVideoUrl.value ||
+    preloadPromise
+  ) {
+    return;
+  }
+
+  clearPreloadSchedule();
+  preloadScheduleTimer = window.setTimeout(() => {
+    preloadScheduleTimer = null;
+
+    if (!isPreloadVisible.value) {
+      return;
+    }
+
+    void ensureVideoLoaded({ background: true });
+  }, APP_CONFIG.livePhoto.preloadStartDelay);
+};
+
+const ensureVideoLoaded = async (options: { background?: boolean } = {}) => {
   if (!props.videoUrl || !props.photoId || !props.isLive) {
     return false;
   }
@@ -256,7 +289,9 @@ const ensureVideoLoaded = async () => {
 
   preloadPromise = (async () => {
     try {
-      const blob = await loadLivePhoto(props.videoUrl!, props.photoId!);
+      const blob = await loadLivePhoto(props.videoUrl!, props.photoId!, {
+        priority: options.background ? "background" : "foreground",
+      });
       if (!blob) {
         return false;
       }
@@ -324,7 +359,7 @@ const handleMouseEnter = async () => {
   isHovering.value = true;
 
   if (!videoCanPlay.value) {
-    void ensureVideoLoaded();
+    void ensureVideoLoaded({ background: false });
   }
 
   isPlayingNow = true;
@@ -353,7 +388,7 @@ const handleTouchStart = (event: TouchEvent) => {
   // 已经在播放，不要重复调用
   if (isPlayingNow) return;
 
-  void ensureVideoLoaded();
+  void ensureVideoLoaded({ background: false });
 
   // 只处理单指触摸
   if (event.touches.length === 1) {
@@ -413,7 +448,9 @@ const playVideo = async () => {
 
   // 如果视频还没准备好，触发加载
   if (!videoCanPlay.value) {
-    if (preloadPromise) {
+    if (!preloadPromise) {
+      await ensureVideoLoaded({ background: false });
+    } else {
       await preloadPromise.catch(() => false);
       await nextTick();
     }
@@ -577,6 +614,7 @@ onUnmounted(() => {
     clearTimeout(stopVideoTimer.value);
     stopVideoTimer.value = null;
   }
+  clearPreloadSchedule();
   if (playVideoTimeout.value !== null) {
     clearTimeout(playVideoTimeout.value);
     playVideoTimeout.value = null;
@@ -595,19 +633,33 @@ onMounted(() => {
 
   stopObservingVisibility = observeSharedVisibility(
     containerRef.value,
-    () => {
-      isPreloadVisible.value = true;
-      void ensureVideoLoaded();
+    (visible) => {
+      isPreloadVisible.value = visible;
+
+      if (visible && !preloadSuspended.value) {
+        scheduleBackgroundPreload();
+        return;
+      }
+
+      clearPreloadSchedule();
     },
     {
       rootMargin: APP_CONFIG.livePhoto.viewportPreloadMargin,
+      once: false,
     },
   );
 });
 
 // 监听视频参数变化，仅在进入预加载区域后主动缓存
 watch(
-  [() => props.videoUrl, () => props.photoId, () => props.isLive, () => props.imageUrl],
+  [
+    () => props.videoUrl,
+    () => props.photoId,
+    () => props.isLive,
+    () => props.imageUrl,
+    () => isPreloadVisible.value,
+    () => preloadSuspended.value,
+  ],
   async (newValues, oldValues) => {
     const [newUrl, newPhotoId, isLive, newImageUrl] = newValues;
     const [oldUrl, oldPhotoId, oldIsLive, oldImageUrl] = oldValues || [];
@@ -618,6 +670,7 @@ watch(
       isLive !== oldIsLive ||
       newImageUrl !== oldImageUrl
     ) {
+      clearPreloadSchedule();
       videoCanPlay.value = false;
       coverLoaded.value = false;
       coverLoadFailed.value = false;
@@ -625,11 +678,20 @@ watch(
       stopVideo();
     }
 
-    if (!newUrl || !newPhotoId || !isLive || !isPreloadVisible.value) {
+    if (
+      !newUrl ||
+      !newPhotoId ||
+      !isLive ||
+      !isPreloadVisible.value ||
+      preloadSuspended.value
+    ) {
+      if (preloadSuspended.value) {
+        clearPreloadSchedule();
+      }
       return;
     }
 
-    await ensureVideoLoaded();
+    scheduleBackgroundPreload();
   },
   {
     immediate: true,

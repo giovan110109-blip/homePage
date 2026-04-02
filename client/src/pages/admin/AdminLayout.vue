@@ -207,7 +207,7 @@
 </template>
 
 <script setup lang="ts">
-import { LayoutDashboard, ChevronRight, ChevronLeft, User, Home, LogOut } from "lucide-vue-next";
+import { LayoutDashboard, ChevronRight, ChevronLeft, User, Home, LogOut, Menu, X } from "lucide-vue-next";
 import * as LucideIcons from "lucide-vue-next";
 import { ref, computed, onMounted } from "vue";
 import AppButton from "@/components/ui/AppButton.vue";

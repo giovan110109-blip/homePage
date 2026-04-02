@@ -11,9 +11,26 @@ interface LivePhotoState {
   retryCount: number
 }
 
-const livePhotoCache = ref<Map<string, LivePhotoState>>(new Map())
+type LivePhotoLoadPriority = 'foreground' | 'background'
 
-const downloadingRequests = new Map<string, Promise<Blob | null>>()
+interface LivePhotoLoadOptions {
+  priority?: LivePhotoLoadPriority
+  persistToDisk?: boolean
+}
+
+interface DownloadRequest {
+  promise: Promise<Blob | null>
+  controller: AbortController
+  priority: LivePhotoLoadPriority
+}
+
+const livePhotoCache = ref<Map<string, LivePhotoState>>(new Map())
+const preloadSuspended = ref(false)
+const downloadingRequests = new Map<string, DownloadRequest>()
+const backgroundDownloadLimit = APP_CONFIG.livePhoto.preloadBatchSize
+const backgroundWaitQueue: Array<(release: (() => void) | null) => void> = []
+
+let activeBackgroundDownloads = 0
 
 let cleanupTimer: ReturnType<typeof setInterval> | null = null
 let refCount = 0
@@ -22,9 +39,83 @@ export const useLivePhotoCache = () => {
   const config = APP_CONFIG.cache.livePhoto
   const persist = useLivePhotoPersist()
 
-  const loadLivePhoto = async (videoUrl: string, photoId: string): Promise<Blob | null> => {
-    if (downloadingRequests.has(photoId)) {
-      return downloadingRequests.get(photoId)!
+  const isAbortError = (error: unknown) => {
+    return (
+      (error instanceof DOMException && error.name === 'AbortError') ||
+      (error instanceof Error && error.name === 'AbortError')
+    )
+  }
+
+  const createBackgroundRelease = () => {
+    activeBackgroundDownloads += 1
+    let released = false
+
+    return () => {
+      if (released) {
+        return
+      }
+
+      released = true
+      activeBackgroundDownloads = Math.max(0, activeBackgroundDownloads - 1)
+      flushBackgroundQueue()
+    }
+  }
+
+  const clearBackgroundQueue = () => {
+    while (backgroundWaitQueue.length > 0) {
+      const resolve = backgroundWaitQueue.shift()
+      resolve?.(null)
+    }
+  }
+
+  const flushBackgroundQueue = () => {
+    if (preloadSuspended.value) {
+      clearBackgroundQueue()
+      return
+    }
+
+    while (
+      activeBackgroundDownloads < backgroundDownloadLimit &&
+      backgroundWaitQueue.length > 0
+    ) {
+      const resolve = backgroundWaitQueue.shift()
+      resolve?.(createBackgroundRelease())
+    }
+  }
+
+  const acquireBackgroundSlot = (): Promise<(() => void) | null> => {
+    if (preloadSuspended.value) {
+      return Promise.resolve(null)
+    }
+
+    if (activeBackgroundDownloads < backgroundDownloadLimit) {
+      return Promise.resolve(createBackgroundRelease())
+    }
+
+    return new Promise((resolve) => {
+      backgroundWaitQueue.push(resolve)
+    })
+  }
+
+  const loadLivePhoto = async (
+    videoUrl: string,
+    photoId: string,
+    options: LivePhotoLoadOptions = {},
+  ): Promise<Blob | null> => {
+    const priority = options.priority ?? 'foreground'
+    const persistToDisk = options.persistToDisk ?? true
+
+    if (priority === 'background' && preloadSuspended.value) {
+      return null
+    }
+
+    const activeRequest = downloadingRequests.get(photoId)
+    if (activeRequest) {
+      if (priority === 'foreground' && activeRequest.priority === 'background') {
+        activeRequest.priority = 'foreground'
+      }
+
+      return activeRequest.promise
     }
 
     const cached = livePhotoCache.value.get(photoId)
@@ -58,7 +149,15 @@ export const useLivePhotoCache = () => {
       return null
     }
 
+    const controller = new AbortController()
+    const request: DownloadRequest = {
+      controller,
+      priority,
+      promise: Promise.resolve(null),
+    }
+
     const loadPromise = (async () => {
+      let releaseBackgroundSlot: (() => void) | null = null
       const state: LivePhotoState = {
         isProcessing: true,
         progress: 0,
@@ -70,10 +169,23 @@ export const useLivePhotoCache = () => {
       livePhotoCache.value.set(photoId, state)
 
       try {
+        if (priority === 'background') {
+          releaseBackgroundSlot = await acquireBackgroundSlot()
+
+          if (!releaseBackgroundSlot || preloadSuspended.value) {
+            state.isProcessing = false
+            state.progress = 0
+            state.error = null
+            state.lastAccessed = Date.now()
+            livePhotoCache.value.set(photoId, { ...state })
+            return null
+          }
+        }
+
         const blob = await downloadVideo(videoUrl, (progress) => {
           state.progress = progress
           livePhotoCache.value.set(photoId, { ...state })
-        })
+        }, controller.signal)
 
         await validateVideo(blob)
 
@@ -84,12 +196,23 @@ export const useLivePhotoCache = () => {
         state.lastAccessed = now
         livePhotoCache.value.set(photoId, { ...state })
 
-        await persist.saveVideo(photoId, blob)
+        if (persistToDisk) {
+          await persist.saveVideo(photoId, blob)
+        }
 
         cleanupCache()
 
         return blob
       } catch (error) {
+        if (isAbortError(error)) {
+          state.isProcessing = false
+          state.progress = 0
+          state.error = null
+          state.lastAccessed = Date.now()
+          livePhotoCache.value.set(photoId, { ...state })
+          return null
+        }
+
         const errorMessage = error instanceof Error ? error.message : 'Unknown error'
         
         if (currentRetry < config.maxRetries - 1) {
@@ -103,7 +226,7 @@ export const useLivePhotoCache = () => {
           
           downloadingRequests.delete(photoId)
           
-          return loadLivePhoto(videoUrl, photoId)
+          return loadLivePhoto(videoUrl, photoId, { priority, persistToDisk })
         }
         
         state.isProcessing = false
@@ -112,20 +235,25 @@ export const useLivePhotoCache = () => {
         livePhotoCache.value.set(photoId, { ...state })
         return null
       } finally {
+        releaseBackgroundSlot?.()
         downloadingRequests.delete(photoId)
       }
     })()
 
-    downloadingRequests.set(photoId, loadPromise)
+    request.promise = loadPromise
+    downloadingRequests.set(photoId, request)
 
     return loadPromise
   }
 
   const downloadVideo = async (
     url: string, 
-    onProgress: (progress: number) => void
+    onProgress: (progress: number) => void,
+    signal?: AbortSignal,
   ): Promise<Blob> => {
     const controller = new AbortController()
+    const handleAbort = () => controller.abort()
+    signal?.addEventListener('abort', handleAbort, { once: true })
     const timeoutId = setTimeout(() => controller.abort(), config.downloadTimeout)
     
     try {
@@ -166,6 +294,7 @@ export const useLivePhotoCache = () => {
       return blob
     } finally {
       clearTimeout(timeoutId)
+      signal?.removeEventListener('abort', handleAbort)
     }
   }
 
@@ -249,7 +378,7 @@ export const useLivePhotoCache = () => {
     for (let i = 0; i < videos.length; i += maxConcurrent) {
       const batch = videos.slice(i, i + maxConcurrent)
       await Promise.allSettled(
-        batch.map(video => loadLivePhoto(video.videoUrl, video.id))
+        batch.map(video => loadLivePhoto(video.videoUrl, video.id, { priority: 'background' }))
       )
       
       if (i + maxConcurrent < videos.length) {
@@ -293,7 +422,7 @@ export const useLivePhotoCache = () => {
     for (let i = 0; i < videos.length; i += maxConcurrent) {
       const batch = videos.slice(i, i + maxConcurrent)
       await Promise.allSettled(
-        batch.map(video => loadLivePhoto(video.videoUrl, video.id))
+        batch.map(video => loadLivePhoto(video.videoUrl, video.id, { priority: 'background' }))
       )
       
       if (i + maxConcurrent < videos.length) {
@@ -304,6 +433,35 @@ export const useLivePhotoCache = () => {
 
   const getState = (photoId: string) => {
     return computed(() => livePhotoCache.value.get(photoId) || null)
+  }
+
+  const suspendPreloads = () => {
+    preloadSuspended.value = true
+    clearBackgroundQueue()
+
+    downloadingRequests.forEach((request, photoId) => {
+      if (request.priority !== 'background') {
+        return
+      }
+
+      request.controller.abort()
+
+      const state = livePhotoCache.value.get(photoId)
+      if (!state) {
+        return
+      }
+
+      state.isProcessing = false
+      state.progress = 0
+      state.error = null
+      state.lastAccessed = Date.now()
+      livePhotoCache.value.set(photoId, { ...state })
+    })
+  }
+
+  const resumePreloads = () => {
+    preloadSuspended.value = false
+    flushBackgroundQueue()
   }
 
   const getStats = () => {
@@ -365,6 +523,9 @@ export const useLivePhotoCache = () => {
     loadLivePhoto,
     preloadVideos,
     preloadVideosInViewport,
+    suspendPreloads,
+    resumePreloads,
+    preloadSuspended: readonly(preloadSuspended),
     getState,
     getStats,
     clearCache,

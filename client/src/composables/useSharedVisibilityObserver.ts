@@ -1,14 +1,28 @@
-type VisibilityCallback = () => void
+type VisibilityCallback = (
+  isVisible: boolean,
+  entry: IntersectionObserverEntry,
+) => void
 
 interface SharedVisibilityObserverOptions {
   rootMargin?: string
   threshold?: number
+  once?: boolean
 }
 
 interface ObserverBucket {
   observer: IntersectionObserver
-  callbacks: Map<Element, VisibilityCallback>
+  callbacks: Map<
+    Element,
+    {
+      callback: VisibilityCallback
+      once: boolean
+    }
+  >
 }
+
+type VisibilitySubscription = ObserverBucket['callbacks'] extends Map<Element, infer T>
+  ? T
+  : never
 
 const DEFAULT_ROOT_MARGIN = "300px 0px"
 const DEFAULT_THRESHOLD = 0
@@ -31,22 +45,22 @@ const getObserverBucket = (options: SharedVisibilityObserverOptions = {}) => {
     return existingBucket
   }
 
-  const callbacks = new Map<Element, VisibilityCallback>()
+  const callbacks = new Map<Element, VisibilitySubscription>()
   const rootMargin = options.rootMargin || DEFAULT_ROOT_MARGIN
   const threshold = options.threshold ?? DEFAULT_THRESHOLD
 
   const observer = new IntersectionObserver(
     (entries) => {
       for (const entry of entries) {
-        if (!entry.isIntersecting) continue
+        const subscription = callbacks.get(entry.target)
+        if (!subscription) continue
 
-        const callback = callbacks.get(entry.target)
-        if (callback) {
-          callback()
+        subscription.callback(entry.isIntersecting, entry)
+
+        if (subscription.once && entry.isIntersecting) {
+          callbacks.delete(entry.target)
+          observer.unobserve(entry.target)
         }
-
-        callbacks.delete(entry.target)
-        observer.unobserve(entry.target)
       }
 
       if (callbacks.size === 0) {
@@ -73,11 +87,14 @@ export const observeSharedVisibility = (
 ) => {
   const bucket = getObserverBucket(options)
   if (!bucket) {
-    callback()
+    callback(true, {} as IntersectionObserverEntry)
     return () => {}
   }
 
-  bucket.callbacks.set(element, callback)
+  bucket.callbacks.set(element, {
+    callback,
+    once: options.once ?? true,
+  })
   bucket.observer.observe(element)
 
   return () => {

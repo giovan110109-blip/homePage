@@ -129,6 +129,7 @@ const fetchClients = async () => {
     clients.value = (res as any)?.data?.rows || []
   } catch (error) {
     console.error('获取客户端列表失败:', error)
+    ElMessage.error((error as any)?.message || '获取客户端列表失败')
   }
 }
 

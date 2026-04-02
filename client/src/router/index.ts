@@ -1,8 +1,7 @@
-import { createRouter, createWebHashHistory, type RouteRecordRaw, START_LOCATION } from 'vue-router'
+import { createRouter, createWebHashHistory, type RouteRecordRaw } from 'vue-router'
 import NProgress from 'nprogress'
 import 'nprogress/nprogress.css'
 import { useAuthStore } from '@/stores/auth'
-import request from '@/api/request'
 
 NProgress.configure({
   showSpinner: false,
@@ -269,15 +268,6 @@ router.afterEach((to, from) => {
     metaDescription.setAttribute('content', description)
   }
 
-  if (to.path.startsWith('/admin')) return
-  if (import.meta.env.DEV) return
-  const isInitialNavigation = from === START_LOCATION
-  if (!isInitialNavigation) return
-  if (to.path !== '/') return
-  const key = 'access-log:home'
-  if (sessionStorage.getItem(key)) return
-  sessionStorage.setItem(key, '1')
-  request.post('/access-logs/ping', { path: to.fullPath, title: to.meta?.title }).catch(() => undefined)
 })
 
 export default router

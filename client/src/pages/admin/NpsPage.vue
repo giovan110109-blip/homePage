@@ -147,7 +147,7 @@ const fetchClients = async () => {
     clientsData.value = (res as any)?.data?.rows || []
   } catch (error) {
     console.error('获取客户端列表失败:', error)
-    ElMessage.error('获取客户端列表失败')
+    ElMessage.error((error as any)?.message || '获取客户端列表失败')
   } finally {
     clientsLoading.value = false
   }
@@ -160,7 +160,7 @@ const fetchTunnels = async () => {
     tunnelsData.value = (res as any)?.data?.rows || []
   } catch (error) {
     console.error('获取隧道列表失败:', error)
-    ElMessage.error('获取隧道列表失败')
+    ElMessage.error((error as any)?.message || '获取隧道列表失败')
   } finally {
     tunnelsLoading.value = false
   }
@@ -173,7 +173,7 @@ const fetchHosts = async () => {
     hostsData.value = (res as any)?.data?.rows || []
   } catch (error) {
     console.error('获取域名解析列表失败:', error)
-    ElMessage.error('获取域名解析列表失败')
+    ElMessage.error((error as any)?.message || '获取域名解析列表失败')
   } finally {
     hostsLoading.value = false
   }

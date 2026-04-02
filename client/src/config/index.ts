@@ -35,9 +35,10 @@ export const APP_CONFIG = {
     longPressDelay: 350,
     playTimeout: 3000,
     stopDelay: 300,
-    preloadBatchSize: 2,
+    preloadBatchSize: 1,
     prefetchDistance: 3,
-    viewportPreloadMargin: "500px 0px",
+    viewportPreloadMargin: "180px 0px",
+    preloadStartDelay: 160,
   },
 
   gallery: {

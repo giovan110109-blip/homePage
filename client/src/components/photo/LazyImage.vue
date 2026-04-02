@@ -151,7 +151,9 @@ watch(
 onMounted(() => {
   if (!wrapper.value) return;
 
-  stopObserving = observeSharedVisibility(wrapper.value, () => {
+  stopObserving = observeSharedVisibility(wrapper.value, (visible) => {
+    if (!visible) return;
+
     isVisible.value = true;
     showImage.value = Boolean(props.src);
   });
