@@ -138,7 +138,7 @@ const closeMobileMenu = () => {
 <style scoped>
 @font-face {
   font-family: "CustomFont";
-  src: url("../../../public/font/ZQKfreefont-2.ttf") format("truetype");
+  src: url("/font/ZQKfreefont-2.ttf") format("truetype");
 }
 
 .custom-font {
