@@ -56,7 +56,8 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import * as LucideIcons from 'lucide-vue-next'
+import { Search } from 'lucide-vue-next'
+import { getLucideIcon } from '@/utils/lucide'
 
 const props = defineProps<{
   modelValue: string
@@ -188,7 +189,7 @@ const iconNames = [
 
 const icons = iconNames.map(name => ({
   name,
-  component: (LucideIcons as any)[name] || LucideIcons.HelpCircle
+  component: getLucideIcon(name)
 }))
 
 const filteredIcons = computed(() => {
@@ -199,7 +200,7 @@ const filteredIcons = computed(() => {
 
 const getIcon = (name: string) => {
   const icon = icons.find(i => i.name === name)
-  return icon?.component || LucideIcons.LayoutDashboard
+  return icon?.component || getLucideIcon('LayoutDashboard')
 }
 
 const handleSelect = (name: string) => {

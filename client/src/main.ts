@@ -7,7 +7,6 @@ import router from './router'
 import 'element-plus/dist/index.css'
 import 'element-plus/theme-chalk/dark/css-vars.css'
 import 'element-plus/theme-chalk/display.css'
-import 'mapbox-gl/dist/mapbox-gl.css'
 import 'highlight.js/styles/github.css'
 import { useSiteInfoStore } from './stores/siteInfo'
 

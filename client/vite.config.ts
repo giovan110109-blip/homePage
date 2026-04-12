@@ -11,7 +11,40 @@ const coreDeps = ["vue", "vue-router", "pinia"];
 const elementDeps = ["element-plus"];
 const iconDeps = ["lucide-vue-next", "@heroicons/vue"];
 const headlessDeps = ["@headlessui/vue"];
-const motionDeps = ["gsap"];
+const motionDeps = ["gsap", "motion-v"];
+const editorDeps = [
+  "@tiptap/vue-3",
+  "@tiptap/starter-kit",
+  "@tiptap/extension-bubble-menu",
+  "@tiptap/extension-character-count",
+  "@tiptap/extension-code",
+  "@tiptap/extension-code-block-lowlight",
+  "@tiptap/extension-color",
+  "@tiptap/extension-gapcursor",
+  "@tiptap/extension-highlight",
+  "@tiptap/extension-image",
+  "@tiptap/extension-link",
+  "@tiptap/extension-placeholder",
+  "@tiptap/extension-table",
+  "@tiptap/extension-table-cell",
+  "@tiptap/extension-table-header",
+  "@tiptap/extension-table-row",
+  "@tiptap/extension-task-item",
+  "@tiptap/extension-task-list",
+  "@tiptap/extension-text-align",
+  "@tiptap/extension-text-style",
+  "@tiptap/extension-typography",
+  "@tiptap/extension-underline",
+  "@codemirror/lang-markdown",
+  "@codemirror/theme-one-dark",
+  "lowlight",
+  "highlight.js",
+  "markdown-it",
+  "dompurify",
+];
+const mediaDeps = ["swiper", "plyr", "html2canvas", "canvas-confetti"];
+const mapDeps = ["mapbox-gl"];
+const utilityDeps = ["axios", "@vueuse/core", "lodash-es", "thumbhash"];
 
 export default defineConfig(({ mode }) => {
   const envDir = path.resolve(__dirname, "..");
@@ -76,6 +109,22 @@ export default defineConfig(({ mode }) => {
               return "vendor-motion";
             }
 
+            if (editorDeps.some((dep) => id.includes(`/node_modules/${dep}/`))) {
+              return "vendor-editor";
+            }
+
+            if (mediaDeps.some((dep) => id.includes(`/node_modules/${dep}/`))) {
+              return "vendor-media";
+            }
+
+            if (mapDeps.some((dep) => id.includes(`/node_modules/${dep}/`))) {
+              return "vendor-map";
+            }
+
+            if (utilityDeps.some((dep) => id.includes(`/node_modules/${dep}/`))) {
+              return "vendor-utils";
+            }
+
             return "vendor";
           },
         },
@@ -111,7 +160,17 @@ export default defineConfig(({ mode }) => {
       },
     },
     optimizeDeps: {
-      include: [...coreDeps, ...elementDeps, ...headlessDeps, ...iconDeps, ...motionDeps],
+      include: [
+        ...coreDeps,
+        ...elementDeps,
+        ...headlessDeps,
+        ...iconDeps,
+        ...motionDeps,
+        ...editorDeps,
+        ...mediaDeps,
+        ...mapDeps,
+        ...utilityDeps,
+      ],
     },
     server: {
       host: "0.0.0.0",

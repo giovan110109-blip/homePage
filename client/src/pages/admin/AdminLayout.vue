@@ -208,7 +208,7 @@
 
 <script setup lang="ts">
 import { LayoutDashboard, ChevronRight, ChevronLeft, User, Home, LogOut, Menu, X } from "lucide-vue-next";
-import * as LucideIcons from "lucide-vue-next";
+import { getLucideIcon } from "@/utils/lucide";
 import { ref, computed, onMounted } from "vue";
 import AppButton from "@/components/ui/AppButton.vue";
 import ThemeToggle from "@/components/ui/ThemeToggle.vue";
@@ -219,8 +219,7 @@ import { useRouter, useRoute } from "vue-router";
 import { ElMessage } from "element-plus";
 
 const getIconComponent = (iconName: string) => {
-  if (!iconName) return LayoutDashboard;
-  return (LucideIcons as any)[iconName] || LayoutDashboard;
+  return getLucideIcon(iconName, LayoutDashboard);
 };
 
 const sidebarCollapsed = ref(false);
