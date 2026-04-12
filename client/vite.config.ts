@@ -7,10 +7,7 @@ import Components from "unplugin-vue-components/vite";
 import { ElementPlusResolver } from "unplugin-vue-components/resolvers";
 import viteImagemin from "vite-plugin-imagemin";
 
-const coreDeps = ["vue", "vue-router", "pinia"];
-const elementDeps = ["element-plus"];
 const iconDeps = ["lucide-vue-next", "@heroicons/vue"];
-const headlessDeps = ["@headlessui/vue"];
 const motionDeps = ["gsap", "motion-v"];
 const editorDeps = [
   "@tiptap/vue-3",
@@ -89,18 +86,6 @@ export default defineConfig(({ mode }) => {
               return;
             }
 
-            if (coreDeps.some((dep) => id.includes(`/node_modules/${dep}/`))) {
-              return "vendor-core";
-            }
-
-            if (elementDeps.some((dep) => id.includes(`/node_modules/${dep}/`))) {
-              return "vendor-element";
-            }
-
-            if (headlessDeps.some((dep) => id.includes(`/node_modules/${dep}/`))) {
-              return "vendor-headless";
-            }
-
             if (iconDeps.some((dep) => id.includes(`/node_modules/${dep}/`))) {
               return "vendor-icons";
             }
@@ -120,12 +105,6 @@ export default defineConfig(({ mode }) => {
             if (mapDeps.some((dep) => id.includes(`/node_modules/${dep}/`))) {
               return "vendor-map";
             }
-
-            if (utilityDeps.some((dep) => id.includes(`/node_modules/${dep}/`))) {
-              return "vendor-utils";
-            }
-
-            return "vendor";
           },
         },
       },
@@ -161,9 +140,6 @@ export default defineConfig(({ mode }) => {
     },
     optimizeDeps: {
       include: [
-        ...coreDeps,
-        ...elementDeps,
-        ...headlessDeps,
         ...iconDeps,
         ...motionDeps,
         ...editorDeps,

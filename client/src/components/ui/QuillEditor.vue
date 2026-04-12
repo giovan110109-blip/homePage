@@ -1,5 +1,6 @@
 <template>
-  <RichEditor
+  <component
+    :is="AsyncRichEditor"
     :model-value="modelValue"
     :placeholder="placeholder"
     :disabled="disabled"
@@ -13,7 +14,9 @@
 </template>
 
 <script setup lang="ts">
-import RichEditor from "./RichEditor.vue";
+import { defineAsyncComponent } from "vue";
+
+const AsyncRichEditor = defineAsyncComponent(() => import("./RichEditor.vue"));
 
 withDefaults(
   defineProps<{

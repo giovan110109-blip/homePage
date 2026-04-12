@@ -37,6 +37,7 @@ import { computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Plus } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth'
+import request from '@/api/request'
 import {  getBaseURL, getAssetURL } from '@/utils'
 const apiBaseUrl = getBaseURL()
 
@@ -121,7 +122,6 @@ const handleDelete = async () => {
       return
     }
 
-    const request = (await import('@/api/request')).default
     await request.delete(`/upload/${encodeURIComponent(filename)}`)
     emit('update:modelValue', '')
     emit('delete')
