@@ -39,7 +39,7 @@
           <a
             v-for="link in friendLinks"
             :key="link._id"
-            :href="getExternalLinkRedirectUrl(link.url)"
+            :href="getFriendLinkHref(link.url)"
             rel="noopener noreferrer"
             @click="handleLinkClick(link, $event)"
             class="group relative overflow-hidden rounded-2xl border border-gray-200/60 dark:border-white/10 bg-white/80 dark:bg-white/5 backdrop-blur-xl p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl hover:border-blue-400/70 dark:hover:border-blue-400/50"
@@ -55,8 +55,8 @@
               <!-- 头像 -->
               <div class="flex-shrink-0">
                 <img
-                  v-if="link.avatar"
-                  :src="link.avatar"
+                  v-if="getFriendLinkAvatar(link.avatar)"
+                  :src="getFriendLinkAvatar(link.avatar)"
                   :alt="link.name"
                   class="w-14 h-14 rounded-2xl object-cover ring-2 ring-gray-200/80 dark:ring-gray-700/80 group-hover:ring-blue-400"
                 />
@@ -377,10 +377,21 @@ import {
 } from "@/api/friendLink";
 import type { FriendLink, FriendLinkFormData } from "@/types/api";
 import { getExternalLinkRedirectUrl } from "@/utils/external-link";
+import { normalizeHttpUrl } from "@/utils/url";
 
 const loading = ref(false);
 const submitting = ref(false);
 const friendLinks = ref<FriendLink[]>([]);
+
+const getFriendLinkHref = (url: string) => {
+  const normalized = normalizeHttpUrl(url);
+  return normalized ? getExternalLinkRedirectUrl(normalized) : "#";
+};
+
+const getFriendLinkAvatar = (url?: string) => {
+  if (!url) return "";
+  return normalizeHttpUrl(url);
+};
 
 const getCategoryLabel = (category?: string) => {
   const map: Record<string, string> = {
@@ -420,6 +431,11 @@ const loadFriendLinks = async () => {
 const handleLinkClick = async (link: FriendLink, event: MouseEvent) => {
   // 阻止默认跳转
   event.preventDefault();
+  const normalizedUrl = normalizeHttpUrl(link.url);
+  if (!normalizedUrl) {
+    ElMessage.warning("该友情链接地址无效");
+    return;
+  }
 
   // 记录点击数
   const index = friendLinks.value.findIndex((item) => item._id === link._id);
@@ -437,16 +453,40 @@ const handleLinkClick = async (link: FriendLink, event: MouseEvent) => {
   }
 
   // 跳转到外链确认页面
-  if (link.url) {
-    window.location.href = getExternalLinkRedirectUrl(link.url);
+  if (normalizedUrl) {
+    window.location.href = getExternalLinkRedirectUrl(normalizedUrl);
   }
 };
 
 // 提交申请
 const handleSubmit = async () => {
+  const normalizedUrl = normalizeHttpUrl(form.value.url);
+  const normalizedAvatar = normalizeHttpUrl(form.value.avatar || "");
+  const normalizedRss = normalizeHttpUrl(form.value.rss || "");
+
+  if (!normalizedUrl) {
+    ElMessage.warning("请输入正确的站点链接");
+    return;
+  }
+
+  if (form.value.avatar && !normalizedAvatar) {
+    ElMessage.warning("头像地址只支持 http 或 https");
+    return;
+  }
+
+  if (form.value.rss && !normalizedRss) {
+    ElMessage.warning("RSS 地址只支持 http 或 https");
+    return;
+  }
+
   submitting.value = true;
   try {
-    await applyFriendLink(form.value);
+    await applyFriendLink({
+      ...form.value,
+      url: normalizedUrl,
+      avatar: normalizedAvatar || "",
+      rss: normalizedRss || "",
+    });
     ElMessage.success("申请已提交，请耐心等待审核");
     resetForm();
     // 可选：刷新列表

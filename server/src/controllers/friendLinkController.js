@@ -4,8 +4,30 @@ const friendLinkService = require("../services/friendLinkService");
 const { getClientInfo } = require("../utils/requestInfo");
 const { getLocationByIp } = require("../utils/ipLocator");
 const { sendEmail } = require("../utils/sendEmail");
+const {
+  sanitizePlainText,
+  sanitizeStringArray,
+  normalizeHttpUrl,
+} = require("../utils/inputSanitizer");
 
 class FriendLinkController extends BaseController {
+  sanitizeFriendLinkPayload(payload = {}) {
+    return {
+      name: sanitizePlainText(payload.name, { collapseWhitespace: true }),
+      url: normalizeHttpUrl(payload.url),
+      description: sanitizePlainText(payload.description),
+      avatar: normalizeHttpUrl(payload.avatar),
+      email: sanitizePlainText(payload.email, {
+        collapseWhitespace: true,
+      }).toLowerCase(),
+      rss: normalizeHttpUrl(payload.rss),
+      category: sanitizePlainText(payload.category, {
+        collapseWhitespace: true,
+      }),
+      tags: sanitizeStringArray(payload.tags),
+    };
+  }
+
   /**
    * POST /api/friend-links  创建友情链接申请
    */
@@ -13,7 +35,7 @@ class FriendLinkController extends BaseController {
     try {
       const payload = ctx.request.body || {};
       const { name, url, description, avatar, email, rss, category, tags } =
-        payload;
+        this.sanitizeFriendLinkPayload(payload);
 
       // 验证必填字段
       if (!name || !url || !description || !email) {
@@ -21,13 +43,6 @@ class FriendLinkController extends BaseController {
           "名称、链接、简介、邮箱均为必填项",
           HttpStatus.BAD_REQUEST,
         );
-      }
-
-      // 验证URL格式
-      try {
-        new URL(url);
-      } catch {
-        this.throwHttpError("请输入正确的 URL 格式", HttpStatus.BAD_REQUEST);
       }
 
       // 检查邮箱是否已申请过
@@ -47,9 +62,9 @@ class FriendLinkController extends BaseController {
         name,
         url,
         description,
-        avatar,
+        avatar: avatar || undefined,
         email,
-        rss,
+        rss: rss || undefined,
         category: category || "other",
         tags: tags || [],
         status: "pending", // 需要审核
@@ -146,8 +161,42 @@ class FriendLinkController extends BaseController {
     try {
       const { id } = ctx.params;
       const payload = ctx.request.body || {};
+      const sanitized = this.sanitizeFriendLinkPayload(payload);
+      const updatePayload = { ...payload };
 
-      const updated = await friendLinkService.update(id, payload);
+      if (Object.prototype.hasOwnProperty.call(payload, "name")) {
+        updatePayload.name = sanitized.name;
+      }
+      if (Object.prototype.hasOwnProperty.call(payload, "url")) {
+        if (!sanitized.url) {
+          this.throwHttpError("请输入正确的 URL 格式", HttpStatus.BAD_REQUEST);
+        }
+        updatePayload.url = sanitized.url;
+      }
+      if (Object.prototype.hasOwnProperty.call(payload, "description")) {
+        updatePayload.description = sanitized.description;
+      }
+      if (Object.prototype.hasOwnProperty.call(payload, "avatar")) {
+        updatePayload.avatar = sanitized.avatar;
+      }
+      if (Object.prototype.hasOwnProperty.call(payload, "email")) {
+        updatePayload.email = sanitized.email;
+      }
+      if (Object.prototype.hasOwnProperty.call(payload, "rss")) {
+        updatePayload.rss = sanitized.rss;
+      }
+      if (Object.prototype.hasOwnProperty.call(payload, "category")) {
+        updatePayload.category = sanitized.category;
+      }
+      if (Object.prototype.hasOwnProperty.call(payload, "tags")) {
+        updatePayload.tags = sanitized.tags;
+      }
+
+      if ("reason" in payload) {
+        updatePayload.reason = sanitizePlainText(payload.reason);
+      }
+
+      const updated = await friendLinkService.update(id, updatePayload);
       if (!updated) {
         this.throwHttpError("友情链接未找到", HttpStatus.NOT_FOUND);
       }
@@ -165,7 +214,12 @@ class FriendLinkController extends BaseController {
     try {
       const { id } = ctx.params;
       const { status, reason } = ctx.request.body || {};
-      const { name, email, content } = await friendLinkService.findById(id);
+      const link = await friendLinkService.findById(id);
+      const sanitizedReason = sanitizePlainText(reason);
+
+      if (!link) {
+        this.throwHttpError("友情链接未找到", HttpStatus.NOT_FOUND);
+      }
 
       if (!status || !["approved", "rejected"].includes(status)) {
         this.throwHttpError(
@@ -174,16 +228,19 @@ class FriendLinkController extends BaseController {
         );
       }
 
-      if (status === "rejected" && !reason) {
+      if (status === "rejected" && !sanitizedReason) {
         this.throwHttpError("请填写审核不通过的理由", HttpStatus.BAD_REQUEST);
       }
 
       // 从认证信息中获取审核人（如果有的话）
-      const reviewedBy = ctx.state.user?.username || "admin";
+      const reviewedBy = sanitizePlainText(
+        ctx.state.user?.username || "admin",
+        { collapseWhitespace: true }
+      );
 
       const updated = await friendLinkService.review(id, {
         status,
-        reason,
+        reason: sanitizedReason,
         reviewedBy,
       });
       if (!updated) {
@@ -192,18 +249,18 @@ class FriendLinkController extends BaseController {
       if (status === "approved") {
         //审核通过邮件
         await sendEmail({
-          email: email,
+          email: link.email,
           type: 9,
-          name: name,
-          content,
+          name: link.name,
+          content: link.url,
         });
       } else {
         //审核不通过邮件
         await sendEmail({
-          email: email,
+          email: link.email,
           type: 12,
-          name: name,
-          content: reason,
+          name: link.name,
+          content: sanitizedReason,
         });
       }
       this.ok(ctx, updated, `友情链接${status}成功`);

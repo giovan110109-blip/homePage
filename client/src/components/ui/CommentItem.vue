@@ -125,6 +125,7 @@ import {
 import { ElMessage, ElMessageBox } from "element-plus";
 import request from "@/api/request";
 import { getExternalLinkRedirectUrl } from "@/utils/external-link";
+import { normalizeHttpUrl } from "@/utils/url";
 import EmoteRenderer from "@/components/ui/EmoteRenderer.vue";
 
 interface CommentType {
@@ -179,19 +180,11 @@ const handleDelete = async () => {
 
 const normalizeWebsite = (url: string) => {
   if (!url) return "";
-  let u = url.trim();
-  if (!u) return "";
-  try {
-    new URL(u);
-    return u;
-  } catch {}
-  if (!/^https?:\/\//i.test(u)) u = `https://${u}`;
-  try {
-    new URL(u);
-    return u;
-  } catch {
-    return "";
-  }
+  const trimmed = url.trim();
+  if (!trimmed) return "";
+  return normalizeHttpUrl(
+    /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`
+  );
 };
 
 const getWebsiteUrl = (url: string) => {

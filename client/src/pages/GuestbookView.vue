@@ -148,6 +148,7 @@ import { formatRelativeTime } from "@/utils/format";
 import { buildAvatarSvg } from "@/utils/avatarSvg";
 import { getExternalLinkRedirectUrl } from "@/utils/external-link";
 import { sanitizeSvg } from "@/utils/sanitize";
+import { normalizeHttpUrl } from "@/utils/url";
 import { useEmotePicker } from "@/composables/useEmotePicker";
 import { useVisitorStore } from "@/stores/visitor";
 import { usePagination } from "@/composables/usePagination";
@@ -307,21 +308,11 @@ const submitMessage = async () => {
 
 const normalizeWebsite = (url: string) => {
   if (!url) return "";
-  let u = url.trim();
-  if (!u) return "";
-  try {
-    new URL(u);
-    return u;
-  } catch {}
-  if (!/^https?:\/\//i.test(u)) {
-    u = `https://${u}`;
-  }
-  try {
-    new URL(u);
-    return u;
-  } catch {
-    return "";
-  }
+  const trimmed = url.trim();
+  if (!trimmed) return "";
+  return normalizeHttpUrl(
+    /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`
+  );
 };
 
 const formatDate = formatRelativeTime;

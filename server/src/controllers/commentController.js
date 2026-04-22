@@ -8,16 +8,30 @@ const { getLocationByIp } = require("../utils/ipLocator");
 const { getAvatarByEmail } = require("../utils/emailAvatar");
 const { sendEmail } = require("../utils/sendEmail");
 const { containsSensitiveWords, filterSensitiveWords } = require("../utils/sensitiveWords");
+const {
+  sanitizePlainText,
+  sanitizeIdentifier,
+  normalizeHttpUrl,
+} = require("../utils/inputSanitizer");
 
 class CommentController extends BaseController {
   async create(ctx) {
     try {
       const payload = ctx.request.body || {};
+      const name = sanitizePlainText(payload.name, { collapseWhitespace: true });
+      const email = sanitizePlainText(payload.email, {
+        collapseWhitespace: true,
+      }).toLowerCase();
+      const content = sanitizePlainText(payload.content);
+      const targetId = sanitizeIdentifier(payload.targetId);
+      const parentId = sanitizeIdentifier(payload.parentId);
+      const website = normalizeHttpUrl(payload.website);
+
       if (
-        !payload.name ||
-        !payload.email ||
-        !payload.content ||
-        !payload.targetId
+        !name ||
+        !email ||
+        !content ||
+        !targetId
       ) {
         this.throwHttpError(
           "name, email, content, targetId are required",
@@ -25,7 +39,7 @@ class CommentController extends BaseController {
         );
       }
 
-      const sensitiveCheck = containsSensitiveWords(payload.content);
+      const sensitiveCheck = containsSensitiveWords(content);
       if (sensitiveCheck.hasSensitive) {
         this.throwHttpError(
           "评论内容包含敏感词，请修改后重试",
@@ -37,16 +51,16 @@ class CommentController extends BaseController {
       const location = await getLocationByIp(client.ip);
       const avatar = payload.isAdmin 
         ? payload.avatar 
-        : (getAvatarByEmail(payload.email) || payload.avatar);
+        : (getAvatarByEmail(email) || payload.avatar);
 
-      const filteredContent = filterSensitiveWords(payload.content);
+      const filteredContent = filterSensitiveWords(content);
 
       const doc = await Comment.create({
-        targetId: payload.targetId,
-        parentId: payload.parentId || null,
-        name: payload.name,
-        email: payload.email,
-        website: payload.website,
+        targetId,
+        parentId: parentId || null,
+        name,
+        email,
+        website: website || undefined,
         avatar,
         content: filteredContent,
         status: "approved",
@@ -60,7 +74,14 @@ class CommentController extends BaseController {
         location,
       });
 
-      this.sendCommentNotification(payload, doc).catch(err => {
+      this.sendCommentNotification({
+        ...payload,
+        parentId: parentId || null,
+        targetId,
+        name,
+        email,
+        content: filteredContent,
+      }, doc).catch(err => {
         console.error("发送评论通知邮件失败:", err);
       });
 

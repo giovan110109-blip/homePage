@@ -114,6 +114,7 @@
 import { ref, computed, onMounted, onUnmounted, reactive } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppButton from '@/components/ui/AppButton.vue'
+import { normalizeHttpUrl } from '@/utils/url'
 
 const route = useRoute()
 const router = useRouter()
@@ -128,7 +129,7 @@ const cardEffect = reactive<{ x: number; y: number; show: boolean }>({
 // 获取目标URL
 const targetUrl = computed(() => {
   const url = route.query.url as string
-  return url || ''
+  return normalizeHttpUrl(url || '')
 })
 
 // 获取favicon

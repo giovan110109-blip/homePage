@@ -9,6 +9,7 @@ const Comment = require("../models/comment");
 const { getAvatarByEmail } = require("../utils/emailAvatar");
 const { sendEmail } = require("../utils/sendEmail");
 const { containsSensitiveWords, filterSensitiveWords } = require("../utils/sensitiveWords");
+const { sanitizePlainText, normalizeHttpUrl } = require("../utils/inputSanitizer");
 
 class MessageController extends BaseController {
   isAdminRequest(ctx) {
@@ -18,11 +19,18 @@ class MessageController extends BaseController {
   async create(ctx) {
     try {
       const payload = ctx.request.body || {};
-      if (!payload.name || !payload.email || !payload.content) {
+      const name = sanitizePlainText(payload.name, { collapseWhitespace: true });
+      const email = sanitizePlainText(payload.email, {
+        collapseWhitespace: true,
+      }).toLowerCase();
+      const website = normalizeHttpUrl(payload.website);
+      const content = sanitizePlainText(payload.content);
+
+      if (!name || !email || !content) {
         this.throwHttpError("名称、邮箱和内容为必填项", HttpStatus.BAD_REQUEST);
       }
 
-      const sensitiveCheck = containsSensitiveWords(payload.content);
+      const sensitiveCheck = containsSensitiveWords(content);
       if (sensitiveCheck.hasSensitive) {
         this.throwHttpError(
           "留言内容包含敏感词，请修改后重试",
@@ -32,15 +40,15 @@ class MessageController extends BaseController {
 
       const client = ctx.state.clientInfo || getClientInfo(ctx);
       const location = await getLocationByIp(client.ip);
-      const emailAvatar = getAvatarByEmail(payload.email);
+      const emailAvatar = getAvatarByEmail(email);
 
       const avatar = emailAvatar ? emailAvatar : payload.avatar;
-      const filteredContent = filterSensitiveWords(payload.content);
+      const filteredContent = filterSensitiveWords(content);
 
       const doc = await messageService.create({
-        name: payload.name,
-        email: payload.email,
-        website: payload.website,
+        name,
+        email,
+        website: website || undefined,
         avatar,
         content: filteredContent,
         status: "approved",
@@ -55,15 +63,15 @@ class MessageController extends BaseController {
       });
 
       await sendEmail({
-        email: payload.email,
+        email,
         type: 5,
-        name: payload.name,
+        name,
         content: filteredContent,
       });
       await sendEmail({
         email: process.env.ADMIN_EMAIL || process.env.EMAIL_USER,
         type: 10,
-        name: payload.name,
+        name,
         content: filteredContent,
       });
 

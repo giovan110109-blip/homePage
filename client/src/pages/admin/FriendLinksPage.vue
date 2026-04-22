@@ -43,8 +43,8 @@
         <el-table-column label="头像" width="80">
           <template #default="scope">
             <img
-              v-if="scope.row.avatar"
-              :src="scope.row.avatar"
+              v-if="getSafeImageUrl(scope.row.avatar)"
+              :src="getSafeImageUrl(scope.row.avatar)"
               :alt="scope.row.name"
               class="w-12 h-12 rounded-lg object-cover"
             />
@@ -61,7 +61,7 @@
         
         <el-table-column label="网站链接" min-width="250">
           <template #default="scope">
-            <a :href="scope.row.url" target="_blank" class="text-blue-500 hover:underline flex items-center gap-1">
+            <a :href="getSafeLinkUrl(scope.row.url)" target="_blank" class="text-blue-500 hover:underline flex items-center gap-1">
               {{ scope.row.url }}
               <ExternalLink class="w-3 h-3" />
             </a>
@@ -248,6 +248,7 @@ import {
 } from '@/api/friendLink'
 import { useMessageFilterForm } from '@/composables/useMessageFilterForm'
 import { formatDate } from '@/utils/format'
+import { normalizeHttpUrl } from '@/utils/url'
 import type { FriendLink } from '@/types/api'
 
 const filter = useMessageFilterForm({ pageSize: 20, status: '', category: '' })
@@ -411,6 +412,9 @@ const getCategoryTagType = (category: string) => {
   }
   return map[category] || ''
 }
+
+const getSafeLinkUrl = (url?: string) => normalizeHttpUrl(url || '') || '#'
+const getSafeImageUrl = (url?: string) => normalizeHttpUrl(url || '') || ''
 
 onMounted(() => {
   loadData()

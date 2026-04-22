@@ -15,6 +15,7 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { useEmotes } from "@/composables/useEmotes";
+import { sanitizeHtml, sanitizeText } from "@/utils/sanitize";
 
 const props = withDefaults(
   defineProps<{
@@ -35,19 +36,23 @@ const previewName = ref("");
 const renderedHtml = computed(() => {
   if (!props.text) return "";
 
-  let html = props.text;
+  let html = sanitizeText(props.text).replace(/\r?\n/g, "<br>");
 
   const emotePattern = /\{\{([^}]+)\}\}/g;
   html = html.replace(emotePattern, (match, emoteName) => {
     const emoteUrl = getEmoteUrl(emoteName);
     if (emoteUrl) {
-      return `<img src="${emoteUrl}" alt="${emoteName}" class="inline-emote" data-emote-name="${emoteName}" style="width: ${props.size}px; height: ${props.size}px; vertical-align: middle; display: inline-block; margin: 0 2px;" />`;
+      const safeName = sanitizeText(emoteName);
+      return `<img src="${emoteUrl}" alt="${safeName}" class="inline-emote" data-emote-name="${safeName}" width="${props.size}" height="${props.size}" />`;
     }
     console.warn("Emote not found:", emoteName);
     return match;
   });
 
-  return html;
+  return sanitizeHtml(html, {
+    allowedTags: ["br", "img"],
+    allowedAttr: ["src", "alt", "class", "data-emote-name", "width", "height"],
+  });
 });
 
 const handleClick = (event: MouseEvent) => {
@@ -72,6 +77,7 @@ const closePreview = () => {
 .emote-renderer {
   display: inline;
   word-wrap: break-word;
+  white-space: normal;
 }
 
 .emote-renderer :deep(.inline-emote) {
