@@ -7,6 +7,9 @@ const router = new Router({
 
 router.get('/', controller.list.bind(controller));
 router.post('/', controller.create.bind(controller));
+router.get('/:id/products', controller.getProducts.bind(controller));
+router.get('/:id/products/:productCode/access', controller.getProductAccess.bind(controller));
+router.put('/:id/products', controller.updateProducts.bind(controller));
 router.get('/:id', controller.detail.bind(controller));
 router.put('/:id', controller.update.bind(controller));
 router.put('/:id/roles', controller.updateRoles.bind(controller));

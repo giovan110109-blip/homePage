@@ -1,6 +1,14 @@
 const BaseController = require('../utils/baseController');
 const { HttpStatus } = require('../utils/response');
 const userService = require('../services/userService');
+const productAccessService = require('../services/productAccessService');
+const { syncUserTokens } = require('../utils/adminTokenStore');
+const productAccessAuditService = require('../services/productAccessAuditService');
+
+const getActor = (ctx) => ({
+  actorId: ctx.state.user?._id || null,
+  actorName: ctx.state.user?.nickname || ctx.state.user?.username || '',
+});
 
 class AdminUserController extends BaseController {
   async list(ctx) {
@@ -125,7 +133,48 @@ class AdminUserController extends BaseController {
         this.throwHttpError('用户不存在', HttpStatus.NOT_FOUND);
       }
 
+      await syncUserTokens(user);
+
       this.ok(ctx, user, '角色分配成功');
+    } catch (error) {
+      this.fail(ctx, error);
+    }
+  }
+
+  async getProducts(ctx) {
+    try {
+      const { id } = ctx.params;
+      const grants = await productAccessService.getUserProductGrants(id);
+      this.ok(ctx, grants, '获取用户产品授权成功');
+    } catch (error) {
+      this.fail(ctx, error);
+    }
+  }
+
+  async getProductAccess(ctx) {
+    try {
+      const { id, productCode } = ctx.params;
+      const result = await productAccessService.getUserProductAccess(id, productCode);
+      this.ok(ctx, result, '获取用户产品有效权限成功');
+    } catch (error) {
+      this.fail(ctx, error);
+    }
+  }
+
+  async updateProducts(ctx) {
+    try {
+      const { id } = ctx.params;
+      const { grants } = ctx.request.body || {};
+      const result = await productAccessService.updateUserProductGrants(id, grants);
+      await productAccessAuditService.record({
+        ...getActor(ctx),
+        action: 'grant-update',
+        resourceType: 'user-product-grant',
+        targetUserId: id,
+        summary: `更新用户 ${id} 的产品授权`,
+        changes: { grants },
+      });
+      this.ok(ctx, result, '用户产品授权更新成功');
     } catch (error) {
       this.fail(ctx, error);
     }

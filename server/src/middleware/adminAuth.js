@@ -34,6 +34,32 @@ module.exports = async (ctx, next) => {
     return;
   }
 
-  ctx.state.user = user;
+  const hydratedUser = await User.findById(user._id)
+    .select('_id username nickname realName avatar email phone roleIds status')
+    .populate('roleIds', 'name code');
+
+  if (!hydratedUser || hydratedUser.status !== 'active') {
+    ctx.status = HttpStatus.FORBIDDEN;
+    ctx.body = Response.error('账号已被禁用', HttpStatus.FORBIDDEN);
+    return;
+  }
+
+  ctx.state.user = {
+    _id: hydratedUser._id,
+    username: hydratedUser.username,
+    nickname: hydratedUser.nickname,
+    realName: hydratedUser.realName,
+    avatar: hydratedUser.avatar,
+    email: hydratedUser.email,
+    phone: hydratedUser.phone,
+    role: hydratedUser.roleIds?.[0]?.code || hydratedUser.roleIds?.[0]?.name || 'user',
+    roleIds: (hydratedUser.roleIds || []).map((role) => role._id),
+    roles: (hydratedUser.roleIds || []).map((role) => ({
+      _id: role._id,
+      name: role.name,
+      code: role.code
+    }))
+  };
+
   await next();
 };

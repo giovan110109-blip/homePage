@@ -12,6 +12,7 @@ router.delete('/roles/:id', roleController.delete.bind(roleController))
 router.get('/roles/:id/menus', roleController.getMenus.bind(roleController))
 router.put('/roles/:id/menus', roleController.updateMenus.bind(roleController))
 
+router.get('/menus/manage', menuController.list.bind(menuController))
 router.get('/menus', menuController.list.bind(menuController))
 router.get('/menus/all', menuController.getAll.bind(menuController))
 router.post('/menus', menuController.create.bind(menuController))

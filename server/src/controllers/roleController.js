@@ -19,7 +19,7 @@ class RoleController {
           .sort({ createdAt: -1 })
           .skip(skip)
           .limit(parseInt(limit))
-          .populate('menuIds', 'name path icon')
+          .populate('menuIds', 'name path icon parentId sort status')
           .lean(),
         Role.countDocuments(query)
       ])

@@ -6,6 +6,7 @@ const User = require('../models/user');
 const QrSession = require('../models/qrSession');
 const { issueToken, verifyToken } = require('../utils/adminTokenStore');
 const { verifyPassword } = require('../utils/password');
+const productAccessService = require('../services/productAccessService');
 
 const QR_SESSION_TTL = 5 * 60 * 1000;
 
@@ -50,6 +51,27 @@ const getAccessToken = async () => {
   accessTokenExpiresAt = now + (tokenData.expires_in - 300) * 1000;
 
   return cachedAccessToken;
+};
+
+const hasSuperAdminRole = (user) =>
+  Array.isArray(user?.roleIds) &&
+  user.roleIds.some((role) => role?.code === 'admin-plus');
+
+const ensureProductAccessForUser = async (user, productCode) => {
+  if (!productCode || !user?._id || hasSuperAdminRole(user)) {
+    return;
+  }
+
+  const access = await productAccessService.getUserProductAccess(user._id, productCode);
+
+  if (!access?.accessEnabled) {
+    const message = access?.expired
+      ? `当前账号的 ${access.productName || productCode} 授权已过期`
+      : `当前账号未开通 ${access.productName || productCode} 权限`;
+    const error = new Error(message);
+    error.statusCode = HttpStatus.FORBIDDEN;
+    throw error;
+  }
 };
 
 class WechatAuthController extends BaseController {
@@ -383,6 +405,20 @@ class WechatAuthController extends BaseController {
         this.throwHttpError('用户不匹配', HttpStatus.FORBIDDEN);
       }
 
+      const user = await User.findById(session.userId).populate('roleIds', 'name code');
+      if (!user) {
+        this.throwHttpError('用户不存在', HttpStatus.NOT_FOUND);
+      }
+
+      try {
+        await ensureProductAccessForUser(user, session.productCode);
+      } catch (error) {
+        session.status = 'denied';
+        session.errorMessage = error.message || '当前账号未开通产品权限';
+        await session.save();
+        throw error;
+      }
+
       session.status = 'confirmed';
       session.confirmedAt = new Date();
 
@@ -414,10 +450,12 @@ class WechatAuthController extends BaseController {
   async createQrSession(ctx) {
     try {
       const qrToken = crypto.randomBytes(16).toString('hex');
+      const { productCode } = ctx.request.body || {};
       
       await QrSession.create({
         qrToken,
         status: 'pending',
+        productCode: typeof productCode === 'string' ? productCode.trim() : '',
         expiresAt: new Date(Date.now() + QR_SESSION_TTL),
       });
 
@@ -442,6 +480,10 @@ class WechatAuthController extends BaseController {
 
       if (session.status === 'scanned' && session.userInfo) {
         result.userInfo = session.userInfo;
+      }
+
+      if (session.status === 'denied') {
+        result.errorMessage = session.errorMessage;
       }
 
       if (session.status === 'confirmed' && session.pcToken) {

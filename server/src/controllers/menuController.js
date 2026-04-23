@@ -35,7 +35,7 @@ class MenuController {
   async getAll(ctx) {
     try {
       const menus = await Menu.find({ status: 'active' })
-        .select('_id name path icon')
+        .select('_id name path icon parentId sort status')
         .sort({ sort: 1 })
         .lean()
       

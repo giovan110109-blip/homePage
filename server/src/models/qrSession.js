@@ -8,8 +8,12 @@ const QrSessionSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['pending', 'scanned', 'confirmed'],
+    enum: ['pending', 'scanned', 'confirmed', 'denied'],
     default: 'pending'
+  },
+  productCode: {
+    type: String,
+    default: ''
   },
   userId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -27,6 +31,10 @@ const QrSessionSchema = new mongoose.Schema({
   },
   pcToken: {
     type: String
+  },
+  errorMessage: {
+    type: String,
+    default: ''
   },
   expiresAt: {
     type: Date,

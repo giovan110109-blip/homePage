@@ -4,9 +4,27 @@ const Token = require('../models/token');
 const DEFAULT_TTL_MS = 24 * 60 * 60 * 1000;
 const REFRESH_THRESHOLD_MS = 2 * 60 * 60 * 1000;
 
+const normalizeRoles = (roles) =>
+  Array.isArray(roles)
+    ? roles
+        .map((role) => {
+          if (!role) {
+            return null;
+          }
+
+          return {
+            _id: role._id || role.id || null,
+            name: role.name || '',
+            code: role.code || ''
+          };
+        })
+        .filter((role) => role && (role._id || role.code || role.name))
+    : [];
+
 const issueToken = async (user, ttlMs = DEFAULT_TTL_MS) => {
   const token = crypto.randomBytes(32).toString('hex');
   const expiresAt = new Date(Date.now() + ttlMs);
+  const roles = normalizeRoles(user.roles);
 
   await Token.create({
     token,
@@ -14,11 +32,38 @@ const issueToken = async (user, ttlMs = DEFAULT_TTL_MS) => {
     username: user.username,
     nickname: user.nickname,
     avatar: user.avatar,
-    roles: user.roles || [],
+    role: user.role || roles[0]?.code || roles[0]?.name || 'user',
+    roles,
+    roleIds: roles
+      .map((role) => role._id)
+      .filter(Boolean),
     expiresAt
   });
 
   return token;
+};
+
+const syncUserTokens = async (user) => {
+  if (!user) return;
+
+  const userId = user._id || user.id;
+  if (!userId) return;
+
+  const roles = normalizeRoles(user.roles || user.roleIds);
+
+  await Token.updateMany(
+    { userId },
+    {
+      username: user.username,
+      nickname: user.nickname,
+      avatar: user.avatar,
+      role: user.role || roles[0]?.code || roles[0]?.name || 'user',
+      roles,
+      roleIds: roles
+        .map((role) => role._id)
+        .filter(Boolean)
+    }
+  );
 };
 
 const verifyToken = async (token) => {
@@ -36,9 +81,10 @@ const verifyToken = async (token) => {
   return {
     _id: tokenDoc.userId,
     username: tokenDoc.username,
-    role: tokenDoc.role,
+    role: tokenDoc.role || tokenDoc.roles?.[0]?.code || tokenDoc.roles?.[0]?.name || 'user',
     nickname: tokenDoc.nickname,
     avatar: tokenDoc.avatar,
+    roleIds: tokenDoc.roleIds || [],
     roles: tokenDoc.roles || [],
     expiresAt: tokenDoc.expiresAt
   };
@@ -75,8 +121,10 @@ const refreshToken = async (oldToken) => {
     user: {
       _id: tokenDoc.userId,
       username: tokenDoc.username,
+      role: tokenDoc.role || tokenDoc.roles?.[0]?.code || tokenDoc.roles?.[0]?.name || 'user',
       nickname: tokenDoc.nickname,
       avatar: tokenDoc.avatar,
+      roleIds: tokenDoc.roleIds || [],
       roles: tokenDoc.roles || []
     }
   };
@@ -103,5 +151,6 @@ module.exports = {
   shouldRefreshToken,
   revokeToken,
   revokeAllUserTokens,
+  syncUserTokens,
   cleanup
 };

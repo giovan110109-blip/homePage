@@ -476,10 +476,7 @@ class FileController extends BaseController {
 
   async getTree(ctx) {
     try {
-      const userId = ctx.state.user._id
-
       const folders = await FileItem.find({
-        owner: userId,
         type: 'folder',
         isDeleted: false
       }).sort({ name: 1 }).lean()
