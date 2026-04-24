@@ -1,11 +1,11 @@
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-gray-100 via-gray-200 to-gray-300 dark:from-gray-800 dark:via-gray-800 dark:to-gray-800 flex flex-col relative overflow-hidden">
+  <div class="theme-page min-h-screen flex flex-col relative overflow-hidden">
     <!-- 背景装饰元素 -->
     <div class="absolute inset-0 overflow-hidden pointer-events-none">
-      <div class="absolute -top-40 -right-40 w-80 h-80 bg-gray-400/20 dark:bg-gray-800/10 rounded-full blur-3xl"></div>
-      <div class="absolute top-1/3 -left-20 w-60 h-60 bg-gray-500/20 dark:bg-gray-800/10 rounded-full blur-3xl"></div>
-      <div class="absolute bottom-1/4 right-1/4 w-40 h-40 bg-gray-600/20 dark:bg-gray-800/10 rounded-full blur-3xl"></div>
-      <div class="absolute bottom-0 left-1/3 w-72 h-72 bg-gray-300/20 dark:bg-gray-800/10 rounded-full blur-3xl"></div>
+      <div class="absolute -top-40 -right-40 w-80 h-80 rounded-full blur-3xl bg-[rgba(120,174,205,0.18)] dark:bg-[rgba(159,202,228,0.16)]"></div>
+      <div class="absolute top-1/3 -left-20 w-60 h-60 rounded-full blur-3xl bg-[rgba(168,217,241,0.16)] dark:bg-[rgba(120,174,205,0.15)]"></div>
+      <div class="absolute bottom-1/4 right-1/4 w-40 h-40 rounded-full blur-3xl bg-[rgba(145,196,226,0.12)] dark:bg-[rgba(197,225,241,0.12)]"></div>
+      <div class="absolute bottom-0 left-1/3 w-72 h-72 rounded-full blur-3xl bg-[rgba(223,240,250,0.18)] dark:bg-[rgba(53,88,118,0.22)]"></div>
     </div>
     
     <Header v-if="showLayoutChrome" />
@@ -16,7 +16,7 @@
       class="global-mouse-halo fixed inset-0 pointer-events-none hidden md:block z-30 mix-blend-screen"
       :style="{ '--hx': haloX + 'px', '--hy': haloY + 'px' }"
     >
-      <!-- 紫色边界光晕，与 PortfolioMagicCard glow-color=132,0,255 一致，强度更柔和 -->
+      <!-- 暖色边界光晕，和全局新主题保持一致 -->
       <div
         class="absolute inset-0"
         :style="{
@@ -124,7 +124,7 @@ const onLeave = (el: Element, done: () => void) => {
 const showHalo = ref(false)
 const haloX = ref(0)
 const haloY = ref(0)
-const haloColor = '132, 0, 255' // 与 /portfolio 中 PortfolioMagicCard 的 glow-color 保持一致
+const haloColor = '120, 174, 205'
 const haloRadius = 300
 const spotlightRadius = 220
 

@@ -1,6 +1,6 @@
 <template>
   <div
-    class="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-blue-50 dark:from-gray-900 dark:via-blue-900 dark:to-blue-900 relative"
+    class="theme-page min-h-screen relative"
   >
     <!-- Background blur effects -->
     <div class="absolute inset-0 overflow-hidden">

@@ -1,6 +1,6 @@
 <template>
   <div
-    class="min-h-screen bg-black"
+    class="theme-page min-h-screen"
     @mousemove="handleGlobalMouseMove"
     @mouseleave="handleGlobalMouseLeave"
   >
@@ -9,13 +9,13 @@
       class="relative min-h-screen flex items-center justify-center overflow-hidden"
     >
       <!-- DotGrid Background -->
-      <div class="fixed inset-0 w-full h-full bg-black z-0">
+      <div class="fixed inset-0 z-0 h-full w-full">
         <DotGrid
           ref="dotGridRef"
           :dot-size="4"
           :gap="20"
-          base-color="#6B7280"
-          active-color="#9CA3AF"
+          :base-color="dotGridColors.base"
+          :active-color="dotGridColors.active"
           :proximity="120"
           :speed-trigger="60"
           :shock-radius="80"
@@ -42,7 +42,7 @@
             @keydown.space.prevent="goToAdmin"
           >
             <div
-              class="w-64 h-64 lg:w-80 lg:h-80 rounded-full overflow-hidden border-4 border-white/20 dark:border-white/10 shadow-2xl backdrop-blur-sm group-hover:border-blue-500/50 transition-all duration-300"
+              class="avatar-shell w-64 h-64 lg:w-80 lg:h-80 rounded-full overflow-hidden border-4 border-white/20 dark:border-white/10 shadow-2xl backdrop-blur-sm transition-all duration-300"
             >
               <img
                 :src="siteInfoStore.info.avatar"
@@ -51,9 +51,7 @@
               />
             </div>
             <!-- Glow effect around avatar -->
-            <div
-              class="absolute inset-0 rounded-full bg-gradient-to-r from-blue-500/20 to-blue-500/20 blur-xl -z-10 group-hover:from-blue-500/40 group-hover:to-blue-500/40 transition-all duration-300"
-            ></div>
+            <div class="avatar-glow absolute inset-0 rounded-full blur-xl -z-10 transition-all duration-300"></div>
           </div>
         </div>
 
@@ -124,13 +122,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import { useSiteInfoStore } from "@/stores/siteInfo";
 import SplitText from "@/components/SplitText.vue";
 import DotGrid from "@/components/DotGrid.vue";
+import { useTheme } from "@/composables/useTheme";
 
 const ADMIN_URL = "https://admin.giovan.cn";
 const dotGridRef = ref<InstanceType<typeof DotGrid>>();
+const { isDark } = useTheme();
+const dotGridColors = computed(() => ({
+  base: isDark.value ? "#334155" : "#cbd5e1",
+  active: isDark.value ? "#60a5fa" : "#2563eb",
+}));
 
 const handleGlobalMouseMove = (event: MouseEvent) => {
   if (dotGridRef.value) {
@@ -173,5 +177,31 @@ const goToAdmin = () => {
 
 .site-card {
   animation: fadeInUp 0.6s ease-out both;
+}
+
+.avatar-shell {
+  transition:
+    border-color 0.3s ease,
+    transform 0.3s ease;
+}
+
+.group:hover .avatar-shell {
+  border-color: color-mix(in srgb, var(--theme-accent) 48%, transparent);
+}
+
+.avatar-glow {
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--theme-accent) 22%, transparent) 0%,
+    transparent 70%
+  );
+}
+
+.group:hover .avatar-glow {
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--theme-accent) 38%, transparent) 0%,
+    transparent 72%
+  );
 }
 </style>

@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-black" ref="containerRef">
+  <div class="theme-page min-h-screen" ref="containerRef">
     <Teleport to="body">
       <div
         v-show="showViewportSummary"

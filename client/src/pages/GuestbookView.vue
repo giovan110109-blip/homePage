@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-blue-50 dark:from-gray-900 dark:via-blue-900 dark:to-blue-900 py-16 sm:py-20">
+  <div class="theme-page min-h-screen py-16 sm:py-20">
     <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
       <!-- 页面标题 -->
       <div class="text-center mb-12 sm:mb-16">
@@ -111,6 +111,12 @@
               <CommentBox v-if="showIndex === index" :target-id="message.id" />
             </transition>
           </div>
+          <div
+            v-if="hasMore"
+            ref="loadMoreSentinelRef"
+            class="h-2 w-full"
+            aria-hidden="true"
+          ></div>
         </div>
 
         <div v-if="loading && messages.length === 0" class="flex flex-col items-center justify-center py-12 px-5">
@@ -122,7 +128,7 @@
         </div>
 
         <div v-if="hasMore && !loading && !loadingMore" class="text-center py-6 text-gray-400 dark:text-gray-500 text-sm animate-fade-in-out">
-          向下滑动加载更多
+          即将自动加载更多
         </div>
 
         <div v-if="!hasMore && messages.length > 0" class="text-center py-6 text-gray-400 dark:text-gray-500 text-sm">
@@ -134,7 +140,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, onUnmounted, watch } from "vue";
+import { ref, reactive, onMounted, onUnmounted, watch, nextTick } from "vue";
 import { ExternalLink, Apple, Chrome, Compass, Monitor, Laptop, Smartphone, Globe } from "lucide-vue-next";
 import { ElMessage } from "element-plus";
 import AppButton from "@/components/ui/AppButton.vue";
@@ -183,7 +189,12 @@ const visitorStore = useVisitorStore();
 const formData = ref<FormData>({ name: visitorStore.name, email: visitorStore.email, website: visitorStore.website, message: "" });
 const submitting = ref(false);
 const messageListRef = ref<HTMLElement>();
+const loadMoreSentinelRef = ref<HTMLElement | null>(null);
 const messageRichTextareaRef = ref<InstanceType<typeof RichTextarea> | null>(null);
+const avatarCache = new Map<string, string>();
+const processedMessageMap = new Map<string, MessageItem>();
+let loadMoreObserver: IntersectionObserver | null = null;
+let processToken = 0;
 
 const {
   showEmotePicker,
@@ -253,28 +264,96 @@ const {
 
 const messages = ref<MessageItem[]>([]);
 
+const buildFallbackAvatar = async (messageId: string) => {
+  const cachedAvatar = avatarCache.get(messageId);
+  if (cachedAvatar) return cachedAvatar;
+
+  const avatarSvg = await buildAvatarSvg();
+  avatarCache.set(messageId, avatarSvg);
+  return avatarSvg;
+};
+
 const processMessages = async () => {
-  const mapped = rawMessages.value.map(mapMessage).filter((m): m is MessageItem => Boolean(m));
-  const mappedWithAvatar = await Promise.all(
-    mapped.map(async (m) => {
-      if (m.avatar) return m;
-      const svg = await buildAvatarSvg();
-      return { ...m, avatar: svg };
-    })
+  const token = ++processToken;
+  const mapped = rawMessages.value
+    .map(mapMessage)
+    .filter((m): m is MessageItem => Boolean(m));
+
+  const nextIds = new Set(mapped.map((message) => message.id));
+
+  processedMessageMap.forEach((_value, id) => {
+    if (!nextIds.has(id)) {
+      processedMessageMap.delete(id);
+      avatarCache.delete(id);
+    }
+  });
+
+  const missingAvatarMessages = mapped.filter(
+    (message) => !message.avatar && !processedMessageMap.has(message.id),
   );
-  messages.value = mappedWithAvatar;
+
+  if (missingAvatarMessages.length > 0) {
+    const generatedAvatars = await Promise.all(
+      missingAvatarMessages.map(async (message) => ({
+        id: message.id,
+        avatar: await buildFallbackAvatar(message.id),
+      })),
+    );
+
+    if (token !== processToken) return;
+
+    generatedAvatars.forEach(({ id, avatar }) => {
+      avatarCache.set(id, avatar);
+    });
+  }
+
+  messages.value = mapped.map((message) => {
+    const avatar = message.avatar || avatarCache.get(message.id);
+    const nextMessage = avatar ? { ...message, avatar } : message;
+    processedMessageMap.set(message.id, nextMessage);
+    return nextMessage;
+  });
+};
+
+const ensureLoadMoreObserver = async () => {
+  await nextTick();
+
+  if (!loadMoreSentinelRef.value) return;
+
+  if (!loadMoreObserver) {
+    loadMoreObserver = new IntersectionObserver(
+      async (entries) => {
+        const entry = entries[0];
+        if (!entry?.isIntersecting || loading.value || loadingMore.value || !hasMore.value) {
+          return;
+        }
+        await loadMore();
+      },
+      {
+        root: null,
+        rootMargin: "0px 0px 420px 0px",
+        threshold: 0,
+      },
+    );
+  } else {
+    loadMoreObserver.disconnect();
+  }
+
+  loadMoreObserver.observe(loadMoreSentinelRef.value);
 };
 
 watch(rawMessages, async () => {
   await processMessages();
+  await ensureLoadMoreObserver();
 }, { immediate: true });
 
-const handleScrollForLoadMore = () => {
-  const { scrollTop, scrollHeight, clientHeight } = document.documentElement;
-  if (scrollHeight - scrollTop - clientHeight < 300) {
-    loadMore();
+watch(hasMore, async () => {
+  if (!hasMore.value) {
+    loadMoreObserver?.disconnect();
+    return;
   }
-};
+  await ensureLoadMoreObserver();
+});
 
 const submitMessage = async () => {
   if (!formData.value.name || !formData.value.email || !formData.value.message) {
@@ -386,10 +465,11 @@ const insertEmote = (emoteName: string) => {
 
 onMounted(async () => {
   await fetchMessages();
-  window.addEventListener("scroll", handleScrollForLoadMore);
+  await ensureLoadMoreObserver();
 });
 
 onUnmounted(() => {
-  window.removeEventListener("scroll", handleScrollForLoadMore);
+  loadMoreObserver?.disconnect();
+  loadMoreObserver = null;
 });
 </script>

@@ -1,14 +1,14 @@
 <template>
   <button
     @click="toggleTheme"
-    class="p-3 rounded-full bg-gray-200/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-400/30 dark:border-gray-600/30 hover:bg-gray-300/60 dark:hover:bg-gray-700/60 transition-all duration-200 focus:outline-none group"
+    class="theme-icon-button group p-3 rounded-full backdrop-blur-sm focus:outline-none"
     :title="isDark ? '切换到浅色模式' : '切换到深色模式'"
   >
     <div class="w-5 h-5 relative">
       <!-- 太阳图标 (浅色模式) -->
       <svg
         v-show="!isDark"
-        class="w-5 h-5 text-yellow-400 group-hover:text-yellow-300 transition-colors duration-200"
+        class="w-5 h-5 text-amber-500 transition-colors duration-200 group-hover:text-amber-400"
         fill="currentColor"
         viewBox="0 0 24 24"
       >
@@ -20,7 +20,7 @@
       <!-- 月亮图标 (深色模式) -->
       <svg
         v-show="isDark"
-        class="w-5 h-5 text-blue-300 group-hover:text-blue-200 transition-colors duration-200"
+        class="w-5 h-5 text-blue-500 transition-colors duration-200 group-hover:text-blue-400"
         fill="currentColor"
         viewBox="0 0 24 24"
       >
@@ -37,12 +37,15 @@
 <script setup lang="ts">
 import { useTheme } from '@/composables/useTheme'
 
-const { theme, toggleTheme, isDark } = useTheme()
+const { toggleTheme, isDark } = useTheme()
 </script>
 
 <style scoped>
-.transition-all {
-  transition-property: all;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+button {
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease,
+    transform 180ms ease;
 }
 </style>

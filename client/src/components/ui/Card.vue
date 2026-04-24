@@ -70,15 +70,15 @@ const props = withDefaults(defineProps<Props>(), {
 
 const cardClasses = computed(() => {
   const baseClasses = props.variant === 'glass' 
-    ? 'relative overflow-hidden transition-all duration-200'
-    : 'relative bg-white dark:bg-gray-800 overflow-hidden transition-all duration-200'
+    ? 'theme-panel relative overflow-hidden transition-all duration-200'
+    : 'theme-panel-strong relative overflow-hidden transition-all duration-200'
   
   const variantClasses = {
-    default: 'border border-gray-200 dark:border-gray-700',
-    bordered: 'border border-gray-300 dark:border-gray-600',
-    shadow: 'border border-gray-200 dark:border-gray-700',
-    elevated: 'border border-gray-200 dark:border-gray-700',
-    glass: 'border border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50'
+    default: '',
+    bordered: '',
+    shadow: '',
+    elevated: '',
+    glass: 'theme-panel'
   }
   
   const roundedClasses = {
@@ -89,7 +89,7 @@ const cardClasses = computed(() => {
     xl: 'rounded-xl'
   }
   
-  const hoverClasses = props.hover ? 'hover:border-gray-300 dark:hover:border-gray-600 cursor-pointer' : ''
+  const hoverClasses = props.hover ? 'theme-card-interactive cursor-pointer' : ''
   
   return clsx(
     baseClasses,

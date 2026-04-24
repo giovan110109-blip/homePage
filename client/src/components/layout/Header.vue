@@ -1,6 +1,6 @@
 <template>
   <header
-    class="fixed top-0 left-0 right-0 z-50 bg-white/30 dark:bg-gray-900/30 backdrop-blur-md border-b border-gray-300/20 dark:border-gray-700/20"
+    class="fixed top-0 left-0 right-0 z-50 bg-white/30 dark:bg-gray-900/30 backdrop-blur-md"
   >
     <nav class="max-w-7xl mx-auto px-6">
       <div class="flex justify-between items-center h-16">
@@ -38,7 +38,7 @@
             class="relative px-4 py-2 text-sm font-medium rounded-full transition-all duration-200"
             :class="[
               $route.path === item.href
-                ? 'text-white bg-blue-500/80 backdrop-blur-sm'
+                ? 'header-nav-active text-white backdrop-blur-sm'
                 : 'text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-300/50 dark:hover:bg-gray-800',
             ]"
           >
@@ -87,7 +87,7 @@
                 class="block px-4 py-2 text-base font-medium rounded-lg transition-colors menu-item"
                 :class="[
                   $route.path === item.href
-                    ? 'text-white bg-blue-500/80 backdrop-blur-sm'
+                    ? 'header-nav-active text-white backdrop-blur-sm'
                     : 'text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-300/50 dark:hover:bg-gray-800',
                   { 'menu-item-active': mobileMenuOpen },
                 ]"
@@ -143,6 +143,10 @@ const closeMobileMenu = () => {
 
 .custom-font {
   font-family: "CustomFont", sans-serif;
+}
+
+.header-nav-active {
+  background: color-mix(in srgb, var(--theme-accent) 88%, transparent);
 }
 
 /* 移动端菜单动画 */

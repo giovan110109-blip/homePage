@@ -1,7 +1,7 @@
 <template>
   <div
     ref="cardRef"
-    class="relative bg-white/60 dark:bg-white/10 backdrop-blur-md border border-gray-300/40 dark:border-white/20 rounded-2xl overflow-hidden hover:bg-white/70 dark:hover:bg-white/15 hover:border-gray-400/50 dark:hover:border-white/30 transition-all duration-300 shadow-xl hover:shadow-2xl"
+    class="theme-panel theme-card-interactive relative rounded-2xl overflow-hidden"
     @mouseenter="handleMouseEnter"
     @mouseleave="handleMouseLeave"
     @mousemove="handleMouseMove"
@@ -75,7 +75,7 @@ const props = withDefaults(defineProps<Props>(), {
   enableMagnetism: false,
   clickEffect: true,
   spotlightRadius: 300,
-  glowColor: '132, 0, 255', // 默认紫色
+  glowColor: '37, 99, 235',
   disableAnimations: false
 })
 

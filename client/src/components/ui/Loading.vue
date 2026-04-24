@@ -2,11 +2,11 @@
   .loader {
     --size: 100px;
     --duration: 2s;
-    --logo-color: grey;
+    --logo-color: var(--theme-accent);
     --background: linear-gradient(
       0deg,
-      rgba(50, 50, 50, 0.2) 0%,
-      rgba(100, 100, 100, 0.2) 100%
+      color-mix(in srgb, var(--theme-accent) 10%, transparent) 0%,
+      color-mix(in srgb, var(--theme-accent) 22%, transparent) 100%
     );
     height: var(--size);
     aspect-ratio: 1;
@@ -18,8 +18,9 @@
     background: rgba(100, 100, 100, 0.15);
     background: var(--background);
     border-radius: 50%;
-    border-top: 1px solid rgba(100, 100, 100, 1);
-    box-shadow: rgba(0, 0, 0, 0.3) 0px 10px 10px -0px;
+    border-top: 1px solid color-mix(in srgb, var(--theme-accent) 40%, white 10%);
+    box-shadow: color-mix(in srgb, var(--theme-accent) 26%, rgba(0, 0, 0, 0.3))
+      0px 10px 10px 0px;
     backdrop-filter: blur(5px);
     animation: ripple var(--duration) infinite ease-in-out;
   }
@@ -32,28 +33,28 @@
   .loader .box:nth-child(2) {
     inset: 30%;
     z-index: 98;
-    border-color: rgba(100, 100, 100, 0.8);
+    border-color: color-mix(in srgb, var(--theme-accent) 32%, transparent);
     animation-delay: 0.2s;
   }
 
   .loader .box:nth-child(3) {
     inset: 20%;
     z-index: 97;
-    border-color: rgba(100, 100, 100, 0.6);
+    border-color: color-mix(in srgb, var(--theme-accent) 24%, transparent);
     animation-delay: 0.4s;
   }
 
   .loader .box:nth-child(4) {
     inset: 10%;
     z-index: 96;
-    border-color: rgba(100, 100, 100, 0.4);
+    border-color: color-mix(in srgb, var(--theme-accent) 18%, transparent);
     animation-delay: 0.6s;
   }
 
   .loader .box:nth-child(5) {
     inset: 0%;
     z-index: 95;
-    border-color: rgba(100, 100, 100, 0.2);
+    border-color: color-mix(in srgb, var(--theme-accent) 12%, transparent);
     animation-delay: 0.8s;
   }
 
@@ -74,15 +75,18 @@
   @keyframes ripple {
     0% {
       transform: scale(1);
-      box-shadow: rgba(0, 0, 0, 0.3) 0px 10px 10px -0px;
+      box-shadow: color-mix(in srgb, var(--theme-accent) 26%, rgba(0, 0, 0, 0.3))
+        0px 10px 10px 0px;
     }
     50% {
       transform: scale(1.3);
-      box-shadow: rgba(0, 0, 0, 0.3) 0px 30px 20px -0px;
+      box-shadow: color-mix(in srgb, var(--theme-accent) 26%, rgba(0, 0, 0, 0.3))
+        0px 30px 20px 0px;
     }
     100% {
       transform: scale(1);
-      box-shadow: rgba(0, 0, 0, 0.3) 0px 10px 10px -0px;
+      box-shadow: color-mix(in srgb, var(--theme-accent) 26%, rgba(0, 0, 0, 0.3))
+        0px 10px 10px 0px;
     }
   }
 
@@ -91,7 +95,7 @@
       fill: var(--logo-color);
     }
     50% {
-      fill: white;
+      fill: #ffffff;
     }
     100% {
       fill: var(--logo-color);

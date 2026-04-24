@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50 dark:from-gray-900 dark:via-blue-900 dark:to-purple-900 py-20">
+  <div class="theme-page min-h-screen py-20">
     <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
       <!-- 文章内容 -->
       <article v-if="article || loading" class="bg-white/60 dark:bg-white/10 backdrop-blur-md rounded-2xl overflow-hidden border border-gray-200/50 dark:border-white/20 shadow-xl">

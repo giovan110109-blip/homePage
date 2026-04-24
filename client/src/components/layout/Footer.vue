@@ -2,12 +2,12 @@
   <footer class="relative overflow-hidden">
     <MagicCard
       ref="footerRef"
-      :glow-color="'59, 130, 246'"
+      :glow-color="'37, 99, 235'"
       :spotlight-radius="300"
       :enable-border-glow="true"
       :enable-spotlight="true"
       :disable-animations="false"
-      class="relative bg-white/60 dark:bg-gray-900/60 backdrop-blur-xl text-gray-900 dark:text-white border-t border-white/30 dark:border-gray-700/30 shadow-2xl overflow-hidden"
+      class="relative text-gray-900 border-t overflow-hidden"
     >
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
