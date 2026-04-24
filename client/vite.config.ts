@@ -7,34 +7,9 @@ import Components from "unplugin-vue-components/vite";
 import { ElementPlusResolver } from "unplugin-vue-components/resolvers";
 import viteImagemin from "vite-plugin-imagemin";
 
-const iconDeps = ["lucide-vue-next", "@heroicons/vue"];
+const iconDeps = ["lucide-vue-next"];
 const motionDeps = ["gsap", "motion-v"];
 const editorDeps = [
-  "@tiptap/vue-3",
-  "@tiptap/starter-kit",
-  "@tiptap/extension-bubble-menu",
-  "@tiptap/extension-character-count",
-  "@tiptap/extension-code",
-  "@tiptap/extension-code-block-lowlight",
-  "@tiptap/extension-color",
-  "@tiptap/extension-gapcursor",
-  "@tiptap/extension-highlight",
-  "@tiptap/extension-image",
-  "@tiptap/extension-link",
-  "@tiptap/extension-placeholder",
-  "@tiptap/extension-table",
-  "@tiptap/extension-table-cell",
-  "@tiptap/extension-table-header",
-  "@tiptap/extension-table-row",
-  "@tiptap/extension-task-item",
-  "@tiptap/extension-task-list",
-  "@tiptap/extension-text-align",
-  "@tiptap/extension-text-style",
-  "@tiptap/extension-typography",
-  "@tiptap/extension-underline",
-  "@codemirror/lang-markdown",
-  "@codemirror/theme-one-dark",
-  "lowlight",
   "highlight.js",
   "markdown-it",
   "dompurify",
@@ -80,9 +55,6 @@ export default defineConfig(({ mode }) => {
           },
           manualChunks(id) {
             if (!id.includes("node_modules")) {
-              if (id.includes("/src/pages/admin/")) {
-                return "admin";
-              }
               return;
             }
 

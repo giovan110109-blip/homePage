@@ -37,7 +37,6 @@
     
     <main :class="['flex-1', 'relative', 'z-10', showLayoutChrome?'pt-16':'']">
     <Transition 
-      v-if="!isAdminRoute"
       :name="transitionName" 
       mode="out-in"
       @before-enter="onBeforeEnter"
@@ -46,7 +45,6 @@
     >
       <RouterView :key="$route.path" />
     </Transition>
-    <RouterView v-else />
     </main>
     
     <Footer v-if="showLayoutChrome" />
@@ -61,8 +59,7 @@ import Footer from './Footer.vue'
 const route = useRoute()
 const transitionName = ref('page')
 const prevRoute = ref('')
-const showLayoutChrome = computed(() => !route.path.startsWith('/admin')&&!route.path.startsWith('/map'))
-const isAdminRoute = computed(() => route.path.startsWith('/admin'))
+const showLayoutChrome = computed(() => !route.path.startsWith('/map'))
 
 // 路由顺序映射，用于判断前进还是后退
 const routeOrder = {

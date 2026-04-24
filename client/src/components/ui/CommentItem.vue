@@ -16,14 +16,6 @@
           }}</span>
         </div>
         <div class="flex items-center gap-1">
-          <button
-            v-if="isLoggedIn"
-            class="flex items-center justify-center w-7 h-7 rounded-md bg-red-50 text-red-500 hover:bg-red-100 hover:text-red-600 transition-all flex-shrink-0 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/30"
-            title="删除评论"
-            @click="handleDelete"
-          >
-            <Trash2 class="w-3.5 h-3.5" />
-          </button>
           <a
             v-if="comment.website"
             :href="getWebsiteUrl(comment.website)"
@@ -98,10 +90,6 @@
         :comment="reply"
         :target-id="targetId"
         :parent-id="comment.id"
-        :is-logged-in="isLoggedIn"
-        :user-name="userName"
-        :user-email="userEmail"
-        :user-avatar="userAvatar"
         @reply="$emit('reply', $event)"
         @reply-submitted="$emit('reply-submitted')"
         @comment-deleted="$emit('comment-deleted')"
@@ -113,7 +101,6 @@
 <script setup lang="ts">
 import {
   ExternalLink,
-  Trash2,
   Apple,
   Chrome,
   Compass,
@@ -122,8 +109,6 @@ import {
   Smartphone,
   Globe,
 } from "lucide-vue-next";
-import { ElMessage, ElMessageBox } from "element-plus";
-import request from "@/api/request";
 import { getExternalLinkRedirectUrl } from "@/utils/external-link";
 import { normalizeHttpUrl } from "@/utils/url";
 import EmoteRenderer from "@/components/ui/EmoteRenderer.vue";
@@ -147,10 +132,6 @@ const props = defineProps<{
   comment: CommentType;
   targetId: string;
   parentId?: string;
-  isLoggedIn?: boolean;
-  userName?: string;
-  userEmail?: string;
-  userAvatar?: string;
 }>();
 
 const emit = defineEmits<{
@@ -158,25 +139,6 @@ const emit = defineEmits<{
   (e: "reply-submitted"): void;
   (e: "comment-deleted"): void;
 }>();
-
-const handleDelete = async () => {
-  try {
-    await ElMessageBox.confirm("确定要删除这条评论吗？", "删除确认", {
-      confirmButtonText: "删除",
-      cancelButtonText: "取消",
-      type: "warning",
-    });
-    await request.delete(`/admin/comments/${props.comment.id}`);
-    ElMessage.success("评论已删除");
-    emit("comment-deleted");
-  } catch (error) {
-    if (error !== "cancel") {
-      console.error("删除失败:", error);
-      const msg = (error as any)?.response?.data?.message || "删除失败，请稍后再试";
-      ElMessage.error(msg);
-    }
-  }
-};
 
 const normalizeWebsite = (url: string) => {
   if (!url) return "";

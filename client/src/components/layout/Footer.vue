@@ -42,7 +42,7 @@
               <li v-for="item in navigation" :key="item.name">
                 <a
                   v-if="item.external"
-                  :href="getFileManageUrl()"
+                  :href="item.href"
                   target="_blank"
                   rel="noopener noreferrer"
                   class="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
@@ -100,25 +100,16 @@
 </template>
 
 <script setup lang="ts">
-import { Mail, MapPin, Github, Linkedin, Twitter, MessageCircle,MessageSquareQuote } from 'lucide-vue-next'
+import { Mail, MapPin, MessageSquareQuote } from 'lucide-vue-next'
 import { useSiteInfoStore } from '@/stores/siteInfo'
-import { useAuthStore } from '@/stores/auth'
 import MagicCard from '@/components/ui/MagicCard.vue'
 
 const siteInfoStore = useSiteInfoStore()
-const authStore = useAuthStore()
 
 const currentYear = computed(() => new Date().getFullYear())
 
-const getFileManageUrl = () => {
-  const baseUrl = 'https://file.giovan.cn'
-  if (authStore.isLoggedIn && authStore.token) {
-    return `${baseUrl}?token=${authStore.token}`
-  }
-  return baseUrl
-}
-
 const navigation = [
-  { name: '私人文件管理', href: '/', external: true },
+  { name: '私人文件管理', href: 'https://file.giovan.cn', external: true },
+  { name: '后台管理', href: 'https://admin.giovan.cn', external: true },
 ]
 </script>

@@ -82,6 +82,7 @@ const allowedOrigins = process.env.CORS_ORIGINS
       "http://localhost:3000",
       "http://localhost:5173",
       "http://localhost:8999",
+      "https://admin.giovan.cn",
       "https://file.giovan.cn",
     ];
 
@@ -96,7 +97,7 @@ app.use(
       if (process.env.NODE_ENV === "development") {
         return requestOrigin;
       }
-      return allowedOrigins[0];
+      return "";
     },
     allowHeaders: ["Content-Type", "Authorization", "x-request-timestamp"],
     allowMethods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],

@@ -9,8 +9,6 @@ import axios, {
   type AxiosResponse,
   type InternalAxiosRequestConfig,
 } from "axios";
-import { useAuthStore } from "@/stores/auth";
-import router from "@/router";
 
 const { VITE_API_BASE_URL, VITE_API_BASE_URL_LOCAL } = import.meta.env;
 const RAW_BASE_URL = import.meta.env.DEV
@@ -22,18 +20,6 @@ const BASE_URL = (() => {
   const trimmed = RAW_BASE_URL.replace(/\/$/, "");
   return trimmed.endsWith("/api") ? trimmed : `${trimmed}/api`;
 })();
-
-let isRefreshing = false;
-let refreshPromise: Promise<string | null> | null = null;
-
-const REFRESH_THRESHOLD = 2 * 60 * 60 * 1000;
-
-const shouldRefreshToken = (): boolean => {
-  const authStore = useAuthStore();
-  if (!authStore.token || !authStore.expiresAt) return false;
-  const timeUntilExpiry = new Date(authStore.expiresAt).getTime() - Date.now();
-  return timeUntilExpiry < REFRESH_THRESHOLD && timeUntilExpiry > 0;
-};
 
 const ERROR_MESSAGES: Record<number, string> = {
   400: "请求参数错误",
@@ -56,51 +42,6 @@ const getErrorMessage = (status: number, serverMessage?: string): string => {
   return ERROR_MESSAGES[status] || `请求失败 (${status})`;
 };
 
-const refreshAccessToken = async (): Promise<string | null> => {
-  if (refreshPromise) {
-    return refreshPromise;
-  }
-
-  refreshPromise = (async () => {
-    const authStore = useAuthStore();
-    if (!authStore.token) {
-      return null;
-    }
-
-    isRefreshing = true;
-    try {
-      const response = await axios.post(
-        `${BASE_URL}/admin/refresh`,
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${authStore.token}`,
-          },
-        }
-      );
-      const { token, expiresAt, user } = response.data?.data || response.data;
-      if (!token) {
-        return null;
-      }
-
-      authStore.setSession({
-        token,
-        expiresAt,
-        user: user || authStore.user,
-      });
-      return token;
-    } catch (error) {
-      console.error("Token refresh failed:", error);
-      return null;
-    } finally {
-      isRefreshing = false;
-      refreshPromise = null;
-    }
-  })();
-
-  return refreshPromise;
-};
-
 export function createHttpClient(): AxiosInstance {
   const service: AxiosInstance = axios.create({
     baseURL: BASE_URL,
@@ -118,25 +59,6 @@ export function createHttpClient(): AxiosInstance {
         config.headers = new AxiosHeaders();
       }
       config.headers["x-request-timestamp"] = Date.now().toString();
-
-      const url = config.url || "";
-      const needsAuth =
-        url.startsWith("/admin") ||
-        url.startsWith("/photos/upload") ||
-        url.startsWith("/photos/batch-delete") ||
-        url.startsWith("/photos/tasks");
-      if (needsAuth && !url.includes("/refresh")) {
-        const authStore = useAuthStore();
-        let token = authStore.token;
-
-        if (token && shouldRefreshToken() && !url.includes("/login")) {
-          token = (await refreshAccessToken()) || token;
-        }
-
-        if (token) {
-          config.headers.Authorization = `Bearer ${token}`;
-        }
-      }
       return config;
     },
     (error) => Promise.reject(error),
@@ -148,23 +70,9 @@ export function createHttpClient(): AxiosInstance {
     },
     (error) => {
       const status = error?.response?.status;
-      const url = error?.config?.url || "";
       const serverMessage = error?.response?.data?.message || error?.response?.data?.error;
 
       if (status === 401) {
-        const needsAuth =
-          url.startsWith("/admin") ||
-          url.startsWith("/photos/upload") ||
-          url.startsWith("/photos/batch-delete") ||
-          url.startsWith("/photos/tasks");
-        if (needsAuth && url !== "/admin/login") {
-          const authStore = useAuthStore();
-          authStore.logout();
-          router.replace({
-            name: "admin-login",
-            query: { redirect: "/admin" },
-          });
-        }
         error.message = getErrorMessage(401, serverMessage || "未授权，请先登录");
       } else if (status === 403) {
         error.message = getErrorMessage(403, serverMessage);

@@ -14,22 +14,7 @@
           </button>
         </div>
 
-        <!-- 登录状态：显示用户信息 -->
-        <div v-if="isLoggedIn" class="flex items-center gap-3 mb-2">
-          <img
-            :src="userAvatar"
-            alt="avatar"
-            class="w-10 h-10 rounded-full object-cover"
-          />
-          <div>
-            <div class="font-medium text-gray-900 dark:text-white">
-              {{ userName }}
-            </div>
-            <div class="text-xs text-gray-500 dark:text-gray-400">楼主</div>
-          </div>
-        </div>
-        <!-- 未登录：显示输入框 -->
-        <div v-else class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
           <input
             v-model="form.name"
             type="text"
@@ -138,10 +123,6 @@
         :key="comment.id"
         :comment="comment"
         :target-id="targetId"
-        :is-logged-in="isLoggedIn"
-        :user-name="userName"
-        :user-email="userEmail"
-        :user-avatar="userAvatar"
         @reply="handleReply"
         @reply-submitted="fetchComments"
         @comment-deleted="fetchComments"
@@ -155,7 +136,6 @@ import { ElMessage } from "element-plus";
 import { X } from "lucide-vue-next";
 import request from "@/api/request";
 import { buildAvatarSvg } from "@/utils/avatarSvg";
-import { useAuthStore } from "@/stores/auth";
 import { useVisitorStore } from "@/stores/visitor";
 import AppButton from "@/components/ui/AppButton.vue";
 import CommentItem from "@/components/ui/CommentItem.vue";
@@ -187,14 +167,7 @@ const emit = defineEmits<{
   (e: "commented"): void;
 }>();
 
-const authStore = useAuthStore();
 const visitorStore = useVisitorStore();
-const isLoggedIn = computed(() => authStore.isLoggedIn);
-const userName = computed(
-  () => authStore.user?.nickname || authStore.user?.username || "管理员",
-);
-const userEmail = computed(() => authStore.user?.email || "");
-const userAvatar = computed(() => authStore.user?.avatar || "");
 
 const form = ref({
   name: visitorStore.name,
@@ -314,14 +287,14 @@ const cancelReply = () => {
 }
 
 const onSubmit = async () => {
-  const name = isLoggedIn.value ? userName.value : form.value.name;
-  const email = isLoggedIn.value ? userEmail.value : form.value.email;
+  const name = form.value.name;
+  const email = form.value.email;
 
   if (!form.value.content) {
     ElMessage.warning("请输入评论内容");
     return;
   }
-  if (!isLoggedIn.value && (!name || !email)) {
+  if (!name || !email) {
     ElMessage.warning("请填写昵称和邮箱");
     return;
   }
@@ -331,10 +304,7 @@ const onSubmit = async () => {
   }
   submitting.value = true;
   try {
-    const avatar =
-      isLoggedIn.value && userAvatar.value
-        ? userAvatar.value
-        : await buildAvatarSvg();
+    const avatar = await buildAvatarSvg();
     await request.post("/comments", {
       targetId: props.targetId,
       parentId: replyTo.value?.id || null,
@@ -343,16 +313,14 @@ const onSubmit = async () => {
       website: form.value.website || undefined,
       avatar,
       content: form.value.content,
-      isAdmin: isLoggedIn.value,
+      isAdmin: false,
     });
 
-    if (!isLoggedIn.value) {
-      visitorStore.setInfo({
-        name: form.value.name,
-        email: form.value.email,
-        website: form.value.website
-      });
-    }
+    visitorStore.setInfo({
+      name: form.value.name,
+      email: form.value.email,
+      website: form.value.website
+    });
 
     form.value.content = "";
     replyTo.value = null;

@@ -33,7 +33,14 @@
       >
         <!-- Avatar (Mobile First) -->
         <div class="flex-shrink-0 mb-8 lg:mb-0 lg:order-2 lg:ml-12">
-          <div class="relative cursor-pointer group" @click="goToAdmin">
+          <div
+            class="relative cursor-pointer group"
+            role="link"
+            tabindex="0"
+            @click="goToAdmin"
+            @keydown.enter="goToAdmin"
+            @keydown.space.prevent="goToAdmin"
+          >
             <div
               class="w-64 h-64 lg:w-80 lg:h-80 rounded-full overflow-hidden border-4 border-white/20 dark:border-white/10 shadow-2xl backdrop-blur-sm group-hover:border-blue-500/50 transition-all duration-300"
             >
@@ -118,12 +125,11 @@
 
 <script setup lang="ts">
 import { ref } from "vue";
-import { useRouter } from "vue-router";
 import { useSiteInfoStore } from "@/stores/siteInfo";
 import SplitText from "@/components/SplitText.vue";
 import DotGrid from "@/components/DotGrid.vue";
 
-const router = useRouter();
+const ADMIN_URL = "https://admin.giovan.cn";
 const dotGridRef = ref<InstanceType<typeof DotGrid>>();
 
 const handleGlobalMouseMove = (event: MouseEvent) => {
@@ -141,7 +147,7 @@ const handleGlobalMouseLeave = () => {
 const siteInfoStore = useSiteInfoStore();
 
 const goToAdmin = () => {
-  router.push("/admin");
+  window.location.href = ADMIN_URL;
 };
 </script>
 
