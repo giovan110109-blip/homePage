@@ -77,6 +77,17 @@ const propsPhotoIndex = computed(() => {
 const activePhoto = computed(() => {
   return props.photos[activeIndex.value] || props.currentPhoto || {};
 });
+const hasPhotoSource = (photo: any) => Boolean(getPhotoOriginalUrl(photo));
+
+const syncActiveIndexToCurrentPhoto = async () => {
+  const nextIndex = propsPhotoIndex.value;
+  activeIndex.value = nextIndex;
+
+  await nextTick();
+  if (swiperRef.value && swiperRef.value.activeIndex !== nextIndex) {
+    swiperRef.value.slideTo(nextIndex, 0);
+  }
+};
 
 const handleSwiperInit = (swiper: any) => {
   swiperRef.value = swiper;
@@ -371,16 +382,21 @@ watch(
       showExifPanel.value = false;
     }
     if (newVal) {
-      activeIndex.value = propsPhotoIndex.value;
-      await nextTick();
-      if (swiperRef.value) {
-        swiperRef.value.slideTo(activeIndex.value, 0);
-      }
+      await syncActiveIndexToCurrentPhoto();
       // 👉 打开查看器时，预加载初始照片的相邻 LivePhoto
       preloadAdjacentLivePhotos(activeIndex.value);
     }
   },
   { immediate: true },
+);
+
+watch(
+  () => [props.currentPhoto?._id, props.photos.length],
+  async () => {
+    if (!props.modelValue || !props.currentPhoto?._id) return;
+
+    await syncActiveIndexToCurrentPhoto();
+  },
 );
 
 onBeforeUnmount(() => {
@@ -565,6 +581,7 @@ onBeforeUnmount(() => {
                   >
                     <!-- 主图 -->
                     <ProgressiveImage
+                      v-if="hasPhotoSource(photo)"
                       class="h-full w-full object-contain transition-opacity duration-400"
                       :class="{
                         'opacity-0': isLivePhotoPlaying && currentPhoto?.isLive,
@@ -603,6 +620,12 @@ onBeforeUnmount(() => {
                       :is-live-photo="photo.isLive === 1"
                       :live-photo-video-url="photo.videoUrl || undefined"
                     />
+                    <div
+                      v-else
+                      class="flex h-full w-full items-center justify-center bg-black/10"
+                    >
+                    
+                    </div>
 
                     <!-- LivePhoto 视频 -->
                     <motion.video

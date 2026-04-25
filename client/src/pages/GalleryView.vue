@@ -126,12 +126,13 @@
     <!-- 照片查看器 -->
     <PhotoViewer
       :modelValue="photoDialogVisible"
-      :photos="photos"
+      :photos="viewerPhotos"
       :currentPhoto="currentPhoto"
       :hasMore="hasMore"
       :loadingMore="loadingMore"
       @loadMore="handleLoadMore"
-      @update:modelValue="photoDialogVisible = $event"
+      @indexChange="handleViewerIndexChange"
+      @update:modelValue="($event) => ($event ? (photoDialogVisible = true) : closePhotoViewer())"
     />
   </div>
 </template>
@@ -139,10 +140,12 @@
 <script setup lang="ts">
 import { CalendarRange, MapPin } from "lucide-vue-next";
 import MasonryWall from "@yeger/vue-masonry-wall";
+import { useRoute, useRouter } from "vue-router";
 import Loading from "@/components/ui/Loading.vue";
 import request from "@/api/request";
 import { APP_CONFIG } from "@/config";
 import { useLivePhotoCache } from "@/composables/useLivePhotoCache";
+import { fetchPhotoDetail, setCachedPhotoDetail } from "@/composables/usePhotoDetailCache";
 import { usePagination } from "@/composables/usePagination";
 import { formatDate as formatDateUtil, formatDateShort } from "@/utils/format";
 import { getPhotoOriginalUrl } from "@/utils";
@@ -155,12 +158,16 @@ interface PhotoWithLoaded extends Photo {
 const photoDialogVisible = ref(false);
 const containerRef = ref<HTMLElement | null>(null);
 const currentPhotoId = ref<string | null>(null);
+const standalonePhoto = ref<PhotoWithLoaded | null>(null);
 const visiblePhotoIds = ref<Set<string>>(new Set());
 const scrolledBeyondTop = ref(false);
 const summaryPhotos = ref<PhotoWithLoaded[]>([]);
 const { suspendPreloads, resumePreloads } = useLivePhotoCache();
+const route = useRoute();
+const router = useRouter();
 let visibilityFrame: number | null = null;
 let resumePreloadTimer: number | null = null;
+let routeSyncVersion = 0;
 const LIVE_PHOTO_PRELOAD_RESUME_DELAY = 250;
 
 const {
@@ -233,9 +240,30 @@ const formattedDateCache = new Map<string, string>();
 const currentPhoto = computed(() => {
   if (!currentPhotoId.value) return null;
 
-  return (
-    photos.value.find((photo) => photo._id === currentPhotoId.value) || null
+  if (standalonePhoto.value?._id === currentPhotoId.value) {
+    const listPhoto = photos.value.find(
+      (photo) => photo._id === currentPhotoId.value,
+    );
+
+    return listPhoto
+      ? { ...listPhoto, ...standalonePhoto.value }
+      : standalonePhoto.value;
+  }
+
+  return photos.value.find((photo) => photo._id === currentPhotoId.value) || null;
+});
+const viewerPhotos = computed(() => {
+  if (!standalonePhoto.value) {
+    return photos.value;
+  }
+
+  const existsInList = photos.value.some(
+    (photo) => photo._id === standalonePhoto.value?._id,
   );
+
+  return existsInList
+    ? photos.value
+    : [standalonePhoto.value, ...photos.value];
 });
 const summaryDisplayPhotos = computed(() => {
   if (summaryPhotos.value.length > 0) {
@@ -444,9 +472,114 @@ const loadPhotos = async () => {
   }
 };
 
+const createRoutePlaceholderPhoto = (photoId: string): PhotoWithLoaded => ({
+  _id: photoId,
+  title: "",
+  description: "",
+  originalUrl: "",
+  width: 1,
+  height: 1,
+  dateTaken: "",
+  loaded: false,
+});
+
+const updateGalleryRoute = async (photoId: string | null) => {
+  const nextQuery = { ...route.query };
+
+  if (photoId) {
+    nextQuery.photoId = photoId;
+  } else {
+    delete nextQuery.photoId;
+  }
+
+  routeSyncVersion += 1;
+  const currentSyncVersion = routeSyncVersion;
+
+  await router.replace({
+    name: "gallery",
+    query: nextQuery,
+  });
+
+  if (currentSyncVersion === routeSyncVersion) {
+    return;
+  }
+};
+
 const viewPhoto = async (photo: Photo) => {
+  standalonePhoto.value = null;
   currentPhotoId.value = photo._id;
   photoDialogVisible.value = true;
+  await updateGalleryRoute(photo._id);
+};
+
+const closePhotoViewer = async () => {
+  photoDialogVisible.value = false;
+  currentPhotoId.value = null;
+  standalonePhoto.value = null;
+  await updateGalleryRoute(null);
+};
+
+const handleViewerIndexChange = async (index: number) => {
+  const nextPhoto = viewerPhotos.value[index];
+  if (!nextPhoto?._id) return;
+  if (nextPhoto._id === currentPhotoId.value && !standalonePhoto.value) return;
+
+  standalonePhoto.value =
+    standalonePhoto.value?._id === nextPhoto._id ? standalonePhoto.value : null;
+  currentPhotoId.value = nextPhoto._id;
+  await updateGalleryRoute(nextPhoto._id);
+};
+
+const syncViewerWithRoute = async () => {
+  const rawPhotoId = Array.isArray(route.query.photoId)
+    ? route.query.photoId[0]
+    : route.query.photoId;
+  const routePhotoId = typeof rawPhotoId === "string" && rawPhotoId ? rawPhotoId : null;
+
+  if (!routePhotoId) {
+    if (photoDialogVisible.value || currentPhotoId.value || standalonePhoto.value) {
+      photoDialogVisible.value = false;
+      currentPhotoId.value = null;
+      standalonePhoto.value = null;
+    }
+    return;
+  }
+
+  const existingPhoto =
+    photos.value.find((photo) => photo._id === routePhotoId) || null;
+
+  if (existingPhoto) {
+    standalonePhoto.value = null;
+    currentPhotoId.value = routePhotoId;
+    photoDialogVisible.value = true;
+    return;
+  }
+
+  currentPhotoId.value = routePhotoId;
+  photoDialogVisible.value = true;
+
+  if (standalonePhoto.value?._id !== routePhotoId) {
+    standalonePhoto.value = createRoutePlaceholderPhoto(routePhotoId);
+  }
+
+  try {
+    const detailPhoto = (await fetchPhotoDetail({ _id: routePhotoId })) as PhotoWithLoaded;
+    const normalizedPhoto: PhotoWithLoaded = {
+      ...detailPhoto,
+      loaded: false,
+      thumbHash: detailPhoto.thumbHash || detailPhoto.thumbnailHash,
+      originalUrl: detailPhoto.originalUrl,
+      videoUrl: detailPhoto.videoUrl || undefined,
+    };
+
+    standalonePhoto.value = normalizedPhoto;
+    currentPhotoId.value = routePhotoId;
+    photoDialogVisible.value = true;
+    setCachedPhotoDetail(routePhotoId, normalizedPhoto);
+  } catch (error) {
+    console.error("Failed to open photo from route:", error);
+    await closePhotoViewer();
+  }
 };
 
 const handleResize = () => {
@@ -460,6 +593,7 @@ onMounted(() => {
   window.addEventListener("resize", handleResize, { passive: true });
   window.addEventListener("scroll", handleScroll, { passive: true });
   handleScroll();
+  void syncViewerWithRoute();
 });
 
 onBeforeUnmount(() => {
@@ -486,8 +620,16 @@ watch(
       handleScroll();
       scheduleVisiblePhotoSync();
     });
+    void syncViewerWithRoute();
   },
   { flush: "post" },
+);
+
+watch(
+  () => route.query.photoId,
+  () => {
+    void syncViewerWithRoute();
+  },
 );
 </script>
 

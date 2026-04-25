@@ -2,7 +2,11 @@
 import { computed, ref, onMounted, watch } from "vue";
 import { motion } from "motion-v";
 import { MapPin, Settings, X } from "lucide-vue-next";
-import service from "@/api/request";
+import {
+  fetchPhotoDetail,
+  getCachedPhotoDetail,
+  setCachedPhotoDetail,
+} from "@/composables/usePhotoDetailCache";
 import { formatFileSize, formatDate } from "@/utils/format";
 
 interface Props {
@@ -13,32 +17,46 @@ interface Props {
 const exifCollapseActive = ref<string[]>([]);
 const isLoadingExif = ref(false);
 const photoData = ref<any>(null);
+let loadVersion = 0;
 
 const props = defineProps<Props>();
 
 // 加载EXIF数据的函数
 const loadExifData = async () => {
-  if (!props.currentPhoto?._id) {
-    photoData.value = props.currentPhoto;
+  const currentPhoto = props.currentPhoto;
+  if (!currentPhoto?._id) {
+    photoData.value = currentPhoto;
     return;
   }
 
-  // 直接拉取完整详情（包含完整 EXIF）
+  const currentLoadVersion = ++loadVersion;
+  const cachedPhoto = getCachedPhotoDetail(currentPhoto._id);
+  const basePhoto = cachedPhoto
+    ? { ...currentPhoto, ...cachedPhoto }
+    : currentPhoto;
+
+  photoData.value = basePhoto;
+
+  if (cachedPhoto) {
+    return;
+  }
+
   try {
     isLoadingExif.value = true;
-    const res: any = await service.get(`/photos/${props.currentPhoto._id}`);
+    const detailPhoto = await fetchPhotoDetail(currentPhoto);
 
-    if (res?.success && res.data) {
-      photoData.value = { ...props.currentPhoto, ...res.data };
-    } else {
-      photoData.value = props.currentPhoto;
+    if (currentLoadVersion === loadVersion) {
+      photoData.value = detailPhoto;
     }
   } catch (error) {
     console.error("Failed to load photo details:", error);
-    // 加载失败，使用传入的数据
-    photoData.value = props.currentPhoto;
+    if (currentLoadVersion === loadVersion) {
+      photoData.value = currentPhoto;
+    }
   } finally {
-    isLoadingExif.value = false;
+    if (currentLoadVersion === loadVersion) {
+      isLoadingExif.value = false;
+    }
   }
 };
 
@@ -51,7 +69,6 @@ onMounted(() => {
 watch(
   () => props.currentPhoto?._id,
   () => {
-    photoData.value = null; // 重置photoData
     loadExifData();
   },
   { immediate: false },
@@ -486,6 +503,7 @@ const formatExifValue = (value: any): string => {
               :latitude="displayPhoto.location.latitude"
               :longitude="displayPhoto.location.longitude"
               :zoom="14"
+              :photo-id="displayPhoto._id"
             />
           </div>
         </div>

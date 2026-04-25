@@ -22,10 +22,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch, computed, createApp, h } from 'vue'
+import { ref, onMounted, onUnmounted, watch, nextTick, createApp, h } from 'vue'
 import { ArrowLeft } from 'lucide-vue-next'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
+import { useRoute } from 'vue-router'
 import request from '@/api/request'
 import { getPhotoOriginalUrl } from '@/utils'
 import PhotoViewer from '@/components/photo/PhotoViewer.vue'
@@ -83,6 +84,8 @@ const totalPhotos = ref(0)
 const mapReady = ref(false)
 const currentPopup = ref<mapboxgl.Popup | null>(null)
 const { isDark } = useTheme()
+const route = useRoute()
+const hasAppliedRouteFocus = ref(false)
 
 const initMap = () => {
   if (!mapContainer.value) return
@@ -331,6 +334,122 @@ const createPhotoPopupContent = (location: MapLocation): HTMLElement => {
   return container
 }
 
+const openLocationPopup = (location: MapLocation) => {
+  if (!map.value) return
+
+  const coordinates: [number, number] = [
+    Number(location.location.longitude),
+    Number(location.location.latitude),
+  ]
+
+  if (!Number.isFinite(coordinates[0]) || !Number.isFinite(coordinates[1])) {
+    return
+  }
+
+  if (currentPopup.value) {
+    currentPopup.value.remove()
+    cleanupPopupApps()
+  }
+
+  const popupContent = createPhotoPopupContent(location)
+
+  currentPopup.value = new mapboxgl.Popup({
+    closeButton: false,
+    closeOnClick: false,
+    offset: [0, -20],
+    anchor: 'bottom'
+  })
+    .setLngLat(coordinates)
+    .setDOMContent(popupContent)
+    .addTo(map.value)
+
+  popupContent.querySelector('.popup-close')?.addEventListener('click', () => {
+    currentPopup.value?.remove()
+    currentPopup.value = null
+  })
+}
+
+const parseFocusQueryNumber = (value: unknown) => {
+  const raw = Array.isArray(value) ? value[0] : value
+  const parsed = Number(raw)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+const getRequestedFocus = () => {
+  const photoId = Array.isArray(route.query.photoId)
+    ? route.query.photoId[0]
+    : route.query.photoId
+  const latitude = parseFocusQueryNumber(route.query.lat)
+  const longitude = parseFocusQueryNumber(route.query.lng)
+
+  if (!photoId && (latitude === null || longitude === null)) {
+    return null
+  }
+
+  return {
+    photoId: typeof photoId === 'string' && photoId ? photoId : null,
+    latitude,
+    longitude,
+  }
+}
+
+const findFocusLocation = () => {
+  const requestedFocus = getRequestedFocus()
+  if (!requestedFocus) return null
+
+  if (requestedFocus.photoId) {
+    const matchedByPhoto = mapData.value.find((location) =>
+      location.photos?.some((photo) => photo._id === requestedFocus.photoId),
+    )
+    if (matchedByPhoto) return matchedByPhoto
+  }
+
+  if (
+    requestedFocus.latitude === null ||
+    requestedFocus.longitude === null
+  ) {
+    return null
+  }
+
+  return (
+    mapData.value.find((location) => {
+      const lat = Number(location.location?.latitude)
+      const lng = Number(location.location?.longitude)
+      return (
+        Number.isFinite(lat) &&
+        Number.isFinite(lng) &&
+        Math.abs(lat - requestedFocus.latitude!) < 0.001 &&
+        Math.abs(lng - requestedFocus.longitude!) < 0.001
+      )
+    }) || null
+  )
+}
+
+const applyRouteFocus = async () => {
+  if (!map.value || !mapReady.value || hasAppliedRouteFocus.value) return
+
+  const targetLocation = findFocusLocation()
+  if (!targetLocation) return
+
+  hasAppliedRouteFocus.value = true
+
+  const center: [number, number] = [
+    Number(targetLocation.location.longitude),
+    Number(targetLocation.location.latitude),
+  ]
+
+  map.value.easeTo({
+    center,
+    zoom: Math.max(map.value.getZoom(), 12),
+    duration: 700,
+  })
+
+  await nextTick()
+  window.setTimeout(() => {
+    openLocationPopup(targetLocation)
+  }, 260)
+}
+
 const addClusterLayer = () => {
   if (!map.value) return
 
@@ -488,27 +607,7 @@ const addClusterLayer = () => {
       photos: JSON.parse(properties.photos)
     }
 
-    if (currentPopup.value) {
-      currentPopup.value.remove()
-      cleanupPopupApps()
-    }
-
-    const popupContent = createPhotoPopupContent(location)
-
-    currentPopup.value = new mapboxgl.Popup({
-      closeButton: false,
-      closeOnClick: false,
-      offset: [0, -20],
-      anchor: 'bottom'
-    })
-      .setLngLat(coordinates)
-      .setDOMContent(popupContent)
-      .addTo(map.value!)
-
-    popupContent.querySelector('.popup-close')?.addEventListener('click', () => {
-      currentPopup.value?.remove()
-      currentPopup.value = null
-    })
+    openLocationPopup(location)
   })
 
   map.value.on('mouseenter', clusterLayerId, () => {
@@ -554,7 +653,23 @@ const viewPhoto = (photo: Photo, photos: Photo[]) => {
 onMounted(async () => {
   initMap()
   await loadMapData()
+  await applyRouteFocus()
 })
+
+watch(
+  () => [route.query.photoId, route.query.lat, route.query.lng],
+  async () => {
+    hasAppliedRouteFocus.value = false
+    await applyRouteFocus()
+  },
+)
+
+watch(
+  () => [mapReady.value, mapData.value.length],
+  async () => {
+    await applyRouteFocus()
+  },
+)
 
 onUnmounted(() => {
   cleanupPopupApps()

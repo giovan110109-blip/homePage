@@ -13,6 +13,7 @@ interface Props {
   latitude: number
   longitude: number
   zoom?: number
+  photoId?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -61,7 +62,14 @@ const initMap = () => {
     .addTo(map.value)
 
   map.value.on('click', () => {
-    router.push('/map')
+    router.push({
+      path: '/map',
+      query: {
+        lat: String(props.latitude),
+        lng: String(props.longitude),
+        ...(props.photoId ? { photoId: props.photoId } : {})
+      }
+    })
   })
 }
 
