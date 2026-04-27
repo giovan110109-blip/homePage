@@ -315,7 +315,7 @@
             </AppTransition>
           </div>
           <div
-            v-if="hasMore"
+            v-if="canLoadMore"
             ref="loadMoreSentinelRef"
             class="h-2 w-full"
             aria-hidden="true"
@@ -337,14 +337,14 @@
         </div>
 
         <div
-          v-if="hasMore && !loading && !loadingMore"
+          v-if="canLoadMore && !loading && !loadingMore"
           class="text-center py-6 text-gray-400 dark:text-gray-500 text-sm animate-fade-in-out"
         >
           即将自动加载更多
         </div>
 
         <div
-          v-if="!hasMore && messages.length > 0"
+          v-if="!canLoadMore && messages.length > 0"
           class="text-center py-6 text-gray-400 dark:text-gray-500 text-sm"
         >
           已加载全部留言
@@ -355,7 +355,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, onUnmounted, watch, nextTick } from "vue";
+import { ref, reactive, onMounted, onUnmounted, watch, nextTick, computed } from "vue";
 import {
   ExternalLink,
   Apple,
@@ -431,6 +431,8 @@ const avatarCache = new Map<string, string>();
 const processedMessageMap = new Map<string, MessageItem>();
 let loadMoreObserver: IntersectionObserver | null = null;
 let processToken = 0;
+const MESSAGE_PAGE_SIZE = 10;
+const reachedMessageEnd = ref(false);
 
 const {
   showEmotePicker,
@@ -497,10 +499,11 @@ const {
       meta: (res as any)?.meta ?? { page, pageSize, total: 0, pageCount: 1 },
     };
   },
-  pageSize: 10,
+  pageSize: MESSAGE_PAGE_SIZE,
 });
 
 const messages = ref<MessageItem[]>([]);
+const canLoadMore = computed(() => hasMore.value && !reachedMessageEnd.value);
 
 const buildFallbackAvatar = async (messageId: string) => {
   const cachedAvatar = avatarCache.get(messageId);
@@ -556,7 +559,7 @@ const processMessages = async () => {
 const ensureLoadMoreObserver = async () => {
   await nextTick();
 
-  if (!loadMoreSentinelRef.value) return;
+  if (!loadMoreSentinelRef.value || !canLoadMore.value) return;
 
   if (!loadMoreObserver) {
     loadMoreObserver = new IntersectionObserver(
@@ -566,11 +569,11 @@ const ensureLoadMoreObserver = async () => {
           !entry?.isIntersecting ||
           loading.value ||
           loadingMore.value ||
-          !hasMore.value
+          !canLoadMore.value
         ) {
           return;
         }
-        await loadMore();
+        await loadMoreMessages();
       },
       {
         root: null,
@@ -585,6 +588,17 @@ const ensureLoadMoreObserver = async () => {
   loadMoreObserver.observe(loadMoreSentinelRef.value);
 };
 
+const loadMoreMessages = async () => {
+  const previousLength = rawMessages.value.length;
+  await loadMore();
+
+  const appendedCount = rawMessages.value.length - previousLength;
+  if (appendedCount <= 0 || appendedCount < MESSAGE_PAGE_SIZE) {
+    reachedMessageEnd.value = true;
+    loadMoreObserver?.disconnect();
+  }
+};
+
 watch(
   rawMessages,
   async () => {
@@ -594,8 +608,8 @@ watch(
   { immediate: true },
 );
 
-watch(hasMore, async () => {
-  if (!hasMore.value) {
+watch(canLoadMore, async () => {
+  if (!canLoadMore.value) {
     loadMoreObserver?.disconnect();
     return;
   }
@@ -634,6 +648,7 @@ const submitMessage = async () => {
     formData.value.isPrivate = false;
     formData.value.requireEmailNotification = false;
     ElMessage.success("提交成功，待审核通过后展示");
+    reachedMessageEnd.value = false;
     refresh();
   } catch (error) {
     console.error("提交留言失败:", error);
@@ -750,6 +765,7 @@ const insertEmote = (emoteName: string) => {
 };
 
 onMounted(async () => {
+  reachedMessageEnd.value = false;
   await fetchMessages();
   await ensureLoadMoreObserver();
 });

@@ -50,12 +50,14 @@
     </main>
     
     <Footer v-if="showLayoutChrome" />
+    <BackToTop />
   </div>
 </template>
 
 <script setup lang="ts">
 import { useRoute } from 'vue-router'
 import AppTransition from '@/components/ui/AppTransition'
+import BackToTop from '@/components/ui/BackToTop.vue'
 import Header from './Header.vue'
 import Footer from './Footer.vue'
 

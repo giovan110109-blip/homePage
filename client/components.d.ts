@@ -15,6 +15,7 @@ declare module 'vue' {
     AppButton: typeof import('./src/components/ui/AppButton.vue')['default']
     AppConfigProvider: typeof import('./src/components/ui/AppConfigProvider.vue')['default']
     ArticleComments: typeof import('./src/components/article/ArticleComments.vue')['default']
+    BackToTop: typeof import('./src/components/ui/BackToTop.vue')['default']
     Button: typeof import('./src/components/ui/Button.vue')['default']
     Card: typeof import('./src/components/ui/Card.vue')['default']
     CommentBox: typeof import('./src/components/ui/CommentBox.vue')['default']
