@@ -513,12 +513,15 @@ onBeforeUnmount(() => {
 
                 <!-- 右侧按钮组 -->
                 <div class="flex items-center gap-2">
-                  <!-- <button
-                    class="pointer-events-auto backdrop-blur-md bg-black/40 text-white rounded-full  p-2 flex items-center justify-center hover:bg-black/60 transition"
+                  <button
+                    type="button"
+                    class="pointer-events-auto inline-flex h-9 items-center justify-center gap-2 rounded-full bg-black/45 px-3 text-sm font-medium text-white shadow-lg backdrop-blur-md transition hover:bg-black/60"
+                    aria-label="分享当前图片"
                     @click="showShareModal = true"
                   >
-                    <Share2 ></Share2>
-                  </button> -->
+                    <Share2 :size="16" />
+                    <span>分享</span>
+                  </button>
                   <!-- 信息按钮 (移动端) -->
                   <button
                     v-if="isMobile"

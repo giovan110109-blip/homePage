@@ -147,6 +147,7 @@ import { APP_CONFIG } from "@/config";
 import { useLivePhotoCache } from "@/composables/useLivePhotoCache";
 import { fetchPhotoDetail, setCachedPhotoDetail } from "@/composables/usePhotoDetailCache";
 import { usePagination } from "@/composables/usePagination";
+import { useSeo } from "@/composables/useSeo";
 import { formatDate as formatDateUtil, formatDateShort } from "@/utils/format";
 import { getPhotoOriginalUrl } from "@/utils";
 import type { Photo } from "@/types/api";
@@ -251,6 +252,52 @@ const currentPhoto = computed(() => {
   }
 
   return photos.value.find((photo) => photo._id === currentPhotoId.value) || null;
+});
+const currentPhotoTitle = computed(() => {
+  if (!currentPhoto.value?._id) return "相册";
+  return currentPhoto.value.title || "照片详情";
+});
+const currentPhotoDescription = computed(() => {
+  if (!currentPhoto.value?._id) {
+    return "浏览 Giovan 的照片相册";
+  }
+
+  const location =
+    currentPhoto.value.geoinfo?.city ||
+    currentPhoto.value.geoinfo?.region ||
+    currentPhoto.value.geoinfo?.country ||
+    "";
+  const date = currentPhoto.value.dateTaken
+    ? formatDateShort(currentPhoto.value.dateTaken).replace(/\//g, "-")
+    : "";
+  const summary = [
+    currentPhoto.value.description || "",
+    [date, location].filter(Boolean).join(" · "),
+  ]
+    .filter(Boolean)
+    .join(" | ");
+
+  return summary || "查看这张照片的拍摄信息与分享卡片";
+});
+const currentPhotoSeoImage = computed(() => {
+  if (typeof window === "undefined" || !currentPhoto.value?._id) {
+    return "";
+  }
+  return `${window.location.origin}/api/photos/${currentPhoto.value._id}/share-image`;
+});
+const currentPhotoShareUrl = computed(() => {
+  if (typeof window === "undefined" || !currentPhoto.value?._id) {
+    return "";
+  }
+  return `${window.location.origin}/api/photos/${currentPhoto.value._id}/share`;
+});
+
+useSeo({
+  title: currentPhotoTitle,
+  description: currentPhotoDescription,
+  image: currentPhotoSeoImage,
+  url: currentPhotoShareUrl,
+  type: "website",
 });
 const viewerPhotos = computed(() => {
   if (!standalonePhoto.value) {

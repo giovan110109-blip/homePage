@@ -12,9 +12,11 @@ const emit = defineEmits<{
   close: []
 }>()
 
+const photoId = computed(() => props.photo?._id || props.photo?.id || '')
+
 const shareUrl = computed(() => {
-  if (typeof window !== 'undefined') {
-    return `${window.location.origin}/${props.photo.id}`
+  if (typeof window !== 'undefined' && photoId.value) {
+    return `${window.location.origin}/api/photos/${photoId.value}/share`
   }
   return ''
 })
@@ -29,18 +31,21 @@ const shareTextAndUrl = computed(() => {
   return `${shareText.value}\n${shareUrl.value}`
 })
 
+const sharePreviewImageName = computed(() => {
+  const title = (props.photo?.title || 'photo').trim() || 'photo'
+  return `${title.replace(/[\\/:*?"<>|]+/g, '-').slice(0, 80)}-share.png`
+})
+
 // OG Image URL and loading state
 const ogImageLoading = ref(true)
 const ogImageError = ref(false)
 const loadingTimer = ref<any | null>(null)
 
 const ogImageUrl = computed(() => {
-  if (typeof window !== 'undefined') {
-    // Add timestamp to prevent caching issues
-    const timestamp = Date.now()
-    return `${window.location.origin}/__og-image__/image/${props.photo.id}/og.png?t=${timestamp}`
+  if (typeof window !== 'undefined' && photoId.value) {
+    return `${window.location.origin}/api/photos/${photoId.value}/share-image`
   }
-  return props.photo.originalUrl
+  return getPhotoOriginalUrl(props.photo)
 })
 
 // Reset loading state when photo changes or modal opens
@@ -63,7 +68,7 @@ const resetLoadingState = () => {
 }
 
 // Reset loading state when photo changes
-watch(() => props.photo.id, resetLoadingState)
+watch(photoId, resetLoadingState)
 
 // Reset loading state when modal opens
 watch(
@@ -155,15 +160,43 @@ const copyLink = async () => {
 }
 
 // Native share (for mobile devices)
+const createShareImageFile = async () => {
+  const response = await fetch(ogImageUrl.value)
+  if (!response.ok) {
+    throw new Error('share-image-fetch-failed')
+  }
+
+  const blob = await response.blob()
+  return new File([blob], sharePreviewImageName.value, {
+    type: blob.type || 'image/png',
+  })
+}
+
 const nativeShare = async () => {
-  if (navigator.share) {
-    try {
+  if (!navigator.share) return
+
+  try {
+    const file = await createShareImageFile()
+
+    if (navigator.canShare?.({ files: [file] })) {
       await navigator.share({
         title: shareText.value,
+        text: shareText.value,
         url: shareUrl.value,
+        files: [file],
       })
-    } catch (error) {
+      return
     }
+  } catch (error) {
+  }
+
+  try {
+    await navigator.share({
+      title: shareText.value,
+      text: shareText.value,
+      url: shareUrl.value,
+    })
+  } catch (error) {
   }
 }
 
@@ -175,7 +208,7 @@ const downloadOgImage = async () => {
     const url = window.URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = `${props.photo.title || 'photo'}-og.png`
+    link.download = sharePreviewImageName.value
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
@@ -199,7 +232,7 @@ const downloadOriginalImage = async () => {
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
-    window.URL.revokeObjectURL(url)
+    window.URL.revokeObjectURL(downloadUrl)
 
   } catch (error) {
 
@@ -428,7 +461,7 @@ const handleBackdropClick = (event: MouseEvent) => {
                   <!-- OG Image -->
                   <img
                     v-show="!ogImageLoading && !ogImageError"
-                    :key="`og-image-${props.photo.id}-${Date.now()}`"
+                    :key="`og-image-${photoId}`"
                     :src="ogImageUrl"
                     alt="分享预览图"
                     class="w-full h-auto aspect-[2/1] object-cover rounded"

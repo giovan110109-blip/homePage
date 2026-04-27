@@ -24,7 +24,10 @@ module.exports = function rateLimitTimestamp(options = {}) {
 
   return async (ctx, next) => {
     const url = ctx.request.url || ctx.url || '';
-    if (url.includes('/upload') || url.includes('/generate-qr-code') || url.includes('/preview') || url.includes('/share/') || url.includes('/s/')) {
+    const isPublicShareRequest =
+      /\/share(?:\/|\?|$)/.test(url) || url.includes('/share-image');
+
+    if (url.includes('/upload') || url.includes('/generate-qr-code') || url.includes('/preview') || isPublicShareRequest || url.includes('/s/')) {
       return await next();
     }
 

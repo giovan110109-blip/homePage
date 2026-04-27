@@ -33,6 +33,8 @@ router.post('/tasks/:taskId/retry', auth, photoController.retryTask.bind(photoCo
 
 // 照片列表和详情
 router.get('/', photoController.getPhotos.bind(photoController))
+router.get('/:id/share', photoController.getPhotoSharePage.bind(photoController))
+router.get('/:id/share-image', photoController.getPhotoShareImage.bind(photoController))
 router.get('/:id', photoController.getPhotoDetail.bind(photoController))
 
 // 地图数据

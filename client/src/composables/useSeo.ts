@@ -6,8 +6,8 @@ interface SeoOptions {
   description?: MaybeRef<string>;
   keywords?: MaybeRef<string>;
   image?: MaybeRef<string>;
-  url?: string;
-  type?: 'website' | 'article';
+  url?: MaybeRef<string>;
+  type?: MaybeRef<'website' | 'article'>;
 }
 
 const defaultMeta = {
@@ -65,12 +65,22 @@ const setKeywords = (keywords: string) => {
 const setImage = (image: string) => {
   if (image) {
     getOrCreateMeta('og:image', true).setAttribute('content', image);
+    getOrCreateMeta('og:image:secure_url', true).setAttribute('content', image);
+    getOrCreateMeta('og:image:width', true).setAttribute('content', '1200');
+    getOrCreateMeta('og:image:height', true).setAttribute('content', '630');
     getOrCreateMeta('twitter:image', true).setAttribute('content', image);
+    getOrCreateMeta('twitter:card', true).setAttribute('content', 'summary_large_image');
   }
 };
 
 const setType = (type: 'website' | 'article') => {
   getOrCreateMeta('og:type', true).setAttribute('content', type);
+};
+
+const setUrl = (url: string) => {
+  if (url) {
+    getOrCreateMeta('og:url', true).setAttribute('content', url);
+  }
 };
 
 export const useSeo = (options: SeoOptions = {}) => {
@@ -91,8 +101,11 @@ export const useSeo = (options: SeoOptions = {}) => {
     if (options.image) {
       setImage(unref(options.image) || '');
     }
+    if (options.url) {
+      setUrl(unref(options.url) || '');
+    }
     if (options.type) {
-      setType(options.type);
+      setType(unref(options.type) || 'website');
     }
   });
 
@@ -110,6 +123,33 @@ export const useSeo = (options: SeoOptions = {}) => {
       () => unref(options.description),
       (newDesc) => {
         if (newDesc) setDescription(newDesc);
+      }
+    );
+  }
+
+  if (options.image) {
+    watch(
+      () => unref(options.image),
+      (newImage) => {
+        if (newImage) setImage(newImage);
+      }
+    );
+  }
+
+  if (options.url) {
+    watch(
+      () => unref(options.url),
+      (newUrl) => {
+        if (newUrl) setUrl(newUrl);
+      }
+    );
+  }
+
+  if (options.type) {
+    watch(
+      () => unref(options.type),
+      (newType) => {
+        if (newType) setType(newType);
       }
     );
   }
