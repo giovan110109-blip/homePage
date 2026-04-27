@@ -166,10 +166,19 @@ onUnmounted(() => {
 }
 
 .emote-grid {
-  padding: 16px;
+  padding: 24px 16px;
   height: 400px;
   min-height: 300px;
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.emote-grid :deep(.vue-recycle-scroller__item-wrapper) {
+  overflow: visible;
+}
+
+.emote-grid :deep(.vue-recycle-scroller__item-view) {
+  overflow: visible;
 }
 
 .emote-item {
@@ -180,10 +189,15 @@ onUnmounted(() => {
   justify-content: center;
   border-radius: 8px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition:
+    transform 0.18s ease,
+    background-color 0.18s ease,
+    box-shadow 0.18s ease;
   background: #f9fafb;
   padding: 8px;
   margin: 4px;
+  position: relative;
+  transform-origin: center;
 }
 
 .dark .emote-item {
@@ -192,11 +206,14 @@ onUnmounted(() => {
 
 .emote-item:hover {
   background: #e5e7eb;
-  transform: scale(1.08);
+  transform: scale(1.24);
+  box-shadow: 0 16px 28px rgba(15, 23, 42, 0.18);
+  z-index: 2;
 }
 
 .dark .emote-item:hover {
   background: #475569;
+  box-shadow: 0 16px 28px rgba(2, 6, 23, 0.45);
 }
 
 .emote-image {
@@ -204,6 +221,11 @@ onUnmounted(() => {
   height: 100%;
   object-fit: contain;
   display: block;
+  transition: transform 0.18s ease;
+}
+
+.emote-item:hover .emote-image {
+  transform: scale(1.08);
 }
 
 .emote-empty {
@@ -227,7 +249,7 @@ onUnmounted(() => {
   }
 
   .emote-grid {
-    padding: 12px;
+    padding: 18px 12px;
   }
 
   .emote-groups {

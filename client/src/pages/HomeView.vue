@@ -123,12 +123,15 @@
 
 <script setup lang="ts">
 import { computed, ref } from "vue";
+import { ElMessage } from "element-plus";
 import { useSiteInfoStore } from "@/stores/siteInfo";
+import { useAuthStore } from "@/stores/auth";
+import { useAuthUiStore } from "@/stores/authUi";
 import SplitText from "@/components/SplitText.vue";
 import DotGrid from "@/components/DotGrid.vue";
 import { useTheme } from "@/composables/useTheme";
+import { buildAdminSsoUrl } from "@/utils/admin";
 
-const ADMIN_URL = "https://admin.giovan.cn";
 const dotGridRef = ref<InstanceType<typeof DotGrid>>();
 const { isDark } = useTheme();
 const dotGridColors = computed(() => ({
@@ -149,9 +152,24 @@ const handleGlobalMouseLeave = () => {
 };
 
 const siteInfoStore = useSiteInfoStore();
+const authStore = useAuthStore();
+const authUiStore = useAuthUiStore();
+const hasAvailableSession = computed(
+  () => authStore.isLoggedIn && !authStore.isSessionExpired,
+);
 
 const goToAdmin = () => {
-  window.location.href = ADMIN_URL;
+  if (hasAvailableSession.value) {
+    window.location.href = buildAdminSsoUrl(authStore.token);
+    return;
+  }
+
+  if (authStore.isSessionExpired) {
+    authStore.logout();
+    ElMessage.info("登录状态已过期，请重新登录");
+  }
+
+  authUiStore.openLoginModal({ redirectToAdmin: true });
 };
 </script>
 

@@ -42,6 +42,19 @@ const getErrorMessage = (status: number, serverMessage?: string): string => {
   return ERROR_MESSAGES[status] || `请求失败 (${status})`;
 };
 
+const getPersistedAdminToken = () => {
+  if (typeof window === "undefined") return "";
+
+  try {
+    const raw = window.localStorage.getItem("admin-auth");
+    if (!raw) return "";
+    const parsed = JSON.parse(raw);
+    return typeof parsed?.token === "string" ? parsed.token : "";
+  } catch (_error) {
+    return "";
+  }
+};
+
 export function createHttpClient(): AxiosInstance {
   const service: AxiosInstance = axios.create({
     baseURL: BASE_URL,
@@ -59,6 +72,12 @@ export function createHttpClient(): AxiosInstance {
         config.headers = new AxiosHeaders();
       }
       config.headers["x-request-timestamp"] = Date.now().toString();
+
+      const token = getPersistedAdminToken();
+      const isAdminRequest = config.url?.startsWith("/admin");
+      if (token && isAdminRequest && !config.headers.Authorization) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
       return config;
     },
     (error) => Promise.reject(error),

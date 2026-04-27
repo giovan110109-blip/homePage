@@ -7,7 +7,7 @@
         <div class="flex items-center gap-2">
           <img
             v-if="comment.avatar"
-            :src="comment.avatar"
+            :src="resolveAvatar(comment.avatar)"
             alt="avatar"
             class="w-8 h-8 rounded-full object-cover"
           />
@@ -110,6 +110,7 @@ import {
   Globe,
 } from "lucide-vue-next";
 import { getExternalLinkRedirectUrl } from "@/utils/external-link";
+import { getAssetURL } from "@/utils/env";
 import { normalizeHttpUrl } from "@/utils/url";
 import EmoteRenderer from "@/components/ui/EmoteRenderer.vue";
 
@@ -160,6 +161,13 @@ const handleWebsiteClick = (url: string) => {
   const normalized = normalizeWebsite(url);
   if (!normalized) return;
   window.location.href = getExternalLinkRedirectUrl(normalized);
+};
+
+const resolveAvatar = (avatar?: string) => {
+  if (!avatar) return "";
+  if (/^https?:\/\//.test(avatar)) return avatar;
+  if (avatar.startsWith("/uploads/")) return getAssetURL(avatar);
+  return avatar;
 };
 
 const formatLocation = (loc: string | undefined | null) => {

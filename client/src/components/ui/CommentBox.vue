@@ -4,6 +4,23 @@
     <div
       class="bg-white/80 dark:bg-white/5 backdrop-blur-xl rounded-xl p-3 sm:p-4 border border-gray-200/60 dark:border-white/10 shadow-md"
     >
+      <div
+        v-if="hasAvailableSession"
+        class="mb-3 flex items-center gap-3 rounded-xl border border-gray-200/70 bg-white/70 px-3 py-2 dark:border-white/10 dark:bg-white/5"
+      >
+        <img
+          v-if="resolvedAuthAvatar"
+          :src="resolvedAuthAvatar"
+          alt="admin avatar"
+          class="h-10 w-10 rounded-full object-cover"
+        />
+        <div class="min-w-0">
+          <div class="truncate text-sm font-semibold text-gray-900 dark:text-white">
+            {{ authName }}
+          </div>
+        </div>
+      </div>
+
       <form @submit.prevent="onSubmit" class="space-y-3">
         <!-- 回复提示 -->
         <div v-if="replyTo" class="flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-sm">
@@ -14,7 +31,7 @@
           </button>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        <div v-if="!hasAvailableSession" class="grid grid-cols-1 sm:grid-cols-3 gap-2">
           <input
             v-model="form.name"
             type="text"
@@ -137,6 +154,8 @@ import { X } from "lucide-vue-next";
 import AppTransition from "@/components/ui/AppTransition";
 import request from "@/api/request";
 import { buildAvatarSvg } from "@/utils/avatarSvg";
+import { getAssetURL } from "@/utils/env";
+import { useAuthStore } from "@/stores/auth";
 import { useVisitorStore } from "@/stores/visitor";
 import AppButton from "@/components/ui/AppButton.vue";
 import CommentItem from "@/components/ui/CommentItem.vue";
@@ -168,6 +187,7 @@ const emit = defineEmits<{
   (e: "commented"): void;
 }>();
 
+const authStore = useAuthStore();
 const visitorStore = useVisitorStore();
 
 const form = ref({
@@ -182,6 +202,37 @@ const submitting = ref(false);
 const loading = ref(false);
 const comments = ref<CommentType[]>([]);
 const richTextareaRef = ref<InstanceType<typeof RichTextarea> | null>(null);
+const hasAvailableSession = computed(
+  () => authStore.isLoggedIn && !authStore.isSessionExpired,
+);
+const authName = computed(
+  () => authStore.displayName || authStore.user?.username || visitorStore.name || "",
+);
+const authEmail = computed(() => authStore.userEmail || visitorStore.email || "");
+const authAvatar = computed(() => authStore.userAvatar || "");
+const resolvedAuthAvatar = computed(() => {
+  if (!authAvatar.value) return "";
+  if (/^https?:\/\//.test(authAvatar.value)) return authAvatar.value;
+  if (authAvatar.value.startsWith("/uploads/")) return getAssetURL(authAvatar.value);
+  return authAvatar.value;
+});
+
+watch(
+  hasAvailableSession,
+  (loggedIn) => {
+    if (loggedIn) {
+      form.value.name = authName.value || form.value.name;
+      form.value.email = authEmail.value || form.value.email;
+      form.value.website = "";
+      return;
+    }
+
+    form.value.name = visitorStore.name;
+    form.value.email = visitorStore.email;
+    form.value.website = visitorStore.website;
+  },
+  { immediate: true },
+);
 
 const {
   showEmotePicker,
@@ -305,16 +356,18 @@ const onSubmit = async () => {
   }
   submitting.value = true;
   try {
-    const avatar = await buildAvatarSvg();
+    const avatar = hasAvailableSession.value
+      ? authAvatar.value || await buildAvatarSvg()
+      : await buildAvatarSvg();
     await request.post("/comments", {
       targetId: props.targetId,
       parentId: replyTo.value?.id || null,
       name: name || "楼主",
       email: email || "14945447@qq.com",
-      website: form.value.website || undefined,
+      website: hasAvailableSession.value ? undefined : form.value.website || undefined,
       avatar,
       content: form.value.content,
-      isAdmin: false,
+      isAdmin: hasAvailableSession.value,
     });
 
     visitorStore.setInfo({

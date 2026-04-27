@@ -16,6 +16,16 @@ class MessageController extends BaseController {
     return ctx.path.startsWith("/api/admin/");
   }
 
+  parseBoolean(value) {
+    if (typeof value === "boolean") return value;
+    if (typeof value === "string") {
+      const normalized = value.trim().toLowerCase();
+      if (["true", "1", "yes", "on"].includes(normalized)) return true;
+      if (["false", "0", "no", "off"].includes(normalized)) return false;
+    }
+    return false;
+  }
+
   async create(ctx) {
     try {
       const payload = ctx.request.body || {};
@@ -25,6 +35,8 @@ class MessageController extends BaseController {
       }).toLowerCase();
       const website = normalizeHttpUrl(payload.website);
       const content = sanitizePlainText(payload.content);
+      const isPrivate = this.parseBoolean(payload.isPrivate);
+      const requireEmailNotification = this.parseBoolean(payload.requireEmailNotification);
 
       if (!name || !email || !content) {
         this.throwHttpError("名称、邮箱和内容为必填项", HttpStatus.BAD_REQUEST);
@@ -51,6 +63,8 @@ class MessageController extends BaseController {
         website: website || undefined,
         avatar,
         content: filteredContent,
+        isPrivate,
+        requireEmailNotification,
         status: "approved",
         ip: client.ip,
         userAgent: client.userAgent,
@@ -62,17 +76,21 @@ class MessageController extends BaseController {
         location,
       });
 
-      await sendEmail({
-        email,
-        type: 5,
-        name,
-        content: filteredContent,
-      });
+      if (!requireEmailNotification) {
+        await sendEmail({
+          email,
+          type: 5,
+          name,
+          content: filteredContent,
+        });
+      }
       await sendEmail({
         email: process.env.ADMIN_EMAIL || process.env.EMAIL_USER,
         type: 10,
         name,
         content: filteredContent,
+        isPrivate,
+        requireEmailNotification,
       });
 
       this.created(ctx, doc, "留言成功");
@@ -84,12 +102,16 @@ class MessageController extends BaseController {
   // GET /api/messages?page=1&pageSize=10&status=approved  分页查询留言，附带表态计数
   async list(ctx) {
     try {
-      const { page = 1, pageSize = 10, status } = ctx.query;
+      const { page = 1, pageSize = 10, status, isPrivate } = ctx.query;
       const filter = {};
       if (this.isAdminRequest(ctx)) {
         if (status) filter.status = status;
+        if (typeof isPrivate !== "undefined") {
+          filter.isPrivate = this.parseBoolean(isPrivate) ? true : { $ne: true };
+        }
       } else {
         filter.status = "approved";
+        filter.isPrivate = { $ne: true };
       }
 
       const { items, pagination } = await messageService.paginate(filter, {

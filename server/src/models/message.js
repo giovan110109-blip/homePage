@@ -17,6 +17,8 @@ const MessageSchema = new mongoose.Schema({
     website: { type: String, trim: true },
     avatar: { type: String, trim: true },
     content: { type: String, required: true, trim: true },
+    isPrivate: { type: Boolean, default: false },
+    requireEmailNotification: { type: Boolean, default: false },
     status: { type: String, enum: ['pending', 'approved'], default: 'pending' },
     ip: { type: String, trim: true },
     userAgent: { type: String, trim: true },

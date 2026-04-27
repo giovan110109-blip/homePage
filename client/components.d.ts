@@ -41,6 +41,7 @@ declare module 'vue' {
     LivePhotoMute: typeof import('./src/components/photo/LivePhotoMute.vue')['default']
     Loading: typeof import('./src/components/ui/Loading.vue')['default']
     LoadingIndicator: typeof import('./src/components/photo/LoadingIndicator.vue')['default']
+    LoginModal: typeof import('./src/components/auth/LoginModal.vue')['default']
     MagicCard: typeof import('./src/components/ui/MagicCard.vue')['default']
     Modal: typeof import('./src/components/ui/Modal.vue')['default']
     MomentCard: typeof import('./src/components/moment/MomentCard.vue')['default']

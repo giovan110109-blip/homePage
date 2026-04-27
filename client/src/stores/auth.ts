@@ -38,6 +38,13 @@ export const useAuthStore = defineStore('auth', {
 
   getters: {
     isLoggedIn: (state) => !!state.token,
+    displayName: (state) => state.user?.nickname || state.user?.username || '',
+    userEmail: (state) => state.user?.email || '',
+    userAvatar: (state) => state.user?.avatar || '',
+    isSessionExpired: (state) => {
+      if (!state.expiresAt) return false
+      return new Date(state.expiresAt).getTime() <= Date.now()
+    },
     isMenusCacheValid: (state) => {
       if (state.menus.length === 0) return false
       const CACHE_DURATION = 5 * 60 * 1000

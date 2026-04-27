@@ -1,7 +1,7 @@
 const { replaceEmotes } = require('./emoteHelper');
 
 function getEmailTemplate(data) {
-  const { type, name, content, commenterName } = data;
+  const { type, name, content, commenterName, isPrivate, requireEmailNotification } = data;
   let template = "";
   
   const processedContent = replaceEmotes(content, { size: 32 });
@@ -140,6 +140,14 @@ function getEmailTemplate(data) {
       `;
       break;
     case 10:
+      const optionsMarkup = `
+        <p style="margin: 8px 0 0 0; font-size: 15px; color: #666; line-height: 1.6;">
+            私密留言：${isPrivate ? "是" : "否"}
+        </p>
+        <p style="margin: 8px 0 0 0; font-size: 15px; color: #666; line-height: 1.6;">
+            需要邮件通知：${requireEmailNotification ? "是" : "否"}
+        </p>
+      `;
       template = `
         <table width="100%" border="0" cellpadding="0" cellspacing="0">
             <tr>
@@ -154,6 +162,7 @@ function getEmailTemplate(data) {
                     <p style="margin: 8px 0 0 0; font-size: 15px; color: #666; line-height: 1.6;">
                         留言内容：${processedContent}
                     </p>
+                    ${optionsMarkup}
                 </td>
             </tr>
             <tr>
