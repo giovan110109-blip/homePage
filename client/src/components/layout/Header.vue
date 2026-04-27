@@ -73,7 +73,7 @@
       </div>
 
       <!-- 移动端菜单 -->
-      <Transition name="mobile-menu">
+      <AppTransition name="mobile-menu">
         <div
           v-show="mobileMenuOpen"
           class="md:hidden overflow-hidden border-t border-gray-300 dark:border-gray-700"
@@ -99,13 +99,14 @@
             </div>
           </div>
         </div>
-      </Transition>
+      </AppTransition>
     </nav>
   </header>
 </template>
 
 <script setup lang="ts">
 import { ref } from "vue";
+import AppTransition from "@/components/ui/AppTransition";
 import { useSiteInfoStore } from "@/stores/siteInfo";
 import ThemeToggle from "@/components/ui/ThemeToggle.vue";
 

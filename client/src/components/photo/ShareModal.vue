@@ -1,5 +1,7 @@
 <script lang="ts" setup>
-import { motion, AnimatePresence } from 'motion-v'
+import { motion } from 'motion-v'
+import AnimatePresence from '@/components/ui/AnimatePresence'
+import Icon from '@/components/ui/Icon.vue'
 import { getPhotoOriginalUrl } from '@/utils'
 
 interface Props {

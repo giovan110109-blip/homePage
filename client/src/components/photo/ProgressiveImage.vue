@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { WebGLImageViewer } from "@decanter/webgl-image";
+import Icon from "@/components/ui/Icon.vue";
 import { useImageLoader } from "@/composables/useImageLoader";
 import { useWebGLWorkState } from "@/composables/useWebGLWorkState";
 

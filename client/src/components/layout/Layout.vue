@@ -36,15 +36,17 @@
     </div>
     
     <main :class="['flex-1', 'relative', 'z-10', showLayoutChrome?'pt-16':'']">
-    <Transition 
-      :name="transitionName" 
-      mode="out-in"
-      @before-enter="onBeforeEnter"
-      @enter="onEnter"
-      @leave="onLeave"
-    >
-      <RouterView :key="$route.path" />
-    </Transition>
+    <RouterView v-slot="{ Component, route: currentRoute }">
+      <AppTransition 
+        :name="transitionName" 
+        mode="out-in"
+        @before-enter="onBeforeEnter"
+        @enter="onEnter"
+        @leave="onLeave"
+      >
+        <component :is="Component" :key="currentRoute.path" />
+      </AppTransition>
+    </RouterView>
     </main>
     
     <Footer v-if="showLayoutChrome" />
@@ -53,6 +55,7 @@
 
 <script setup lang="ts">
 import { useRoute } from 'vue-router'
+import AppTransition from '@/components/ui/AppTransition'
 import Header from './Header.vue'
 import Footer from './Footer.vue'
 

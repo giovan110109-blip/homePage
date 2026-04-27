@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { motion } from 'motion-v'
 import { useMediaQuery } from "@vueuse/core"
+import Icon from '@/components/ui/Icon.vue'
 import { getPhotoOriginalUrl } from '@/utils'
 
 interface Props {

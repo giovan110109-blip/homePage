@@ -1,13 +1,18 @@
 <script setup lang="ts">
-import { AnimatePresence, motion, useDomRef } from "motion-v";
+import { motion, useDomRef } from "motion-v";
 import { Swiper, SwiperSlide } from "swiper/vue";
 import { Keyboard, Virtual } from "swiper/modules";
 import "swiper/css";
 import "swiper/css/virtual";
 import ThumbHash from "@/components/ui/ThumbHash.vue";
+import AnimatePresence from "@/components/ui/AnimatePresence";
 import { ChevronLeft, ChevronRight, Info, Share2, X } from "lucide-vue-next";
 import { useLivePhotoCache } from "@/composables/useLivePhotoCache";
 import { getPhotoOriginalUrl } from '@/utils';
+
+defineOptions({
+  inheritAttrs: false,
+});
 
 const emit = defineEmits<{
   (e: "update:modelValue", value: boolean): void;

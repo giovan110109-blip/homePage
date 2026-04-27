@@ -116,7 +116,7 @@
     </div>
 
     <!-- 评论区展开 -->
-    <transition
+    <AppTransition
       enter-active-class="transition-all duration-300 ease-out"
       leave-active-class="transition-all duration-200 ease-in"
       enter-from-class="opacity-0 max-h-0"
@@ -130,7 +130,7 @@
           @commented="handleCommented"
         />
       </div>
-    </transition>
+    </AppTransition>
 
     <!-- 图片查看器 -->
     <PhotoViewer
@@ -144,6 +144,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
+import AppTransition from '@/components/ui/AppTransition'
 import { Heart, MessageCircle, MapPin } from 'lucide-vue-next'
 import CommentBox from '@/components/ui/CommentBox.vue'
 import LivePhoto from '@/components/photo/LivePhoto.vue'

@@ -1,10 +1,12 @@
 <template>
-  <el-config-provider :locale="zhCn">
-    <Layout />
-  </el-config-provider>
+  <div class="contents">
+    <AppConfigProvider>
+      <Layout />
+    </AppConfigProvider>
+  </div>
 </template>
 
 <script setup lang="ts">
-import zhCn from 'element-plus/es/locale/lang/zh-cn'
+import AppConfigProvider from "@/components/ui/AppConfigProvider";
 import Layout from "@/components/layout/Layout.vue";
 </script>

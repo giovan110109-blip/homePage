@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { AnimatePresence, motion } from 'motion-v'
+import { motion } from 'motion-v'
+import AnimatePresence from '@/components/ui/AnimatePresence'
+import Icon from '@/components/ui/Icon.vue'
 
 export interface LoadingState {
   isVisible: boolean

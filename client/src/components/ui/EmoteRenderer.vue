@@ -1,19 +1,22 @@
 <template>
-  <div class="emote-renderer" v-html="renderedHtml" @click="handleClick"></div>
+  <div v-bind="$attrs" class="contents">
+    <div class="emote-renderer" v-html="renderedHtml" @click="handleClick"></div>
 
-  <Teleport to="body">
-    <Transition name="fade">
-      <div v-if="showPreview" class="emote-preview-overlay" @click="closePreview">
-        <div class="emote-preview-modal">
-          <img :src="previewUrl" :alt="previewName" class="emote-preview-image" />
+    <Teleport to="body">
+      <AppTransition name="fade">
+        <div v-if="showPreview" class="emote-preview-overlay" @click="closePreview">
+          <div class="emote-preview-modal">
+            <img :src="previewUrl" :alt="previewName" class="emote-preview-image" />
+          </div>
         </div>
-      </div>
-    </Transition>
-  </Teleport>
+      </AppTransition>
+    </Teleport>
+  </div>
 </template>
 
 <script setup lang="ts">
 import { computed, ref } from "vue";
+import AppTransition from "@/components/ui/AppTransition";
 import { useEmotes } from "@/composables/useEmotes";
 import { sanitizeHtml, sanitizeText } from "@/utils/sanitize";
 

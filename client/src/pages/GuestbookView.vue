@@ -38,13 +38,13 @@
                     <line x1="15" y1="9" x2="15.01" y2="9"></line>
                   </svg>
                 </button>
-                <transition enter-active-class="transition-all duration-200 ease-out" leave-active-class="transition-all duration-150 ease-in" enter-from-class="opacity-0 scale-95" enter-to-class="opacity-100 scale-100" leave-from-class="opacity-100 scale-100" leave-to-class="opacity-0 scale-95">
+                <AppTransition enter-active-class="transition-all duration-200 ease-out" leave-active-class="transition-all duration-150 ease-in" enter-from-class="opacity-0 scale-95" enter-to-class="opacity-100 scale-100" leave-from-class="opacity-100 scale-100" leave-to-class="opacity-0 scale-95">
                   <Teleport to="body">
                     <div v-if="showEmotePicker" class="fixed" :style="{ top: messageEmotePickerPosition.top + 'px', right: messageEmotePickerPosition.right + 'px', zIndex: 99999 }" ref="messageEmotePickerRef" @click.stop>
                       <EmotePicker @select="insertEmote" />
                     </div>
                   </Teleport>
-                </transition>
+                </AppTransition>
               </div>
             </div>
             <div class="flex items-center justify-end space-x-4">
@@ -107,9 +107,9 @@
                 评论{{ message.commentCount ? ` (${message.commentCount})` : '' }}
               </div>
             </div>
-            <transition enter-active-class="transition-all duration-800 ease-in-out overflow-hidden" leave-active-class="transition-all duration-800 ease-in-out overflow-hidden" enter-from-class="max-h-0 opacity-0" enter-to-class="max-h-[600px] opacity-100" leave-from-class="max-h-[600px] opacity-100" leave-to-class="max-h-0 opacity-0">
+            <AppTransition enter-active-class="transition-all duration-800 ease-in-out overflow-hidden" leave-active-class="transition-all duration-800 ease-in-out overflow-hidden" enter-from-class="max-h-0 opacity-0" enter-to-class="max-h-[600px] opacity-100" leave-from-class="max-h-[600px] opacity-100" leave-to-class="max-h-0 opacity-0">
               <CommentBox v-if="showIndex === index" :target-id="message.id" />
-            </transition>
+            </AppTransition>
           </div>
           <div
             v-if="hasMore"
@@ -143,6 +143,7 @@
 import { ref, reactive, onMounted, onUnmounted, watch, nextTick } from "vue";
 import { ExternalLink, Apple, Chrome, Compass, Monitor, Laptop, Smartphone, Globe } from "lucide-vue-next";
 import { ElMessage } from "element-plus";
+import AppTransition from "@/components/ui/AppTransition";
 import AppButton from "@/components/ui/AppButton.vue";
 import Loading from "@/components/ui/Loading.vue";
 import CommentBox from "@/components/ui/CommentBox.vue";

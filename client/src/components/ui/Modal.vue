@@ -1,6 +1,6 @@
 <template>
   <Teleport to="body">
-    <Transition
+    <AppTransition
       enter-from-class="opacity-0"
       enter-to-class="opacity-100"
       leave-from-class="opacity-100"
@@ -13,7 +13,7 @@
             @click="handleBackdropClick"
           ></div>
           
-          <Transition
+          <AppTransition
             enter-from-class="opacity-0"
             enter-to-class="opacity-100"
             leave-from-class="opacity-100"
@@ -54,15 +54,16 @@
                 <slot name="footer" />
               </div>
             </div>
-          </Transition>
+          </AppTransition>
         </div>
       </div>
-    </Transition>
+    </AppTransition>
   </Teleport>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted } from 'vue'
+import AppTransition from '@/components/ui/AppTransition'
 import { clsx } from 'clsx'
 
 interface Props {

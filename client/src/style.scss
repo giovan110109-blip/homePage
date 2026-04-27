@@ -100,6 +100,11 @@ body,
   min-height: 100%;
 }
 
+html,
+body {
+  position: relative;
+}
+
 body {
   margin: 0;
   background: var(--theme-page-gradient);

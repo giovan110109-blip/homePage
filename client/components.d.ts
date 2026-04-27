@@ -13,6 +13,7 @@ declare module 'vue' {
   export interface GlobalComponents {
     ApiButton: typeof import('./src/components/Api-Button.vue')['default']
     AppButton: typeof import('./src/components/ui/AppButton.vue')['default']
+    AppConfigProvider: typeof import('./src/components/ui/AppConfigProvider.vue')['default']
     ArticleComments: typeof import('./src/components/article/ArticleComments.vue')['default']
     Button: typeof import('./src/components/ui/Button.vue')['default']
     Card: typeof import('./src/components/ui/Card.vue')['default']
@@ -20,7 +21,6 @@ declare module 'vue' {
     CommentItem: typeof import('./src/components/ui/CommentItem.vue')['default']
     DotGrid: typeof import('./src/components/DotGrid.vue')['default']
     ElButton: typeof import('element-plus/es')['ElButton']
-    ElConfigProvider: typeof import('element-plus/es')['ElConfigProvider']
     ElEmpty: typeof import('element-plus/es')['ElEmpty']
     ElImageViewer: typeof import('element-plus/es')['ElImageViewer']
     ElPopover: typeof import('element-plus/es')['ElPopover']
@@ -31,6 +31,7 @@ declare module 'vue' {
     Footer: typeof import('./src/components/layout/Footer.vue')['default']
     GalleryThumbnail: typeof import('./src/components/photo/GalleryThumbnail.vue')['default']
     Header: typeof import('./src/components/layout/Header.vue')['default']
+    Icon: typeof import('./src/components/ui/Icon.vue')['default']
     IconCloud: typeof import('./src/components/ui/IconCloud.vue')['default']
     InfoPanel: typeof import('./src/components/photo/InfoPanel.vue')['default']
     Layout: typeof import('./src/components/layout/Layout.vue')['default']
@@ -60,6 +61,7 @@ declare module 'vue' {
     ThemeToggle: typeof import('./src/components/ui/ThemeToggle.vue')['default']
     ThumbHash: typeof import('./src/components/ui/ThumbHash.vue')['default']
     Timeline: typeof import('./src/components/ui/Timeline.vue')['default']
+    UButton: typeof import('./src/components/ui/UButton.vue')['default']
     VideoPlayer: typeof import('./src/components/ui/VideoPlayer.vue')['default']
   }
 }

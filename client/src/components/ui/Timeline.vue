@@ -35,11 +35,7 @@ const { scrollYProgress } = useScroll({
 });
 
 const opacityTransform = useTransform(scrollYProgress, [0, 0.1], [0, 1]);
-let heightTransform = useTransform(scrollYProgress, [0, 1], [0, 0]);
-
-watch(height, (newHeight) => {
-  heightTransform = useTransform(scrollYProgress, [0, 1], [0, newHeight]);
-});
+const heightTransform = computed(() => scrollYProgress.get() * height.value);
 </script>
 
 <template>

@@ -67,7 +67,7 @@
               <line x1="15" y1="9" x2="15.01" y2="9"></line>
             </svg>
           </button>
-          <transition
+          <AppTransition
             enter-active-class="transition-all duration-200 ease-out"
             leave-active-class="transition-all duration-150 ease-in"
             enter-from-class="opacity-0 scale-95"
@@ -90,7 +90,7 @@
                 <EmotePicker @select="insertEmote" />
               </div>
             </Teleport>
-          </transition>
+          </AppTransition>
         </div>
         <div class="flex items-center justify-end space-x-2">
           <AppButton
@@ -134,6 +134,7 @@
 <script setup lang="ts">
 import { ElMessage } from "element-plus";
 import { X } from "lucide-vue-next";
+import AppTransition from "@/components/ui/AppTransition";
 import request from "@/api/request";
 import { buildAvatarSvg } from "@/utils/avatarSvg";
 import { useVisitorStore } from "@/stores/visitor";
