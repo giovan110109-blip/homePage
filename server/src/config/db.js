@@ -57,6 +57,8 @@ const connectDB = async () => {
         mongoose.connection.on('reconnected', () => {
             logger.info('MongoDB 已重连');
         });
+
+        return conn;
     } catch (error) {
         logger.error('MongoDB 连接失败:', error);
         process.exit(1);

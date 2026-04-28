@@ -70,12 +70,24 @@
             {{ formatDate(comment.createdAt) }}
           </span>
         </div>
-        <button
-          class="text-xs text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 cursor-pointer whitespace-nowrap"
-          @click="$emit('reply', comment)"
-        >
-          回复
-        </button>
+        <div class="ml-2 inline-flex items-center gap-1">
+          <button
+            class="text-xs text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 cursor-pointer whitespace-nowrap"
+            @click="$emit('reply', comment)"
+          >
+            回复
+          </button>
+          <button
+            v-if="canDelete"
+            class="inline-flex h-7 w-7 items-center justify-center rounded-md bg-red-50 text-red-500 transition-all hover:bg-red-100 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-red-500/10 dark:text-red-400 dark:hover:bg-red-500/15 dark:hover:text-red-300"
+            :disabled="deleting"
+            title="删除评论"
+            aria-label="删除评论"
+            @click="handleDelete"
+          >
+            <Trash2 class="h-3.5 w-3.5" />
+          </button>
+        </div>
       </div>
     </div>
 
@@ -99,6 +111,8 @@
 </template>
 
 <script setup lang="ts">
+import { computed, ref } from "vue";
+import { ElMessage, ElMessageBox } from "element-plus";
 import {
   ExternalLink,
   Apple,
@@ -108,10 +122,14 @@ import {
   Laptop,
   Smartphone,
   Globe,
+  Trash2,
 } from "lucide-vue-next";
+import request from "@/api/request";
 import { getExternalLinkRedirectUrl } from "@/utils/external-link";
 import { getAssetURL } from "@/utils/env";
 import { normalizeHttpUrl } from "@/utils/url";
+import { useAuthStore } from "@/stores/auth";
+import { useVisitorStore } from "@/stores/visitor";
 import EmoteRenderer from "@/components/ui/EmoteRenderer.vue";
 
 interface CommentType {
@@ -140,6 +158,27 @@ const emit = defineEmits<{
   (e: "reply-submitted"): void;
   (e: "comment-deleted"): void;
 }>();
+
+const authStore = useAuthStore();
+const visitorStore = useVisitorStore();
+const deleting = ref(false);
+
+const normalizeEmail = (email?: string) => String(email || "").trim().toLowerCase();
+
+const isAdminPlus = computed(
+  () =>
+    authStore.isLoggedIn &&
+    !authStore.isSessionExpired &&
+    ((Array.isArray(authStore.user?.roles) &&
+      authStore.user.roles.some((role) => role?.code === "admin-plus")) ||
+      (authStore.user as any)?.role === "admin-plus"),
+);
+
+const savedEmail = computed(() => normalizeEmail(visitorStore.email));
+const isOwnComment = computed(
+  () => !!savedEmail.value && normalizeEmail(props.comment.email) === savedEmail.value,
+);
+const canDelete = computed(() => isAdminPlus.value || isOwnComment.value);
 
 const normalizeWebsite = (url: string) => {
   if (!url) return "";
@@ -235,4 +274,34 @@ function formatDate(value: string | Date) {
     return date.toLocaleDateString("zh-CN");
   }
 }
+
+const handleDelete = async () => {
+  try {
+    await ElMessageBox.confirm("确认删除这条评论吗？", "删除评论", {
+      confirmButtonText: "删除",
+      cancelButtonText: "取消",
+      type: "warning",
+    });
+  } catch (_error) {
+    return;
+  }
+
+  deleting.value = true;
+  try {
+    if (isAdminPlus.value) {
+      await request.delete(`/admin/comments/${props.comment.id}`);
+    } else {
+      await request.delete(`/comments/${props.comment.id}`, {
+        params: { email: savedEmail.value },
+      });
+    }
+    ElMessage.success("评论已删除");
+    emit("comment-deleted");
+  } catch (error) {
+    const msg = (error as any)?.message || "删除失败，请稍后再试";
+    ElMessage.error(msg);
+  } finally {
+    deleting.value = false;
+  }
+};
 </script>

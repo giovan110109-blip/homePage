@@ -357,8 +357,9 @@ const onSubmit = async () => {
   submitting.value = true;
   try {
     const avatar = hasAvailableSession.value
-      ? authAvatar.value || await buildAvatarSvg()
+      ? resolvedAuthAvatar.value || await buildAvatarSvg()
       : await buildAvatarSvg();
+
     await request.post("/comments", {
       targetId: props.targetId,
       parentId: replyTo.value?.id || null,

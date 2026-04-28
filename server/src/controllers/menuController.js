@@ -4,6 +4,42 @@ const { Response } = require('../utils/response')
 const { NotFoundError, ValidationError } = require('../utils/errors')
 
 class MenuController {
+  normalizeActions(actions = []) {
+    if (!Array.isArray(actions)) {
+      return []
+    }
+
+    return actions
+      .map((item, index) => {
+        if (!item || typeof item !== 'object') {
+          return null
+        }
+
+        const key = typeof item.key === 'string' ? item.key.trim() : ''
+        const name = typeof item.name === 'string' ? item.name.trim() : ''
+
+        if (!key || !name) {
+          return null
+        }
+
+        return {
+          key,
+          name,
+          description: typeof item.description === 'string' ? item.description.trim() : '',
+          sort: Number(item.sort) || index,
+          status: item.status === 'inactive' ? 'inactive' : 'active',
+        }
+      })
+      .filter(Boolean)
+  }
+
+  serializeMenu(menu) {
+    return {
+      ...menu,
+      actions: this.normalizeActions(menu.actions),
+    }
+  }
+
   async list(ctx) {
     try {
       const { status } = ctx.query
@@ -14,8 +50,8 @@ class MenuController {
       const menus = await Menu.find(query)
         .sort({ sort: 1, createdAt: 1 })
         .lean()
-      
-      const tree = this.buildTree(menus)
+
+      const tree = this.buildTree(menus.map((item) => this.serializeMenu(item)))
       
       ctx.body = Response.success(tree)
     } catch (error) {
@@ -35,11 +71,11 @@ class MenuController {
   async getAll(ctx) {
     try {
       const menus = await Menu.find({ status: 'active' })
-        .select('_id name path icon parentId sort status')
+        .select('_id name path icon parentId actions sort status')
         .sort({ sort: 1 })
         .lean()
-      
-      ctx.body = Response.success(menus)
+
+      ctx.body = Response.success(menus.map((item) => this.serializeMenu(item)))
     } catch (error) {
       throw error
     }
@@ -47,7 +83,7 @@ class MenuController {
   
   async create(ctx) {
     try {
-      const { name, path, icon, parentId, sort } = ctx.request.body
+      const { name, path, icon, parentId, sort, actions } = ctx.request.body
       
       if (!name || !path) {
         throw new ValidationError('菜单名称和路径不能为空')
@@ -58,12 +94,14 @@ class MenuController {
         path,
         icon,
         parentId: parentId || null,
+        actions: this.normalizeActions(actions),
         sort: sort || 0
       })
       
       await menu.save()
-      
-      ctx.body = Response.success(menu, '创建成功')
+
+      const createdMenu = await Menu.findById(menu._id).lean()
+      ctx.body = Response.success(this.serializeMenu(createdMenu), '创建成功')
     } catch (error) {
       throw error
     }
@@ -72,7 +110,7 @@ class MenuController {
   async update(ctx) {
     try {
       const { id } = ctx.params
-      const { name, path, icon, parentId, sort, status } = ctx.request.body
+      const { name, path, icon, parentId, sort, status, actions } = ctx.request.body
       
       const menu = await Menu.findById(id)
       if (!menu) {
@@ -83,13 +121,15 @@ class MenuController {
       if (path) menu.path = path
       if (icon !== undefined) menu.icon = icon
       if (parentId !== undefined) menu.parentId = parentId || null
+      if (actions !== undefined) menu.actions = this.normalizeActions(actions)
       if (sort !== undefined) menu.sort = sort
       if (status) menu.status = status
       menu.updatedAt = new Date()
       
       await menu.save()
-      
-      ctx.body = Response.success(menu, '更新成功')
+
+      const updatedMenu = await Menu.findById(menu._id).lean()
+      ctx.body = Response.success(this.serializeMenu(updatedMenu), '更新成功')
     } catch (error) {
       throw error
     }

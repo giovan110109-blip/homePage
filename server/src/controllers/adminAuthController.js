@@ -7,11 +7,12 @@ const Role = require('../models/role');
 const Menu = require('../models/menu');
 const LoginAttempt = require('../models/loginAttempt');
 const productAccessService = require('../services/productAccessService');
+const { collectRoleActionKeys } = require('../utils/adminRbac');
 
 const MAX_ATTEMPTS = 5;
 const LOCKOUT_TIME = 15 * 60 * 1000;
 
-const serializeAdminUser = (user) => ({
+const serializeAdminUser = (user, permissionCodes = []) => ({
   _id: user._id,
   username: user.username,
   nickname: user.nickname,
@@ -24,7 +25,8 @@ const serializeAdminUser = (user) => ({
     _id: role._id,
     name: role.name,
     code: role.code
-  }))
+  })),
+  permissionCodes,
 });
 
 const hasSuperAdminRole = (user) =>
@@ -46,6 +48,23 @@ const ensureProductAccessForUser = async (user, productCode) => {
     error.statusCode = HttpStatus.FORBIDDEN;
     throw error;
   }
+};
+
+const resolveAdminPermissionCodes = async (user) => {
+  if (!user?.roleIds?.length || hasSuperAdminRole(user)) {
+    return [];
+  }
+
+  const roleIds = user.roleIds.map((role) => role._id || role).filter(Boolean);
+  const roles = await Role.find({
+    _id: { $in: roleIds },
+    status: 'active',
+  })
+    .select('actionKeys menuIds')
+    .populate('menuIds', 'path actions')
+    .lean();
+
+  return collectRoleActionKeys(roles);
 };
 
 class AdminAuthController extends BaseController {
@@ -98,7 +117,8 @@ class AdminAuthController extends BaseController {
       user.lastLoginAt = new Date();
       await user.save();
 
-      const userInfo = serializeAdminUser(user);
+      const permissionCodes = await resolveAdminPermissionCodes(user);
+      const userInfo = serializeAdminUser(user, permissionCodes);
       const token = await issueToken(userInfo);
       const tokenData = await verifyToken(token);
       this.ok(ctx, {
@@ -142,7 +162,8 @@ class AdminAuthController extends BaseController {
         this.throwHttpError('账号已禁用', HttpStatus.FORBIDDEN);
       }
 
-      const nextUser = serializeAdminUser(user);
+      const permissionCodes = await resolveAdminPermissionCodes(user);
+      const nextUser = serializeAdminUser(user, permissionCodes);
       const nextToken = await issueToken(nextUser);
       await revokeToken(oldToken);
 

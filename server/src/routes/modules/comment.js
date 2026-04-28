@@ -7,5 +7,7 @@ const router = new Router({ prefix: '/api/comments' });
 router.post('/', commentController.create.bind(commentController));
 // 获取评论列表
 router.get('/', commentController.list.bind(commentController));
+// 使用当前保存邮箱删除自己的评论或回复
+router.delete('/:id', commentController.removeOwn.bind(commentController));
 
 module.exports = router;

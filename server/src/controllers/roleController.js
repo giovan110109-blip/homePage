@@ -2,11 +2,75 @@ const Role = require('../models/role')
 const Menu = require('../models/menu')
 const User = require('../models/user')
 const { Response } = require('../utils/response')
-const { NotFoundError, ValidationError } = require('../utils/errors')
+const { ForbiddenError, NotFoundError, ValidationError } = require('../utils/errors')
+const { buildActionOwnerMap, normalizeActionKeys } = require('../utils/adminRbac')
 
 class RoleController {
+  serializeRole(role) {
+    if (!role) {
+      return null
+    }
+
+    const source = typeof role.toObject === 'function' ? role.toObject() : role
+    return {
+      ...source,
+      actionKeys: normalizeActionKeys(source.actionKeys),
+    }
+  }
+
+  assertPermission(ctx, permissionKey) {
+    const roleCodes = Array.isArray(ctx.state.user?.roles)
+      ? ctx.state.user.roles.map((role) => role?.code)
+      : []
+
+    if (roleCodes.includes('admin-plus')) {
+      return
+    }
+
+    const permissionCodes = Array.isArray(ctx.state.user?.permissionCodes)
+      ? ctx.state.user.permissionCodes
+      : []
+
+    if (!permissionCodes.includes(permissionKey)) {
+      throw new ForbiddenError('当前账号没有执行该操作的按钮权限')
+    }
+  }
+
+  async resolveRolePermissions(payload = {}) {
+    const menus = await Menu.find({})
+      .select('_id path actions')
+      .lean()
+
+    const actionOwnerMap = buildActionOwnerMap(menus)
+    const actionKeys = normalizeActionKeys(payload.actionKeys)
+    const invalidActionKeys = actionKeys.filter((key) => !actionOwnerMap.has(key))
+
+    if (invalidActionKeys.length > 0) {
+      throw new ValidationError(`存在无效按钮权限：${invalidActionKeys.join('、')}`)
+    }
+
+    const menuIds = new Set(
+      Array.isArray(payload.menuIds)
+        ? payload.menuIds.map((item) => String(item))
+        : []
+    )
+
+    actionKeys.forEach((key) => {
+      const owner = actionOwnerMap.get(key)
+      if (owner?.menuId) {
+        menuIds.add(owner.menuId)
+      }
+    })
+
+    return {
+      menuIds: Array.from(menuIds),
+      actionKeys,
+    }
+  }
+
   async list(ctx) {
     try {
+      this.assertPermission(ctx, 'admin.roles.read')
       const { page = 1, limit = 10, name, status } = ctx.query
       const skip = (parseInt(page) - 1) * parseInt(limit)
       
@@ -19,13 +83,15 @@ class RoleController {
           .sort({ createdAt: -1 })
           .skip(skip)
           .limit(parseInt(limit))
-          .populate('menuIds', 'name path icon parentId sort status')
+          .populate('menuIds', 'name path icon parentId actions sort status')
           .lean(),
         Role.countDocuments(query)
       ])
+
+      const items = roles.map((role) => this.serializeRole(role))
       
       ctx.body = Response.success({
-        data: roles,
+        data: items,
         meta: {
           page: parseInt(page),
           pageSize: parseInt(limit),
@@ -40,6 +106,7 @@ class RoleController {
   
   async getAll(ctx) {
     try {
+      this.assertPermission(ctx, 'admin.roles.read')
       const roles = await Role.find({ status: 'active' })
         .select('_id name code')
         .lean()
@@ -51,7 +118,8 @@ class RoleController {
   
   async create(ctx) {
     try {
-      const { name, code, description, menuIds = [] } = ctx.request.body
+      this.assertPermission(ctx, 'admin.roles.create')
+      const { name, code, description } = ctx.request.body
       
       if (!name || !code) {
         throw new ValidationError('角色名称和编码不能为空')
@@ -62,16 +130,23 @@ class RoleController {
         throw new ValidationError('角色编码已存在')
       }
       
+      const { menuIds, actionKeys } = await this.resolveRolePermissions(ctx.request.body)
+
       const role = new Role({
         name,
         code,
         description,
-        menuIds
+        menuIds,
+        actionKeys,
       })
       
       await role.save()
-      
-      ctx.body = Response.success(role, '创建成功')
+
+      const createdRole = await Role.findById(role._id)
+        .populate('menuIds', 'name path icon parentId actions sort status')
+        .lean()
+
+      ctx.body = Response.success(this.serializeRole(createdRole), '创建成功')
     } catch (error) {
       throw error
     }
@@ -79,8 +154,9 @@ class RoleController {
   
   async update(ctx) {
     try {
+      this.assertPermission(ctx, 'admin.roles.update')
       const { id } = ctx.params
-      const { name, code, description, menuIds, status } = ctx.request.body
+      const { name, code, description, status } = ctx.request.body
       
       const role = await Role.findById(id)
       if (!role) {
@@ -94,16 +170,39 @@ class RoleController {
         }
       }
       
+      const shouldUpdatePermissions =
+        ctx.request.body.menuIds !== undefined ||
+        ctx.request.body.actionKeys !== undefined
+      const resolvedPermissions = shouldUpdatePermissions
+        ? await this.resolveRolePermissions({
+            menuIds:
+              ctx.request.body.menuIds !== undefined
+                ? ctx.request.body.menuIds
+                : role.menuIds,
+            actionKeys:
+              ctx.request.body.actionKeys !== undefined
+                ? ctx.request.body.actionKeys
+                : role.actionKeys,
+          })
+        : null
+
       if (name) role.name = name
       if (code) role.code = code
       if (description !== undefined) role.description = description
-      if (menuIds) role.menuIds = menuIds
+      if (resolvedPermissions) {
+        role.menuIds = resolvedPermissions.menuIds
+        role.actionKeys = resolvedPermissions.actionKeys
+      }
       if (status) role.status = status
       role.updatedAt = new Date()
       
       await role.save()
-      
-      ctx.body = Response.success(role, '更新成功')
+
+      const updatedRole = await Role.findById(role._id)
+        .populate('menuIds', 'name path icon parentId actions sort status')
+        .lean()
+
+      ctx.body = Response.success(this.serializeRole(updatedRole), '更新成功')
     } catch (error) {
       throw error
     }
@@ -111,6 +210,7 @@ class RoleController {
   
   async delete(ctx) {
     try {
+      this.assertPermission(ctx, 'admin.roles.delete')
       const { id } = ctx.params
       
       const role = await Role.findById(id)
@@ -133,6 +233,7 @@ class RoleController {
   
   async getMenus(ctx) {
     try {
+      this.assertPermission(ctx, 'admin.roles.read')
       const { id } = ctx.params
       
       const role = await Role.findById(id).populate('menuIds')
@@ -140,7 +241,10 @@ class RoleController {
         throw new NotFoundError('角色不存在')
       }
       
-      ctx.body = Response.success(role.menuIds)
+      ctx.body = Response.success({
+        menus: role.menuIds,
+        actionKeys: normalizeActionKeys(role.actionKeys),
+      })
     } catch (error) {
       throw error
     }
@@ -148,19 +252,32 @@ class RoleController {
   
   async updateMenus(ctx) {
     try {
+      this.assertPermission(ctx, 'admin.roles.update')
       const { id } = ctx.params
-      const { menuIds } = ctx.request.body
       
       const role = await Role.findById(id)
       if (!role) {
         throw new NotFoundError('角色不存在')
       }
       
-      role.menuIds = menuIds
+      const resolvedPermissions = await this.resolveRolePermissions({
+        menuIds: ctx.request.body.menuIds,
+        actionKeys:
+          ctx.request.body.actionKeys !== undefined
+            ? ctx.request.body.actionKeys
+            : role.actionKeys,
+      })
+
+      role.menuIds = resolvedPermissions.menuIds
+      role.actionKeys = resolvedPermissions.actionKeys
       role.updatedAt = new Date()
       await role.save()
-      
-      ctx.body = Response.success(role, '更新成功')
+
+      const updatedRole = await Role.findById(role._id)
+        .populate('menuIds', 'name path icon parentId actions sort status')
+        .lean()
+
+      ctx.body = Response.success(this.serializeRole(updatedRole), '更新成功')
     } catch (error) {
       throw error
     }

@@ -1,10 +1,19 @@
 const mongoose = require('mongoose')
 
+const menuActionSchema = new mongoose.Schema({
+  key: { type: String, required: true, trim: true },
+  name: { type: String, required: true, trim: true },
+  description: { type: String, default: '', trim: true },
+  sort: { type: Number, default: 0 },
+  status: { type: String, enum: ['active', 'inactive'], default: 'active' },
+}, { _id: false })
+
 const menuSchema = new mongoose.Schema({
   name: { type: String, required: true },
   path: { type: String, required: true },
   icon: { type: String },
   parentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Menu', default: null },
+  actions: { type: [menuActionSchema], default: [] },
   sort: { type: Number, default: 0 },
   status: { type: String, enum: ['active', 'inactive'], default: 'active' },
   createdAt: { type: Date, default: Date.now },

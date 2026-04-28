@@ -15,6 +15,10 @@ const {
 } = require("../utils/inputSanitizer");
 
 class CommentController extends BaseController {
+  isAdminPlus(user) {
+    return Array.isArray(user?.roles) && user.roles.some((role) => role?.code === "admin-plus");
+  }
+
   async create(ctx) {
     try {
       const payload = ctx.request.body || {};
@@ -154,11 +158,41 @@ class CommentController extends BaseController {
 
   async remove(ctx) {
     try {
+      if (!this.isAdminPlus(ctx.state.user)) {
+        this.throwHttpError("仅 admin-plus 可删除所有评论", HttpStatus.FORBIDDEN);
+      }
+
       const removed = await Comment.findByIdAndDelete(ctx.params.id);
       if (!removed) {
         this.throwHttpError("评论未找到", HttpStatus.NOT_FOUND);
       }
       this.ok(ctx, removed, "评论已删除");
+    } catch (err) {
+      this.fail(ctx, err);
+    }
+  }
+
+  async removeOwn(ctx) {
+    try {
+      const email = sanitizePlainText(ctx.request.body?.email || ctx.query?.email, {
+        collapseWhitespace: true,
+      }).toLowerCase();
+
+      if (!email) {
+        this.throwHttpError("email is required", HttpStatus.BAD_REQUEST);
+      }
+
+      const comment = await Comment.findById(ctx.params.id);
+      if (!comment) {
+        this.throwHttpError("评论未找到", HttpStatus.NOT_FOUND);
+      }
+
+      if (String(comment.email || "").trim().toLowerCase() !== email) {
+        this.throwHttpError("只能删除使用当前保存邮箱发布的评论", HttpStatus.FORBIDDEN);
+      }
+
+      await Comment.deleteOne({ _id: comment._id });
+      this.ok(ctx, comment, "评论已删除");
     } catch (err) {
       this.fail(ctx, err);
     }

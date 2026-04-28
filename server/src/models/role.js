@@ -5,6 +5,7 @@ const roleSchema = new mongoose.Schema({
   code: { type: String, required: true, unique: true },
   description: { type: String },
   menuIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Menu' }],
+  actionKeys: [{ type: String, trim: true }],
   status: { type: String, enum: ['active', 'inactive'], default: 'active' },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },

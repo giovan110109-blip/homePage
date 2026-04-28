@@ -169,7 +169,7 @@ const goToAdmin = () => {
     ElMessage.info("登录状态已过期，请重新登录");
   }
 
-  authUiStore.openLoginModal({ redirectToAdmin: true });
+  authUiStore.openLoginModal();
 };
 </script>
 

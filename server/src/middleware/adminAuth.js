@@ -1,6 +1,8 @@
 const { Response, HttpStatus } = require('../utils/response');
 const { verifyToken } = require('../utils/adminTokenStore');
 const User = require('../models/user');
+const Role = require('../models/role');
+const { collectRoleActionKeys } = require('../utils/adminRbac');
 
 const getToken = (ctx) => {
   const auth = ctx.get('authorization');
@@ -44,6 +46,16 @@ module.exports = async (ctx, next) => {
     return;
   }
 
+  const permissionCodes = (hydratedUser.roleIds || []).some((role) => role.code === 'admin-plus')
+    ? []
+    : collectRoleActionKeys(await Role.find({
+        _id: { $in: (hydratedUser.roleIds || []).map((role) => role._id) },
+        status: 'active',
+      })
+        .select('actionKeys menuIds')
+        .populate('menuIds', 'path actions')
+        .lean());
+
   ctx.state.user = {
     _id: hydratedUser._id,
     username: hydratedUser.username,
@@ -58,7 +70,8 @@ module.exports = async (ctx, next) => {
       _id: role._id,
       name: role.name,
       code: role.code
-    }))
+    })),
+    permissionCodes,
   };
 
   await next();
