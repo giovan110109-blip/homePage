@@ -11,6 +11,8 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    AboutMagazineCollage: typeof import('./src/components/about/AboutMagazineCollage.vue')['default']
+    AboutSkillTree: typeof import('./src/components/about/AboutSkillTree.vue')['default']
     ApiButton: typeof import('./src/components/Api-Button.vue')['default']
     AppButton: typeof import('./src/components/ui/AppButton.vue')['default']
     AppConfigProvider: typeof import('./src/components/ui/AppConfigProvider.vue')['default']
@@ -24,7 +26,6 @@ declare module 'vue' {
     ElButton: typeof import('element-plus/es')['ElButton']
     ElEmpty: typeof import('element-plus/es')['ElEmpty']
     ElImageViewer: typeof import('element-plus/es')['ElImageViewer']
-    ElPopover: typeof import('element-plus/es')['ElPopover']
     EmojiReaction: typeof import('./src/components/reaction/EmojiReaction.vue')['default']
     EmoteDisplay: typeof import('./src/components/ui/EmoteDisplay.vue')['default']
     EmotePicker: typeof import('./src/components/ui/EmotePicker.vue')['default']

@@ -1,10 +1,10 @@
 <template>
   <div
-    class="theme-page min-h-screen py-16 sm:py-20 flex items-center justify-center"
+    class="external-jump-page theme-page min-h-screen py-16 sm:py-20 flex items-center justify-center"
   >
     <div class="mx-auto w-full max-w-3xl px-4 sm:px-6 lg:px-8">
       <div
-        class="relative min-h-[620px] bg-white/80 dark:bg-white/5 backdrop-blur-xl rounded-3xl border border-gray-200/60 dark:border-white/10 shadow-2xl overflow-hidden"
+        class="jump-card relative min-h-[620px] bg-white/80 dark:bg-white/5 backdrop-blur-xl rounded-3xl border border-gray-200/60 dark:border-white/10 shadow-2xl overflow-hidden"
         :ref="el => cardRef = el as HTMLElement"
         @mousemove="handleCardMouseMove"
         @mouseleave="handleCardMouseLeave"
@@ -28,14 +28,14 @@
               class="h-10 w-10 rounded-full object-cover ring-2 ring-blue-100 dark:ring-blue-900/40"
             />
             <div>
-              <h1 class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">跳转提示</h1>
+              <h1 class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">星际跃迁</h1>
               <p class="text-sm text-gray-600 dark:text-gray-400">即将离开 Giovan</p>
             </div>
           </div>
         </header>
 
         <section class="relative z-10 px-6 py-6 sm:px-8">
-          <div class="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3">目标地址</div>
+          <div class="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3">目标星球坐标</div>
           <div class="flex items-center gap-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white/70 dark:bg-white/5 p-4">
             <div class="flex-shrink-0">
               <img
@@ -59,10 +59,10 @@
 
         <section class="relative z-10 px-6 pb-2 sm:px-8">
           <div class="rounded-2xl bg-white/70 dark:bg-white/5 border border-gray-200/60 dark:border-white/10 p-4">
-            <h2 class="text-sm sm:text-base font-semibold text-gray-900 dark:text-white mb-2">提示信息</h2>
+            <h2 class="text-sm sm:text-base font-semibold text-gray-900 dark:text-white mb-2">跃迁提示</h2>
             <p class="text-xs sm:text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
-              你将打开一个站外链接。该页面不受本站控制，请自行判断其安全性与内容合法性。
-              如果不确定，可以先返回站内或复制链接后自行打开。
+              你即将离开 Giovan，跃迁到另一颗互联网星球。该页面不受本站控制，请自行判断其安全性与内容合法性。
+              如果不确定，可以先返回 Giovan 或复制链接后自行打开。
             </p>
           </div>
         </section>
@@ -74,7 +74,7 @@
             class="w-full sm:w-auto"
             @click="handleReturn"
           >
-            返回站内
+            返回 Giovan
           </AppButton>
           <AppButton
             variant="primary"
@@ -82,26 +82,26 @@
             class="w-full sm:w-auto"
             @click="handleContinue"
           >
-            继续访问外部网站
+            继续跃迁
           </AppButton>
         </section>
 
         <section class="relative z-10 px-6 pb-6 sm:px-8">
           <div class="rounded-2xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/40 p-5">
-            <div class="text-sm font-semibold text-blue-900 dark:text-blue-300 mb-2">安全提示</div>
+            <div class="text-sm font-semibold text-blue-900 dark:text-blue-300 mb-2">跃迁安全清单</div>
             <ul class="text-xs sm:text-sm text-blue-800 dark:text-blue-300 space-y-1">
-              <li>• 谨慎识别钓鱼/镜像网站</li>
+              <li>• 谨慎识别钓鱼 / 镜像星球</li>
               <li>• 不随意输入账号、密码与隐私信息</li>
               <li>• 不确定时不要进行金钱交易</li>
-              <li>• 建议检查网址拼写是否正确</li>
-              <li>• 发现异常请立即关闭页面</li>
+              <li>• 建议检查星球坐标拼写是否正确</li>
+              <li>• 发现异常请立即结束跃迁</li>
             </ul>
           </div>
         </section>
 
         <section v-if="countdown > 0" class="relative z-10 px-6 pb-6 sm:px-8 text-center">
           <p class="text-sm text-gray-700 dark:text-gray-300">
-            {{ countdown }} 秒后自动跳转...
+            {{ countdown }} 秒后自动跃迁...
             <button @click="cancelCountdown" class="ml-2 text-blue-600 hover:text-blue-700 dark:text-blue-400 font-semibold">取消</button>
           </p>
         </section>
@@ -144,7 +144,7 @@ const getFavicon = () => {
 }
 
 // 倒计时（可选功能，默认关闭）
-const countdown = ref(0) // 设为 0 禁用自动跳转，设为 5 则5秒后自动跳转
+const countdown = ref(0) // 设为 0 禁用自动跳转，设为 5 则5秒后自动跃迁
 let countdownTimer: number | null = null
 
 const startCountdown = () => {
@@ -207,4 +207,34 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.external-jump-page {
+  background:
+    radial-gradient(circle at 18% 16%, rgba(45, 212, 191, 0.16), transparent 30%),
+    radial-gradient(circle at 78% 20%, rgba(245, 158, 11, 0.16), transparent 28%),
+    var(--theme-page-gradient);
+}
+
+.jump-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(90deg, rgba(148, 163, 184, 0.08) 0 1px, transparent 1px 72px),
+    repeating-linear-gradient(0deg, rgba(148, 163, 184, 0.06) 0 1px, transparent 1px 72px);
+  mask-image: radial-gradient(circle at center, black, transparent 80%);
+}
+
+.jump-card::after {
+  content: '';
+  position: absolute;
+  right: -90px;
+  top: -90px;
+  width: 260px;
+  height: 260px;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(56, 189, 248, 0.22), transparent 65%);
+  filter: blur(4px);
+  pointer-events: none;
+}
 </style>

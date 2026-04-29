@@ -3,17 +3,17 @@
     <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
       <!-- 页面标题 -->
       <div class="text-center mb-12 sm:mb-16">
-        <span
-          class="inline-flex items-center gap-2 px-3 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300"
-          >GUESTBOOK</span
-        >
+        <span class="passport-kicker">
+          <Stamp class="h-4 w-4" />
+          VISITOR PASSPORT
+        </span>
         <h1
           class="text-4xl sm:text-5xl font-bold text-gray-900 dark:text-white mt-4 mb-3 tracking-tight"
         >
-          留言板
+          访客护照
         </h1>
         <p class="text-gray-600 dark:text-gray-400">
-          在这里留下你的想法和建议，我会认真阅读每一条留言 💬。
+          每一条留言，都是这个站点给访客盖下的一枚章。
         </p>
       </div>
 
@@ -31,48 +31,56 @@
             left: cardEffect.x - 80 + 'px',
             top: cardEffect.y - 80 + 'px',
             background:
-              'radial-gradient(circle, rgba(34, 197, 94, 0.6) 0%, rgba(34, 197, 94, 0.3) 30%, rgba(34, 197, 94, 0.15) 60%, transparent 90%)',
+              'radial-gradient(circle, color-mix(in srgb, var(--theme-accent) 42%, transparent) 0%, color-mix(in srgb, var(--theme-accent) 22%, transparent) 34%, color-mix(in srgb, var(--theme-accent) 10%, transparent) 62%, transparent 90%)',
             boxShadow:
-              '0 0 80px rgba(34, 197, 94, 0.5), 0 0 160px rgba(34, 197, 94, 0.3)',
+              '0 0 80px color-mix(in srgb, var(--theme-accent) 28%, transparent), 0 0 160px color-mix(in srgb, var(--theme-accent) 16%, transparent)',
           }"
         ></div>
         <div
-          class="bg-white/80 dark:bg-white/5 backdrop-blur-xl rounded-3xl p-8 sm:p-10 border border-gray-200/60 dark:border-white/10 shadow-2xl mb-8"
+          class="passport-entry-card relative bg-white/80 dark:bg-white/5 backdrop-blur-xl rounded-3xl p-8 sm:p-10 border border-gray-200/60 dark:border-white/10 shadow-2xl mb-8"
         >
-          <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">
-            发表留言
+          <div class="passport-preview-stamp" :class="{ active: isStampReady }">
+            <span>Giovan</span>
+            <strong>{{ formStampLabel }}</strong>
+            <small>{{ isStampReady ? "READY" : "WAITING" }}</small>
+          </div>
+          <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+            入境登记卡
           </h2>
+          <p class="mb-6 text-sm text-gray-500 dark:text-gray-400">
+            填完姓名与入境备注后，右上角会点亮你的预览章。
+          </p>
           <form @submit.prevent="submitMessage" class="space-y-6">
             <div>
               <label
                 class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-                >昵称 <span class="text-red-500">*</span></label
+                >访客姓名 <span class="text-red-500">*</span></label
               >
               <input
                 v-model="formData.name"
                 type="text"
                 required
                 class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white/50 dark:bg-white/5 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-                placeholder="请输入你的昵称"
+                placeholder="写下你的访客姓名"
               />
             </div>
             <div>
               <label
                 class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-                >邮箱 <span class="text-red-500">*</span></label
+                >回信地址 <span class="text-red-500">*</span></label
               >
               <input
                 v-model="formData.email"
                 type="email"
                 required
                 class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white/50 dark:bg-white/5 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-                placeholder="请输入你的邮箱"
+                placeholder="用于回信与生成访客身份"
               />
             </div>
             <div>
               <label
                 class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-                >网站 (可选)</label
+                >随身站点 (可选)</label
               >
               <input
                 v-model="formData.website"
@@ -86,12 +94,12 @@
             <div>
               <label
                 class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-                >留言内容 <span class="text-red-500">*</span></label
+                >入境备注 <span class="text-red-500">*</span></label
               >
               <div class="relative">
                 <RichTextarea
                   v-model="formData.message"
-                  placeholder="请输入你的留言..."
+                  placeholder="写下这一站的入境备注..."
                   ref="messageRichTextareaRef"
                   customClass="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white/50 dark:bg-white/5 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
                 />
@@ -145,7 +153,7 @@
               </div>
             </div>
             <div
-              class="space-y-3 rounded-2xl border border-gray-200/70 bg-white/50 px-4 py-4 dark:border-white/10 dark:bg-white/5"
+              class="passport-options-panel space-y-3 rounded-2xl border px-4 py-4"
             >
               <label class="flex items-start gap-3 cursor-pointer">
                 <input
@@ -179,26 +187,45 @@
                 variant="primary"
                 nativeType="submit"
                 :disabled="submitting"
-                >{{ submitting ? "提交中..." : "提交留言" }}</AppButton
+                >{{ submitting ? "正在盖章..." : "盖章入境" }}</AppButton
               >
             </div>
           </form>
         </div>
+        <AppTransition
+          enter-active-class="transition-all duration-300 ease-out"
+          leave-active-class="transition-all duration-200 ease-in"
+          enter-from-class="opacity-0 translate-y-4 scale-95"
+          enter-to-class="opacity-100 translate-y-0 scale-100"
+          leave-from-class="opacity-100 translate-y-0 scale-100"
+          leave-to-class="opacity-0 translate-y-4 scale-95"
+        >
+          <div v-if="stampSuccessVisible" class="stamp-success-card">
+            <div class="stamp-success-mark">VISIT<br />APPROVED</div>
+            <div>
+              <strong>已盖章，欢迎再次来访</strong>
+              <span>{{ lastStampTitle }}</span>
+            </div>
+          </div>
+        </AppTransition>
       </div>
 
       <!-- Messages List -->
       <div class="mt-12">
-        <h2
-          class="text-xl font-semibold text-gray-900 dark:text-white mb-6 pb-3 border-b border-gray-200 dark:border-gray-700"
-        >
-          留言列表
-        </h2>
+        <div class="mb-6 border-b border-gray-200 pb-5 dark:border-gray-700">
+          <h2 class="text-xl font-semibold text-gray-900 dark:text-white">
+            护照页
+          </h2>
+          <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            {{ messages.length }} 枚入境章 · {{ passportStats.withWebsite }} 位有站之人 · {{ passportStats.oldFriends }} 位老朋友
+          </p>
+        </div>
 
         <div
           v-if="!loading && messages.length === 0"
           class="text-center py-10 px-5 text-gray-400 dark:text-gray-500 text-base"
         >
-          <p>还没有留言，成为第一个留言的人吧！</p>
+          <p>还没有访客盖章。要不要成为第一位？</p>
         </div>
 
         <div
@@ -210,12 +237,16 @@
             v-for="(message, index) in messages"
             :key="message.id || index"
             :class="[
-              'bg-white/80 dark:bg-white/5 backdrop-blur-xl rounded-3xl p-6 border border-gray-200/60 dark:border-white/10 shadow-[0_20px_25px_-5px_rgba(0,0,0,0.1)] hover:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.15)] dark:hover:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.3)] hover:border-blue-400/70 dark:hover:border-blue-400/50 hover:-translate-y-0.5 transition-all',
+              'passport-message-card relative bg-white/80 dark:bg-white/5 backdrop-blur-xl rounded-3xl p-6 border border-gray-200/60 dark:border-white/10 shadow-[0_20px_25px_-5px_rgba(0,0,0,0.1)] hover:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.15)] dark:hover:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.3)] hover:border-amber-500/50 dark:hover:border-amber-300/40 hover:-translate-y-0.5 transition-all',
               getNoteClass(index),
             ]"
           >
+            <div class="passport-card-stamp" aria-hidden="true">
+              <span>Giovan</span>
+              <strong>{{ getPrimaryBadge(message) }}</strong>
+            </div>
             <div
-              class="flex flex-col md:flex-row md:items-start md:justify-between gap-3 mb-3"
+              class="relative flex flex-col md:flex-row md:items-start md:justify-between gap-3 mb-3"
             >
               <div class="flex flex-col gap-1 flex-1">
                 <div class="flex items-end gap-5">
@@ -237,6 +268,15 @@
                 <span class="text-xs text-gray-400 dark:text-gray-500">{{
                   formatDate(message.createdAt)
                 }}</span>
+                <div class="mt-2 flex flex-wrap gap-2">
+                  <span
+                    v-for="badge in getMessageBadges(message)"
+                    :key="`${message.id}-${badge}`"
+                    class="passport-badge"
+                  >
+                    {{ badge }}
+                  </span>
+                </div>
               </div>
               <div class="flex items-center gap-3 flex-shrink-0">
                 <EmojiReaction
@@ -255,7 +295,7 @@
               </div>
             </div>
             <p
-              class="text-gray-700 dark:text-gray-300 text-[15px] leading-6 m-0 break-words"
+              class="relative text-gray-700 dark:text-gray-300 text-[15px] leading-6 m-0 break-words"
             >
               <EmoteRenderer :text="message.content" :size="100" />
             </p>
@@ -347,7 +387,7 @@
           v-if="!canLoadMore && messages.length > 0"
           class="text-center py-6 text-gray-400 dark:text-gray-500 text-sm"
         >
-          已加载全部留言
+          护照翻到底了，欢迎下次再来
         </div>
       </div>
     </div>
@@ -365,6 +405,7 @@ import {
   Laptop,
   Smartphone,
   Globe,
+  Stamp,
 } from "lucide-vue-next";
 import { ElMessage } from "element-plus";
 import AppTransition from "@/components/ui/AppTransition";
@@ -422,6 +463,8 @@ const formData = ref<FormData>({
   requireEmailNotification: true,
 });
 const submitting = ref(false);
+const stampSuccessVisible = ref(false);
+const lastStampTitle = ref("新来的朋友");
 const messageListRef = ref<HTMLElement>();
 const loadMoreSentinelRef = ref<HTMLElement | null>(null);
 const messageRichTextareaRef = ref<InstanceType<typeof RichTextarea> | null>(
@@ -430,6 +473,7 @@ const messageRichTextareaRef = ref<InstanceType<typeof RichTextarea> | null>(
 const avatarCache = new Map<string, string>();
 const processedMessageMap = new Map<string, MessageItem>();
 let loadMoreObserver: IntersectionObserver | null = null;
+let stampSuccessTimer: number | null = null;
 let processToken = 0;
 const MESSAGE_PAGE_SIZE = 10;
 const reachedMessageEnd = ref(false);
@@ -504,6 +548,43 @@ const {
 
 const messages = ref<MessageItem[]>([]);
 const canLoadMore = computed(() => hasMore.value && !reachedMessageEnd.value);
+const isStampReady = computed(() => Boolean(formData.value.name.trim() && formData.value.message.trim()));
+const formStampLabel = computed(() => {
+  const name = formData.value.name.trim();
+  return name ? name.slice(0, 8).toUpperCase() : "GUEST";
+});
+
+const visitorMessageCount = computed(() => {
+  const counts = new Map<string, number>();
+  messages.value.forEach((message) => {
+    const key = (message.email || message.name || message.id).toLowerCase();
+    counts.set(key, (counts.get(key) || 0) + 1);
+  });
+  return counts;
+});
+
+const getMessageBadges = (message: MessageItem) => {
+  const badges = new Set<string>();
+  const visitorKey = (message.email || message.name || message.id).toLowerCase();
+  const visitCount = visitorMessageCount.value.get(visitorKey) || 1;
+  const createdHour = new Date(message.createdAt).getHours();
+
+  badges.add(visitCount >= 3 ? "老朋友" : "新来的朋友");
+  if (createdHour >= 0 && createdHour < 5) badges.add("深夜访客");
+  if (message.deviceType?.toLowerCase().includes("mobile")) badges.add("移动端旅人");
+  if (message.deviceType?.toLowerCase().includes("desktop")) badges.add("桌面访客");
+  if (message.website) badges.add("有站之人");
+  if (/\[emote:|emote-webp|<img/i.test(message.content || "")) badges.add("表情玩家");
+  if (message.location && !String(message.location).includes("中国")) badges.add("远方来客");
+  return [...badges].slice(0, 4);
+};
+
+const getPrimaryBadge = (message: MessageItem) => getMessageBadges(message)[0] || "访客";
+
+const passportStats = computed(() => ({
+  withWebsite: messages.value.filter((message) => Boolean(message.website)).length,
+  oldFriends: messages.value.filter((message) => getMessageBadges(message).includes("老朋友")).length,
+}));
 
 const buildFallbackAvatar = async (messageId: string) => {
   const cachedAvatar = avatarCache.get(messageId);
@@ -644,10 +725,25 @@ const submitMessage = async () => {
       email: formData.value.email,
       website: formData.value.website,
     });
+    lastStampTitle.value = getMessageBadges({
+      id: "preview",
+      name: formData.value.name,
+      email: formData.value.email,
+      website: websiteNormalized,
+      content: formData.value.message,
+      createdAt: new Date().toISOString(),
+      deviceType: /Mobile|Android|iPhone/i.test(navigator.userAgent) ? "mobile" : "desktop",
+    })[0] || "新来的朋友";
+    stampSuccessVisible.value = true;
+    if (stampSuccessTimer) window.clearTimeout(stampSuccessTimer);
+    stampSuccessTimer = window.setTimeout(() => {
+      stampSuccessVisible.value = false;
+      stampSuccessTimer = null;
+    }, 1600);
     formData.value.message = "";
     formData.value.isPrivate = false;
     formData.value.requireEmailNotification = false;
-    ElMessage.success("提交成功，待审核通过后展示");
+    ElMessage.success("已盖章，待审核通过后展示");
     reachedMessageEnd.value = false;
     refresh();
   } catch (error) {
@@ -773,5 +869,342 @@ onMounted(async () => {
 onUnmounted(() => {
   loadMoreObserver?.disconnect();
   loadMoreObserver = null;
+  if (stampSuccessTimer) {
+    window.clearTimeout(stampSuccessTimer);
+    stampSuccessTimer = null;
+  }
 });
 </script>
+
+<style scoped>
+.passport-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--theme-accent-strong);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.passport-entry-card {
+  --passport-ink: var(--theme-text-primary);
+  --passport-muted: var(--theme-text-muted);
+  --passport-border: var(--theme-border);
+  --passport-border-strong: var(--theme-border-strong);
+  --passport-field: color-mix(in srgb, var(--theme-surface-strong) 78%, transparent);
+  --passport-field-focus: var(--theme-surface-strong);
+  --passport-accent: var(--theme-accent);
+  --passport-accent-strong: var(--theme-accent-strong);
+  --passport-accent-soft: var(--theme-accent-soft);
+  color: var(--passport-ink);
+  background:
+    radial-gradient(circle at 18% 0%, color-mix(in srgb, var(--theme-accent) 18%, transparent), transparent 34%),
+    linear-gradient(135deg, var(--theme-surface-strong), var(--theme-surface)),
+    repeating-linear-gradient(
+      0deg,
+      color-mix(in srgb, var(--theme-accent) 4%, transparent) 0 1px,
+      transparent 1px 8px
+    );
+  border-color: var(--passport-border) !important;
+  box-shadow: var(--theme-shadow-lg);
+}
+
+.passport-entry-card::before {
+  content: '';
+  position: absolute;
+  inset: 14px;
+  pointer-events: none;
+  border: 1px dashed color-mix(in srgb, var(--theme-accent) 24%, var(--theme-border));
+  border-radius: 22px;
+}
+
+.passport-entry-card::after {
+  content: '';
+  position: absolute;
+  right: -42px;
+  top: -46px;
+  width: 190px;
+  height: 190px;
+  pointer-events: none;
+  border-radius: 999px;
+  background: radial-gradient(circle, var(--passport-accent-soft), transparent 68%);
+}
+
+.passport-entry-card h2 {
+  position: relative;
+  z-index: 1;
+  color: var(--passport-ink) !important;
+  letter-spacing: -0.03em;
+}
+
+.passport-entry-card p,
+.passport-entry-card label,
+.passport-entry-card :deep(label) {
+  color: var(--passport-muted) !important;
+}
+
+.passport-entry-card form,
+.passport-entry-card .passport-preview-stamp {
+  z-index: 1;
+}
+
+.passport-entry-card form {
+  position: relative;
+}
+
+.passport-preview-stamp {
+  position: absolute;
+  right: 24px;
+  top: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 96px;
+  height: 96px;
+  border: 2px dashed color-mix(in srgb, var(--theme-text-muted) 42%, transparent);
+  border-radius: 999px;
+  color: color-mix(in srgb, var(--theme-text-muted) 72%, transparent);
+  font-family: Georgia, 'Times New Roman', serif;
+  letter-spacing: 0.08em;
+  text-align: center;
+  transform: rotate(-10deg);
+  transition: all 220ms ease;
+}
+
+.passport-preview-stamp.active {
+  border-color: color-mix(in srgb, var(--theme-accent) 72%, transparent);
+  color: var(--theme-accent-strong);
+  box-shadow: inset 0 0 0 5px var(--theme-accent-soft);
+}
+
+.passport-preview-stamp span,
+.passport-preview-stamp small {
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.passport-preview-stamp strong {
+  max-width: 72px;
+  overflow: hidden;
+  font-size: 15px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.passport-entry-card :deep(input[type='text']),
+.passport-entry-card :deep(input[type='email']),
+.passport-entry-card :deep(input[type='url']),
+.passport-entry-card :deep(textarea),
+.passport-entry-card :deep([contenteditable='true']) {
+  color: var(--passport-ink) !important;
+  caret-color: var(--passport-accent);
+  background: var(--passport-field) !important;
+  border-color: var(--passport-border) !important;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--theme-bg-elevated) 34%, transparent);
+}
+
+.passport-entry-card :deep(input::placeholder),
+.passport-entry-card :deep(textarea::placeholder) {
+  color: color-mix(in srgb, var(--passport-muted) 72%, transparent) !important;
+}
+
+.passport-entry-card :deep(input:focus),
+.passport-entry-card :deep(textarea:focus),
+.passport-entry-card :deep([contenteditable='true']:focus) {
+  background: var(--passport-field-focus) !important;
+  border-color: var(--passport-accent) !important;
+  box-shadow:
+    0 0 0 3px var(--passport-accent-soft),
+    inset 0 1px 0 color-mix(in srgb, var(--theme-bg-elevated) 34%, transparent) !important;
+}
+
+.passport-options-panel {
+  background: color-mix(in srgb, var(--theme-surface-soft) 78%, transparent);
+  border-color: var(--passport-border) !important;
+}
+
+.passport-options-panel :deep(span) {
+  color: var(--passport-ink) !important;
+}
+
+.passport-entry-card :deep(input[type='checkbox']) {
+  color: var(--passport-accent) !important;
+  border-color: var(--passport-border-strong) !important;
+}
+
+.passport-entry-card :deep(button[type='submit']) {
+  border: 1px solid color-mix(in srgb, var(--passport-accent) 42%, transparent) !important;
+  color: var(--theme-bg-elevated) !important;
+  background: linear-gradient(135deg, var(--passport-accent-strong), var(--passport-accent)) !important;
+  box-shadow: 0 14px 34px color-mix(in srgb, var(--passport-accent) 24%, transparent) !important;
+}
+
+.stamp-success-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: -6px auto 24px;
+  padding: 14px 18px;
+  border: 1px solid rgba(185, 28, 28, 0.22);
+  border-radius: 24px;
+  color: #7f1d1d;
+  background: rgba(255, 247, 237, 0.92);
+  box-shadow: 0 18px 50px rgba(127, 29, 29, 0.14);
+}
+
+:global(.dark) .stamp-success-card {
+  color: #fecaca;
+  background: rgba(69, 26, 3, 0.76);
+}
+
+.stamp-success-mark {
+  display: grid;
+  place-items: center;
+  flex: 0 0 74px;
+  height: 74px;
+  border: 2px solid currentColor;
+  border-radius: 999px;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1.1;
+  text-align: center;
+  transform: rotate(-9deg);
+  animation: stampDrop 560ms cubic-bezier(.18,.88,.26,1.15) both;
+}
+
+.stamp-success-card strong,
+.stamp-success-card span {
+  display: block;
+}
+
+.stamp-success-card span {
+  margin-top: 4px;
+  font-size: 13px;
+  opacity: 0.72;
+}
+
+.passport-message-card::before {
+  content: '';
+  position: absolute;
+  inset: 12px;
+  pointer-events: none;
+  border: 1px dashed rgba(120, 53, 15, 0.16);
+  border-radius: 22px;
+}
+
+.passport-message-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 12% 18%, rgba(255, 255, 255, 0.32), transparent 25%),
+    repeating-linear-gradient(0deg, rgba(120, 53, 15, 0.035) 0 1px, transparent 1px 9px);
+  mix-blend-mode: soft-light;
+}
+
+.passport-card-stamp {
+  position: absolute;
+  right: 64px;
+  bottom: 26px;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.54;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 106px;
+  height: 106px;
+  border: 2px dashed color-mix(in srgb, var(--theme-text-muted) 42%, transparent);
+  border-radius: 999px;
+  color: color-mix(in srgb, var(--theme-text-muted) 72%, transparent);
+  font-family: Georgia, 'Times New Roman', serif;
+  text-align: center;
+  transform: rotate(-12deg);
+  transition: all 220ms ease;
+}
+
+:global(.dark) .passport-card-stamp {
+  opacity: 0.62;
+}
+
+
+.passport-message-card {
+  overflow: visible;
+  isolation: isolate;
+}
+
+.passport-message-card > :not(.passport-card-stamp) {
+  position: relative;
+  z-index: 1;
+}
+
+
+.passport-card-stamp span {
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+}
+
+.passport-card-stamp strong {
+  max-width: 72px;
+  margin-top: 3px;
+  overflow: hidden;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.passport-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 9px;
+  border: 1px solid rgba(180, 83, 9, 0.22);
+  border-radius: 999px 999px 999px 4px;
+  color: #92400e;
+  background: rgba(254, 243, 199, 0.78);
+  font-size: 12px;
+  font-weight: 700;
+  transform: rotate(-1deg);
+}
+
+:global(.dark) .passport-badge {
+  color: #fde68a;
+  background: rgba(120, 53, 15, 0.5);
+  border-color: rgba(253, 230, 138, 0.18);
+}
+
+@keyframes stampDrop {
+  0% { opacity: 0; transform: translateY(-28px) scale(1.28) rotate(-9deg); }
+  58% { opacity: 1; transform: translateY(3px) scale(0.92) rotate(-9deg); }
+  100% { opacity: 1; transform: translateY(0) scale(1) rotate(-9deg); }
+}
+
+@media (max-width: 640px) {
+  .passport-preview-stamp {
+    right: 18px;
+    top: 18px;
+    width: 82px;
+    height: 82px;
+  }
+
+
+  .passport-card-stamp {
+    width: 84px;
+    height: 84px;
+    right: 44px;
+    bottom: 20px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stamp-success-mark {
+    animation: none;
+  }
+}
+</style>

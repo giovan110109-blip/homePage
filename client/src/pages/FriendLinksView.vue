@@ -1,373 +1,7 @@
-<template>
-  <div
-    class="theme-page min-h-screen py-16 sm:py-20"
-  >
-    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-      <!-- 页面标题 -->
-      <div class="text-center mb-12 sm:mb-16">
-        <span
-          class="inline-flex items-center gap-2 px-3 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300"
-          >FRIEND LINKS</span
-        >
-        <h1
-          class="text-4xl sm:text-5xl font-bold text-gray-900 dark:text-white mt-4 mb-3 tracking-tight"
-        >
-          朋友圈
-        </h1>
-        <p class="text-gray-600 dark:text-gray-400">
-          欢迎交换友情链接，一起分享精彩内容 🔗。
-        </p>
-      </div>
-
-      <!-- 友情链接展示区域 -->
-      <div class="mb-14 sm:mb-20">
-        <div
-          v-if="loading"
-          class="flex flex-col items-center justify-center py-12"
-        >
-          <Loading />
-        </div>
-
-        <div v-else-if="friendLinks.length === 0" class="text-center py-12">
-          <p class="text-gray-500 dark:text-gray-400">暂无朋友圈</p>
-        </div>
-
-        <div
-          v-else
-          class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6"
-        >
-          <a
-            v-for="link in friendLinks"
-            :key="link._id"
-            :href="getFriendLinkHref(link.url)"
-            rel="noopener noreferrer"
-            @click="handleLinkClick(link, $event)"
-            class="group relative overflow-hidden rounded-2xl border border-gray-200/60 dark:border-white/10 bg-white/80 dark:bg-white/5 backdrop-blur-xl p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl hover:border-blue-400/70 dark:hover:border-blue-400/50"
-          >
-            <div
-              class="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity"
-            >
-              <div
-                class="absolute -top-16 -right-12 h-32 w-32 rounded-full bg-gradient-to-br from-blue-400/30 to-purple-400/30 blur-2xl"
-              ></div>
-            </div>
-            <div class="flex items-start space-x-4">
-              <!-- 头像 -->
-              <div class="flex-shrink-0">
-                <img
-                  v-if="getFriendLinkAvatar(link.avatar)"
-                  :src="getFriendLinkAvatar(link.avatar)"
-                  :alt="link.name"
-                  class="w-14 h-14 rounded-2xl object-cover ring-2 ring-gray-200/80 dark:ring-gray-700/80 group-hover:ring-blue-400"
-                />
-                <div
-                  v-else
-                  class="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white text-xl font-bold"
-                >
-                  {{ link.name.charAt(0).toUpperCase() }}
-                </div>
-              </div>
-
-              <!-- 信息 -->
-              <div class="flex-1 min-w-0">
-                <h3
-                  class="font-semibold text-gray-900 dark:text-white mb-1 truncate group-hover:text-blue-500"
-                >
-                  {{ link.name }}
-                </h3>
-                <p
-                  class="text-sm text-gray-600/90 dark:text-gray-400 mb-2 overflow-hidden [display:-webkit-box] [-webkit-line-clamp:2] [-webkit-box-orient:vertical]"
-                >
-                  {{ link.description }}
-                </p>
-                <div
-                  class="flex items-center space-x-2 text-xs text-gray-500 dark:text-gray-500"
-                >
-                  <span
-                    v-if="link.category"
-                    class="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full"
-                  >
-                    {{ getCategoryLabel(link.category) }}
-                  </span>
-                  <span v-if="link.clicks > 0" class="flex items-center">
-                    <Eye class="w-3 h-3 mr-1" />
-                    {{ link.clicks }}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <!-- 外部链接图标 -->
-            <div
-              class="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity"
-            >
-              <ExternalLink
-                class="w-4 h-4 text-gray-400 group-hover:text-blue-400"
-              />
-            </div>
-          </a>
-        </div>
-      </div>
-
-      <!-- 友链申请说明 -->
-      <div
-        class="max-w-4xl mx-auto mb-12 relative"
-        :ref="(el) => (cardRef = el as HTMLElement)"
-        @mousemove="handleCardMouseMove"
-        @mouseleave="handleCardMouseLeave"
-      >
-        <!-- 鼠标跟随效果 -->
-        <div
-          v-if="cardEffect.show"
-          class="absolute w-40 h-40 rounded-full blur-2xl transition-all duration-75 ease-out pointer-events-none z-0 top-0 left-0"
-          :style="{
-            left: cardEffect.x - 80 + 'px',
-            top: cardEffect.y - 80 + 'px',
-            background:
-              'radial-gradient(circle, rgba(34, 197, 94, 0.6) 0%, rgba(34, 197, 94, 0.3) 30%, rgba(34, 197, 94, 0.15) 60%, transparent 90%)',
-            boxShadow:
-              '0 0 80px rgba(34, 197, 94, 0.5), 0 0 160px rgba(34, 197, 94, 0.3)',
-          }"
-        ></div>
-        <div
-          class="relative bg-white/80 dark:bg-white/5 backdrop-blur-xl rounded-3xl p-8 sm:p-10 border border-gray-200/60 dark:border-white/10 shadow-2xl"
-        >
-          <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-            友情连接申请
-          </h2>
-          <p class="text-gray-700 dark:text-gray-300 leading-7">
-            很高兴能与各位优秀的朋友们交流，本友链目前采用<span
-              class="text-blue-600 dark:text-blue-400 font-medium"
-              >手动添加</span
-            >。如需加入友链，请在下方留言，我会在空闲时间统一添加。
-          </p>
-
-          <div class="mt-8">
-            <h3
-              class="text-lg font-semibold text-gray-900 dark:text-white mb-3"
-            >
-              友链相关须知
-            </h3>
-            <ul
-              class="space-y-2 text-sm text-gray-700 dark:text-gray-300 list-disc pl-5"
-            >
-              <li>
-                为了友链相关页面组件的一致性和美观性，可能会对部分信息进行格式化处理。
-              </li>
-              <li>
-                本站图片均使用本地域名存储，如需更换头像等信息，请在本页评论中说明。
-              </li>
-            </ul>
-          </div>
-
-          <div class="mt-8">
-            <h3
-              class="text-lg font-semibold text-gray-900 dark:text-white mb-3"
-            >
-              我的友链信息
-            </h3>
-            <ul
-              class="space-y-2 text-sm text-gray-700 dark:text-gray-300 list-disc pl-5"
-            >
-              <li>名称：Giovan</li>
-              <li>描述：万事顺意</li>
-              <li>地址：www.giovan.cn</li>
-              <li>
-                头像：https://serve.giovan.cn/uploads/1769860396165-143ef0bb240aa25d.jpeg
-              </li>
-              <li>
-                站点图片：https://serve.giovan.cn/uploads/1769860396165-143ef0bb240aa25d.jpeg
-              </li>
-              <!-- <li>订阅：https://example.com/rss.xml</li> -->
-            </ul>
-          </div>
-
-          <!-- <div class="mt-8">
-            <h3
-              class="text-lg font-semibold text-gray-900 dark:text-white mb-3"
-            >
-              YAML 示例
-            </h3>
-            <pre
-              class="bg-gray-50/80 dark:bg-black/30 border border-gray-200/60 dark:border-white/10 rounded-2xl p-4 text-xs text-gray-700 dark:text-gray-300 overflow-auto"
-            >
-name: 你的站点名称
-desc: 站点简介
-url: https://example.com/
-avatar: https://example.com/avatar.png
-screenshot: https://example.com/cover.png
-rss: https://example.com/rss.xml
-            </pre>
-          </div> -->
-
-          <div class="mt-8 text-sm text-gray-700 dark:text-gray-300">
-            <p>申请需满足：</p>
-            <ul class="space-y-2 list-disc pl-5 mt-2">
-              <li>内容合法合规，站点可正常访问。</li>
-              <li>优先收录原创、技术、生活类博客。</li>
-              <li>请先添加本站友链，审核通过后互链生效。</li>
-            </ul>
-          </div>
-        </div>
-      </div>
-
-      <!-- 申请友情链接表单 -->
-      <div
-        class="max-w-2xl mx-auto relative"
-        :ref="(el) => (formCardRef = el as HTMLElement)"
-        @mousemove="handleFormCardMouseMove"
-        @mouseleave="handleFormCardMouseLeave"
-      >
-        <!-- 鼠标跟随效果 -->
-        <div
-          v-if="formCardEffect.show"
-          class="absolute w-40 h-40 rounded-full blur-2xl transition-all duration-75 ease-out pointer-events-none z-0"
-          :style="{
-            left: formCardEffect.x - 80 + 'px',
-            top: formCardEffect.y - 80 + 'px',
-            background:
-              'radial-gradient(circle, rgba(34, 197, 94, 0.6) 0%, rgba(34, 197, 94, 0.3) 30%, rgba(34, 197, 94, 0.15) 60%, transparent 90%)',
-            boxShadow:
-              '0 0 80px rgba(34, 197, 94, 0.5), 0 0 160px rgba(34, 197, 94, 0.3)',
-          }"
-        ></div>
-        <div
-          class="relative bg-white/80 dark:bg-white/5 backdrop-blur-xl rounded-3xl p-8 sm:p-10 border border-gray-200/60 dark:border-white/10 shadow-2xl"
-        >
-          <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">
-            申请友情链接
-          </h2>
-
-          <form @submit.prevent="handleSubmit" class="space-y-6">
-            <div>
-              <label
-                class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-              >
-                网站名称 <span class="text-red-500">*</span>
-              </label>
-              <input
-                v-model="form.name"
-                type="text"
-                required
-                class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white/50 dark:bg-white/5 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-                placeholder="您的网站名称"
-              />
-            </div>
-
-            <div>
-              <label
-                class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-              >
-                网站链接 <span class="text-red-500">*</span>
-              </label>
-              <input
-                v-model="form.url"
-                type="url"
-                required
-                class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white/50 dark:bg-white/5 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-                placeholder="https://example.com"
-              />
-            </div>
-
-            <div>
-              <label
-                class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-              >
-                网站描述 <span class="text-red-500">*</span>
-              </label>
-              <textarea
-                v-model="form.description"
-                required
-                rows="3"
-                class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white/50 dark:bg-white/5 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all resize-none"
-                placeholder="简短介绍您的网站（建议 50 字以内）"
-              ></textarea>
-            </div>
-
-            <div>
-              <label
-                class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-              >
-                网站头像/Logo URL
-              </label>
-              <input
-                v-model="form.avatar"
-                type="url"
-                class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white/50 dark:bg-white/5 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-                placeholder="https://example.com/avatar.png"
-              />
-            </div>
-
-            <div>
-              <label
-                class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-              >
-                联系邮箱 <span class="text-red-500">*</span>
-              </label>
-              <input
-                v-model="form.email"
-                type="email"
-                required
-                class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white/50 dark:bg-white/5 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-                placeholder="your@email.com"
-              />
-            </div>
-
-            <div>
-              <label
-                class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-              >
-                RSS 订阅地址（可选）
-              </label>
-              <input
-                v-model="form.rss"
-                type="url"
-                class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white/50 dark:bg-white/5 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-                placeholder="https://example.com/rss.xml"
-              />
-            </div>
-
-            <div>
-              <label
-                class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-              >
-                网站分类
-              </label>
-              <select
-                v-model="form.category"
-                class="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white/50 dark:bg-white/5 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-              >
-                <option value="tech">技术博客</option>
-                <option value="design">设计</option>
-                <option value="life">生活</option>
-                <option value="tools">工具</option>
-                <option value="other">其他</option>
-              </select>
-            </div>
-
-            <div class="flex items-center justify-end space-x-4">
-              <AppButton variant="reset" nativeType="button" @click="resetForm">
-                重置
-              </AppButton>
-              <AppButton
-                variant="primary"
-                nativeType="submit"
-                :loading="submitting"
-                :disabled="submitting"
-              >
-                {{ submitting ? "提交中..." : "提交申请" }}
-              </AppButton>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-  </div>
-</template>
-
 <script setup lang="ts">
+import { computed, onMounted, ref, watch } from "vue";
 import { ElMessage } from "element-plus";
-import { Eye, ExternalLink } from "lucide-vue-next";
+import { Copy, Eye, ExternalLink, Radar, Rocket, Search, Send, Sparkles } from "lucide-vue-next";
 import AppButton from "@/components/ui/AppButton.vue";
 import Loading from "@/components/ui/Loading.vue";
 import {
@@ -379,30 +13,32 @@ import type { FriendLink, FriendLinkFormData } from "@/types/api";
 import { getExternalLinkRedirectUrl } from "@/utils/external-link";
 import { normalizeHttpUrl } from "@/utils/url";
 
+type ViewMode = "star" | "list";
+
+interface CategoryMeta {
+  key: string;
+  label: string;
+  tone: string;
+  glow: string;
+}
+
+const categoryMeta: Record<string, CategoryMeta> = {
+  tech: { key: "tech", label: "技术星系", tone: "#38bdf8", glow: "rgba(56, 189, 248, 0.42)" },
+  design: { key: "design", label: "设计星系", tone: "#f59e0b", glow: "rgba(245, 158, 11, 0.42)" },
+  life: { key: "life", label: "生活星系", tone: "#fef3c7", glow: "rgba(254, 243, 199, 0.34)" },
+  tools: { key: "tools", label: "工具星系", tone: "#2dd4bf", glow: "rgba(45, 212, 191, 0.38)" },
+  other: { key: "other", label: "边缘星云", tone: "#94a3b8", glow: "rgba(148, 163, 184, 0.34)" },
+};
+
 const loading = ref(false);
 const submitting = ref(false);
 const friendLinks = ref<FriendLink[]>([]);
-
-const getFriendLinkHref = (url: string) => {
-  const normalized = normalizeHttpUrl(url);
-  return normalized ? getExternalLinkRedirectUrl(normalized) : "#";
-};
-
-const getFriendLinkAvatar = (url?: string) => {
-  if (!url) return "";
-  return normalizeHttpUrl(url);
-};
-
-const getCategoryLabel = (category?: string) => {
-  const map: Record<string, string> = {
-    tech: "技术博客",
-    design: "设计",
-    life: "生活",
-    tools: "工具",
-    other: "其他",
-  };
-  return map[category || ""] || category || "";
-};
+const selectedLink = ref<FriendLink | null>(null);
+const viewMode = ref<ViewMode>("star");
+const selectedCategory = ref("all");
+const keyword = ref("");
+const formCardRef = ref<HTMLElement | null>(null);
+const formCardEffect = ref({ x: 0, y: 0, show: false });
 
 const form = ref<FriendLinkFormData>({
   name: "",
@@ -414,63 +50,138 @@ const form = ref<FriendLinkFormData>({
   category: "tech",
 });
 
-// 加载友情链接
+const getCategory = (category?: string) => categoryMeta[category || ""] || categoryMeta.other;
+const getCategoryLabel = (category?: string) => getCategory(category).label;
+const getFriendLinkAvatar = (url?: string) => (url ? normalizeHttpUrl(url) : "");
+const getFriendLinkHref = (url: string) => {
+  const normalized = normalizeHttpUrl(url);
+  return normalized ? getExternalLinkRedirectUrl(normalized) : "#";
+};
+
+const categories = computed(() => {
+  const map = new Map<string, number>();
+  friendLinks.value.forEach((link) => {
+    const key = link.category || "other";
+    map.set(key, (map.get(key) || 0) + 1);
+  });
+  return [...map.entries()].map(([key, count]) => ({ ...getCategory(key), count }));
+});
+
+const visibleFriendLinks = computed(() => {
+  const query = keyword.value.trim().toLowerCase();
+  return friendLinks.value.filter((link) => {
+    const categoryMatched = selectedCategory.value === "all" || link.category === selectedCategory.value;
+    const keywordMatched =
+      !query ||
+      link.name.toLowerCase().includes(query) ||
+      link.description.toLowerCase().includes(query) ||
+      getCategoryLabel(link.category).includes(query);
+    return categoryMatched && keywordMatched;
+  });
+});
+
+const starNodes = computed(() =>
+  visibleFriendLinks.value.map((link, visibleIndex) => {
+    const stableIndex = Math.max(
+      0,
+      friendLinks.value.findIndex((item) => item._id === link._id),
+    );
+    const categoryIndex = Math.max(0, Object.keys(categoryMeta).indexOf(link.category || "other"));
+    const ring = 24 + (categoryIndex % 3) * 18;
+    const angle = (stableIndex * 137.5 + categoryIndex * 31) % 360;
+    const radius = Math.min(26, 15 + Math.sqrt((link.clicks || 0) + 1) * 3.8);
+    const x = 50 + Math.cos((angle * Math.PI) / 180) * ring;
+    const y = 50 + Math.sin((angle * Math.PI) / 180) * (ring * 0.72);
+    const meta = getCategory(link.category);
+    return {
+      link,
+      x: Math.min(90, Math.max(10, x)),
+      y: Math.min(84, Math.max(14, y)),
+      radius,
+      meta,
+      delay: `${visibleIndex * 70}ms`,
+    };
+  }),
+);
+
+const totalClicks = computed(() => friendLinks.value.reduce((sum, link) => sum + (link.clicks || 0), 0));
+const mostVisited = computed(() => [...friendLinks.value].sort((a, b) => (b.clicks || 0) - (a.clicks || 0))[0]);
+
 const loadFriendLinks = async () => {
   loading.value = true;
   try {
     const res = await getFriendLinks();
-    friendLinks.value = res.data || [];
+    friendLinks.value = (res.data || []).filter((link) => link.isActive !== false && link.status !== "rejected");
   } catch (error: any) {
-    ElMessage.error(error.message || "加载失败");
+    ElMessage.error(error.message || "星图暂时没有醒开，请稍后再试");
   } finally {
     loading.value = false;
   }
 };
 
-// 记录点击
-const handleLinkClick = async (link: FriendLink, event: MouseEvent) => {
-  // 阻止默认跳转
-  event.preventDefault();
+const selectLink = (link: FriendLink) => {
+  selectedLink.value = link;
+};
+
+const handleLinkClick = async (link: FriendLink) => {
   const normalizedUrl = normalizeHttpUrl(link.url);
   if (!normalizedUrl) {
     ElMessage.warning("该友情链接地址无效");
     return;
   }
 
-  // 记录点击数
   const index = friendLinks.value.findIndex((item) => item._id === link._id);
   if (index > -1) {
-    const current = friendLinks.value[index].clicks || 0;
-    friendLinks.value[index].clicks = current + 1;
+    friendLinks.value[index].clicks = (friendLinks.value[index].clicks || 0) + 1;
   }
+
   try {
     await recordFriendLinkClick(link._id);
   } catch (error) {
     if (index > -1) {
-      const current = friendLinks.value[index].clicks || 1;
-      friendLinks.value[index].clicks = Math.max(0, current - 1);
+      friendLinks.value[index].clicks = Math.max(0, (friendLinks.value[index].clicks || 1) - 1);
     }
   }
 
-  // 跳转到外链确认页面
-  if (normalizedUrl) {
-    window.location.href = getExternalLinkRedirectUrl(normalizedUrl);
-  }
+  window.location.href = getExternalLinkRedirectUrl(normalizedUrl);
 };
 
-// 提交申请
+const jumpRandom = () => {
+  if (!visibleFriendLinks.value.length) return;
+  const link = visibleFriendLinks.value[Math.floor(Math.random() * visibleFriendLinks.value.length)];
+  selectLink(link);
+};
+
+const copyLink = async (link: FriendLink) => {
+  const normalizedUrl = normalizeHttpUrl(link.url);
+  if (!normalizedUrl) return;
+  await navigator.clipboard?.writeText(normalizedUrl);
+  ElMessage.success("星球坐标已复制");
+};
+
 const handleSubmit = async () => {
-  const normalizedUrl = normalizeHttpUrl(form.value.url);
-  const normalizedAvatar = normalizeHttpUrl(form.value.avatar || "");
-  const normalizedRss = normalizeHttpUrl(form.value.rss || "");
+  const name = form.value.name.trim();
+  const description = form.value.description.trim();
+  const email = form.value.email.trim();
+  const rawUrl = form.value.url.trim();
+  const rawAvatar = (form.value.avatar || "").trim();
+  const rawRss = (form.value.rss || "").trim();
+  const normalizedUrl = normalizeHttpUrl(/^https?:\/\//i.test(rawUrl) ? rawUrl : `https://${rawUrl}`);
+  const normalizedAvatar = rawAvatar ? normalizeHttpUrl(/^https?:\/\//i.test(rawAvatar) ? rawAvatar : `https://${rawAvatar}`) : "";
+  const normalizedRss = rawRss ? normalizeHttpUrl(/^https?:\/\//i.test(rawRss) ? rawRss : `https://${rawRss}`) : "";
+
+  if (!name || !rawUrl || !description || !email) {
+    ElMessage.warning("请填写星球名称、星球坐标、星球简介和联系邮箱");
+    return;
+  }
 
   if (!normalizedUrl) {
-    ElMessage.warning("请输入正确的站点链接");
+    ElMessage.warning("请输入正确的星球坐标");
     return;
   }
 
   if (form.value.avatar && !normalizedAvatar) {
-    ElMessage.warning("头像地址只支持 http 或 https");
+    ElMessage.warning("星球徽记只支持 http 或 https");
     return;
   }
 
@@ -483,22 +194,22 @@ const handleSubmit = async () => {
   try {
     await applyFriendLink({
       ...form.value,
+      name,
+      description,
+      email,
       url: normalizedUrl,
       avatar: normalizedAvatar || "",
       rss: normalizedRss || "",
     });
-    ElMessage.success("申请已提交，请耐心等待审核");
+    ElMessage.success("坐标已发射，等待站长接入星图");
     resetForm();
-    // 可选：刷新列表
-    // await loadFriendLinks()
   } catch (error: any) {
-    ElMessage.error(error.message || "提交失败");
+    ElMessage.error(error.message || "发射失败，请稍后再试");
   } finally {
     submitting.value = false;
   }
 };
 
-// 重置表单
 const resetForm = () => {
   form.value = {
     name: "",
@@ -511,43 +222,864 @@ const resetForm = () => {
   };
 };
 
-const cardRef = ref<HTMLElement | null>(null);
-const cardEffect = reactive<{ x: number; y: number; show: boolean }>({
-  x: 0,
-  y: 0,
-  show: false,
-});
-const handleCardMouseMove = (event: MouseEvent) => {
-  if (!cardRef.value) return;
-  const rect = cardRef.value.getBoundingClientRect();
-  cardEffect.x = event.clientX - rect.left;
-  cardEffect.y = event.clientY - rect.top;
-  cardEffect.show = true;
-};
-
-const handleCardMouseLeave = () => {
-  cardEffect.show = false;
-};
-
-const formCardRef = ref<HTMLElement | null>(null);
-const formCardEffect = reactive<{ x: number; y: number; show: boolean }>({
-  x: 0,
-  y: 0,
-  show: false,
-});
 const handleFormCardMouseMove = (event: MouseEvent) => {
   if (!formCardRef.value) return;
   const rect = formCardRef.value.getBoundingClientRect();
-  formCardEffect.x = event.clientX - rect.left;
-  formCardEffect.y = event.clientY - rect.top;
-  formCardEffect.show = true;
+  formCardEffect.value = {
+    x: event.clientX - rect.left,
+    y: event.clientY - rect.top,
+    show: true,
+  };
 };
 
 const handleFormCardMouseLeave = () => {
-  formCardEffect.show = false;
+  formCardEffect.value = { ...formCardEffect.value, show: false };
 };
 
+watch(viewMode, (mode) => {
+  localStorage.setItem("friend-star-view-mode", mode);
+});
+
 onMounted(() => {
+  const savedMode = localStorage.getItem("friend-star-view-mode");
+  viewMode.value = savedMode === "star" || savedMode === "list"
+    ? savedMode
+    : window.matchMedia("(max-width: 768px)").matches
+      ? "list"
+      : "star";
   loadFriendLinks();
 });
 </script>
+
+<template>
+  <div class="friend-star-page min-h-screen py-16 sm:py-20">
+    <div class="pointer-events-none absolute inset-0 overflow-hidden">
+      <div class="star-nebula star-nebula-a"></div>
+      <div class="star-nebula star-nebula-b"></div>
+    </div>
+
+    <div class="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <header class="star-hero">
+        <span class="star-kicker"><Radar class="h-4 w-4" /> FRIEND STAR MAP</span>
+        <h1>朋友圈星图</h1>
+        <p>每一个友链，都是我在互联网宇宙里遇到的一颗星。</p>
+        <div class="star-stats">
+          <div><strong>{{ friendLinks.length }}</strong><span>星体</span></div>
+          <div><strong>{{ categories.length }}</strong><span>星系</span></div>
+          <div><strong>{{ totalClicks }}</strong><span>跃迁</span></div>
+          <div><strong>{{ mostVisited?.name || "等待观测" }}</strong><span>常访轨道</span></div>
+        </div>
+      </header>
+
+      <section class="star-controls">
+        <div class="star-search">
+          <Search class="h-4 w-4" />
+          <input v-model="keyword" type="search" placeholder="搜索星球名称、描述或星系" />
+        </div>
+        <div class="star-category-tabs" role="group" aria-label="星系筛选">
+          <button type="button" :class="{ active: selectedCategory === 'all' }" @click="selectedCategory = 'all'">全部星系</button>
+          <button
+            v-for="category in categories"
+            :key="category.key"
+            type="button"
+            :class="{ active: selectedCategory === category.key }"
+            :style="{ '--tone': category.tone }"
+            @click="selectedCategory = category.key"
+          >
+            {{ category.label }} · {{ category.count }}
+          </button>
+        </div>
+        <div class="star-view-toggle" role="group" aria-label="视图切换">
+          <button type="button" :class="{ active: viewMode === 'star' }" @click="viewMode = 'star'">星图</button>
+          <button type="button" :class="{ active: viewMode === 'list' }" @click="viewMode = 'list'">列表</button>
+        </div>
+        <button class="random-jump" type="button" @click="jumpRandom"><Sparkles class="h-4 w-4" />随机跃迁</button>
+      </section>
+
+      <section class="star-observatory">
+        <div v-if="loading" class="star-empty"><Loading /><span>正在观测星图...</span></div>
+        <div v-else-if="visibleFriendLinks.length === 0" class="star-empty">星图还在等待第一颗星</div>
+
+        <div v-else-if="viewMode === 'star'" class="star-map" @click.self="selectedLink = null">
+          <div class="twinkle-field" aria-hidden="true"></div>
+          <div class="orbit orbit-a"></div>
+          <div class="orbit orbit-b"></div>
+          <div class="orbit orbit-c"></div>
+          <button
+            v-for="node in starNodes"
+            :key="node.link._id"
+            class="star-node"
+            type="button"
+            :class="{ active: selectedLink?._id === node.link._id }"
+            :style="{
+              left: node.x + '%',
+              top: node.y + '%',
+              width: node.radius * 2 + 'px',
+              height: node.radius * 2 + 'px',
+              '--tone': node.meta.tone,
+              '--glow': node.meta.glow,
+              animationDelay: node.delay,
+            }"
+            @click="selectLink(node.link)"
+          >
+            <img v-if="getFriendLinkAvatar(node.link.avatar)" :src="getFriendLinkAvatar(node.link.avatar)" :alt="node.link.name" @error="node.link.avatar = ''" />
+            <span v-else>{{ node.link.name.charAt(0).toUpperCase() }}</span>
+          </button>
+        </div>
+
+        <div v-else class="star-list-grid">
+          <article
+            v-for="link in visibleFriendLinks"
+            :key="link._id"
+            class="star-list-card"
+            @click="selectLink(link)"
+          >
+            <div class="star-list-avatar" :style="{ '--tone': getCategory(link.category).tone }">
+              <img v-if="getFriendLinkAvatar(link.avatar)" :src="getFriendLinkAvatar(link.avatar)" :alt="link.name" @error="link.avatar = ''" />
+              <span v-else>{{ link.name.charAt(0).toUpperCase() }}</span>
+            </div>
+            <div class="min-w-0 flex-1">
+              <h3>{{ link.name }}</h3>
+              <p>{{ link.description }}</p>
+              <div class="star-list-meta">
+                <span>{{ getCategoryLabel(link.category) }}</span>
+                <span><Eye class="h-3.5 w-3.5" />{{ link.clicks || 0 }}</span>
+              </div>
+            </div>
+            <ExternalLink class="h-4 w-4 opacity-50" />
+          </article>
+        </div>
+
+        <aside v-if="selectedLink" class="star-detail-card">
+          <button class="star-detail-close" type="button" aria-label="关闭详情" @click="selectedLink = null">×</button>
+          <div class="star-detail-avatar" :style="{ '--tone': getCategory(selectedLink.category).tone }">
+            <img v-if="getFriendLinkAvatar(selectedLink.avatar)" :src="getFriendLinkAvatar(selectedLink.avatar)" :alt="selectedLink.name" @error="selectedLink.avatar = ''" />
+            <span v-else>{{ selectedLink.name.charAt(0).toUpperCase() }}</span>
+          </div>
+          <span class="star-kicker">{{ getCategoryLabel(selectedLink.category) }}</span>
+          <h2>{{ selectedLink.name }}</h2>
+          <p>{{ selectedLink.description }}</p>
+          <div class="star-detail-meta">
+            <span><Eye class="h-4 w-4" />{{ selectedLink.clicks || 0 }} 次跃迁</span>
+            <span>{{ (selectedLink as any).healthStatus || "活跃中" }}</span>
+          </div>
+          <div v-if="(selectedLink as any).latestPost" class="latest-post">
+            最新信号：{{ (selectedLink as any).latestPost.title }}
+          </div>
+          <div class="star-detail-actions">
+            <button type="button" @click="handleLinkClick(selectedLink)"><Rocket class="h-4 w-4" />访问站点</button>
+            <button type="button" @click="copyLink(selectedLink)"><Copy class="h-4 w-4" />复制链接</button>
+          </div>
+        </aside>
+      </section>
+
+      <section
+        class="launch-console"
+        :ref="(el) => (formCardRef = el as HTMLElement)"
+        @mousemove="handleFormCardMouseMove"
+        @mouseleave="handleFormCardMouseLeave"
+      >
+        <div
+          v-if="formCardEffect.show"
+          class="console-glow"
+          :style="{ left: formCardEffect.x - 90 + 'px', top: formCardEffect.y - 90 + 'px' }"
+        ></div>
+        <div class="launch-copy">
+          <span class="star-kicker"><Send class="h-4 w-4" /> TRANSMIT COORDINATES</span>
+          <h2>发送你的星际坐标</h2>
+          <p>提交站点名称、坐标和星球简介，审核通过后会被接入这张互联网星图。</p>
+        </div>
+        <form class="launch-form" @submit.prevent="handleSubmit">
+          <label><span>星球名称 <em>*</em></span><input v-model="form.name" type="text" required placeholder="你的站点名称" /></label>
+          <label><span>星球坐标 <em>*</em></span><input v-model="form.url" type="text" inputmode="url" required placeholder="example.com 或 https://example.com" /></label>
+          <label class="md:col-span-2"><span>星球简介 <em>*</em></span><textarea v-model="form.description" required rows="3" placeholder="简短介绍你的站点"></textarea></label>
+          <label><span>星球徽记</span><input v-model="form.avatar" type="text" inputmode="url" placeholder="https://example.com/avatar.png" /></label>
+          <label><span>联系邮箱 <em>*</em></span><input v-model="form.email" type="email" required placeholder="your@email.com" /></label>
+          <label><span>RSS 信号</span><input v-model="form.rss" type="text" inputmode="url" placeholder="https://example.com/rss.xml" /></label>
+          <label><span>所在星系</span>
+            <select v-model="form.category">
+              <option value="tech">技术星系</option>
+              <option value="design">设计星系</option>
+              <option value="life">生活星系</option>
+              <option value="tools">工具星系</option>
+              <option value="other">边缘星云</option>
+            </select>
+          </label>
+          <div class="launch-actions md:col-span-2">
+            <AppButton variant="reset" nativeType="button" @click="resetForm">重置</AppButton>
+            <AppButton variant="primary" nativeType="submit" :loading="submitting" :disabled="submitting">
+              {{ submitting ? "发射中..." : "发射申请" }}
+            </AppButton>
+          </div>
+        </form>
+      </section>
+    </div>
+  </div>
+</template>
+
+<style scoped>
+.friend-star-page {
+  --star-page-text: var(--theme-text-primary);
+  --star-page-muted: var(--theme-text-muted);
+  --star-panel: color-mix(in srgb, var(--theme-surface) 82%, transparent);
+  --star-panel-strong: color-mix(in srgb, var(--theme-surface-strong) 88%, transparent);
+  --star-panel-soft: color-mix(in srgb, var(--theme-surface-soft) 72%, transparent);
+  --star-border: var(--theme-border);
+  --star-border-strong: var(--theme-border-strong);
+  --star-field: color-mix(in srgb, var(--theme-bg-elevated) 62%, transparent);
+  --star-grid-line: color-mix(in srgb, var(--theme-accent) 15%, transparent);
+  --star-primary-button-text: var(--theme-bg-elevated);
+  position: relative;
+  overflow: hidden;
+  color: var(--star-page-text);
+  background:
+    radial-gradient(circle at 20% 10%, color-mix(in srgb, var(--theme-accent) 18%, transparent), transparent 28%),
+    radial-gradient(circle at 80% 18%, color-mix(in srgb, var(--theme-accent-strong) 12%, transparent), transparent 30%),
+    var(--theme-page-gradient);
+}
+
+:global(.dark) .friend-star-page {
+  --star-panel: color-mix(in srgb, var(--theme-surface) 72%, transparent);
+  --star-panel-strong: color-mix(in srgb, var(--theme-surface-strong) 82%, transparent);
+  --star-panel-soft: color-mix(in srgb, var(--theme-surface-soft) 62%, transparent);
+  --star-field: color-mix(in srgb, #020617 38%, transparent);
+  --star-grid-line: color-mix(in srgb, var(--theme-accent) 12%, transparent);
+  --star-primary-button-text: #08111f;
+}
+
+:global(.dark) .orbit {
+  border-color: color-mix(in srgb, var(--theme-accent) 24%, transparent);
+}
+
+.friend-star-page::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(90deg, var(--star-grid-line) 0 1px, transparent 1px 88px),
+    repeating-linear-gradient(0deg, var(--star-grid-line) 0 1px, transparent 1px 88px);
+  mask-image: radial-gradient(circle at center, black, transparent 78%);
+}
+
+.star-nebula {
+  position: absolute;
+  width: 520px;
+  height: 520px;
+  border-radius: 999px;
+  filter: blur(48px);
+  opacity: 0.22;
+}
+
+.star-nebula-a { left: -180px; top: 14%; background: var(--theme-accent); }
+.star-nebula-b { right: -180px; bottom: 10%; background: var(--theme-accent-strong); }
+
+.star-hero {
+  max-width: 860px;
+  margin: 0 auto 28px;
+  text-align: center;
+}
+
+.star-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--theme-accent-strong);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.star-hero h1 {
+  margin: 16px 0 12px;
+  color: var(--star-page-text);
+  font-family: inherit;
+  font-size: 2.25rem;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.025em;
+}
+
+.star-hero p {
+  margin: 0;
+  color: var(--star-page-muted);
+  font-size: 1rem;
+}
+
+@media (min-width: 640px) {
+  .star-hero h1 {
+    font-size: 3rem;
+  }
+}
+
+
+.star-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.star-stats div,
+.star-controls,
+.star-observatory,
+.launch-console,
+.star-detail-card,
+.star-list-card {
+  border: 1px solid var(--star-border);
+  background: var(--star-panel);
+  box-shadow: var(--theme-shadow-md);
+  backdrop-filter: blur(22px);
+}
+
+.star-stats div {
+  padding: 14px;
+  border-radius: 22px;
+}
+
+.star-stats strong,
+.star-stats span {
+  display: block;
+}
+
+.star-stats strong {
+  overflow: hidden;
+  color: var(--star-page-text);
+  font-size: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.star-stats span {
+  margin-top: 4px;
+  color: var(--star-page-muted);
+  font-size: 12px;
+}
+
+.star-controls {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) 2fr auto auto;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 18px;
+  padding: 12px;
+  border-radius: 28px;
+}
+
+.star-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 14px;
+  border: 1px solid var(--star-border);
+  border-radius: 999px;
+  color: var(--star-page-muted);
+  background: var(--star-field);
+}
+
+.star-search input {
+  width: 100%;
+  color: var(--star-page-text);
+  background: transparent;
+  outline: none;
+}
+
+.star-search input::placeholder {
+  color: color-mix(in srgb, var(--star-page-muted) 70%, transparent);
+}
+
+.star-category-tabs,
+.star-view-toggle {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+}
+
+.star-category-tabs button,
+.star-view-toggle button,
+.random-jump,
+.star-detail-actions button {
+  min-height: 38px;
+  padding: 0 13px;
+  border: 1px solid var(--star-border);
+  border-radius: 999px;
+  color: var(--star-page-muted);
+  background: var(--star-panel-soft);
+  white-space: nowrap;
+  transition: all 180ms ease;
+}
+
+.star-category-tabs button:hover,
+.star-view-toggle button:hover,
+.star-detail-actions button:hover {
+  border-color: color-mix(in srgb, var(--theme-accent) 38%, var(--star-border));
+  color: var(--star-page-text);
+}
+
+.star-category-tabs button.active,
+.star-view-toggle button.active {
+  color: var(--star-primary-button-text);
+  background: var(--tone, var(--theme-accent));
+  border-color: transparent;
+}
+
+.random-jump,
+.star-detail-actions button:first-child {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--star-primary-button-text);
+  background: linear-gradient(135deg, var(--theme-accent-strong), var(--theme-accent));
+  border-color: color-mix(in srgb, var(--theme-accent) 38%, transparent);
+  font-weight: 800;
+}
+
+.star-observatory {
+  position: relative;
+  min-height: 620px;
+  overflow: hidden;
+  border-radius: 36px;
+}
+
+.star-empty {
+  display: grid;
+  place-items: center;
+  min-height: 360px;
+  color: var(--star-page-muted);
+}
+
+.star-map {
+  position: relative;
+  min-height: 620px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at center, color-mix(in srgb, var(--theme-accent) 11%, transparent), transparent 18%),
+    radial-gradient(circle at 30% 70%, color-mix(in srgb, var(--theme-accent-strong) 10%, transparent), transparent 25%);
+}
+
+
+.twinkle-field,
+.twinkle-field::before,
+.twinkle-field::after {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-repeat: repeat;
+  animation: twinkleStars 4.8s ease-in-out infinite;
+}
+
+.twinkle-field {
+  opacity: 0.62;
+  background-image:
+    radial-gradient(circle, color-mix(in srgb, var(--theme-accent-strong) 58%, transparent) 0 1px, transparent 1.6px),
+    radial-gradient(circle, color-mix(in srgb, var(--theme-text-primary) 28%, transparent) 0 0.8px, transparent 1.4px);
+  background-position: 12px 18px, 86px 54px;
+  background-size: 118px 92px, 156px 128px;
+}
+
+.twinkle-field::before,
+.twinkle-field::after {
+  content: '';
+}
+
+.twinkle-field::before {
+  opacity: 0.54;
+  background-image:
+    radial-gradient(circle, color-mix(in srgb, var(--theme-accent) 54%, transparent) 0 1px, transparent 1.7px),
+    radial-gradient(circle, color-mix(in srgb, var(--theme-text-muted) 34%, transparent) 0 0.9px, transparent 1.6px);
+  background-position: 44px 32px, 126px 16px;
+  background-size: 172px 132px, 210px 166px;
+  animation-delay: -1.6s;
+}
+
+.twinkle-field::after {
+  opacity: 0.42;
+  background-image:
+    radial-gradient(circle, color-mix(in srgb, var(--theme-accent-strong) 62%, transparent) 0 1.2px, transparent 2px),
+    radial-gradient(circle, color-mix(in srgb, var(--theme-text-primary) 24%, transparent) 0 0.8px, transparent 1.5px);
+  background-position: 18px 74px, 150px 96px;
+  background-size: 236px 184px, 188px 144px;
+  animation-delay: -3.1s;
+}
+
+:global(.dark) .twinkle-field {
+  opacity: 0.88;
+}
+
+:global(.dark) .twinkle-field::before {
+  opacity: 0.68;
+}
+
+:global(.dark) .twinkle-field::after {
+  opacity: 0.58;
+}
+
+.orbit {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  border: 1.5px dashed color-mix(in srgb, var(--theme-accent-strong) 42%, transparent);
+  border-radius: 50%;
+  transform: translate(-50%, -50%) rotate(-8deg);
+}
+
+.orbit-a { width: 34%; height: 24%; }
+.orbit-b { width: 58%; height: 42%; }
+.orbit-c { width: 82%; height: 58%; }
+
+.star-node {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 2px solid color-mix(in srgb, var(--tone) 72%, var(--theme-bg-elevated) 10%);
+  border-radius: 999px;
+  color: #020617;
+  background: var(--tone);
+  box-shadow: 0 0 18px var(--glow), 0 0 42px var(--glow);
+  transform: translate(-50%, -50%);
+  animation: starFloat 4.8s ease-in-out infinite;
+}
+
+.star-node.active,
+.star-node:hover {
+  z-index: 3;
+  transform: translate(-50%, -50%) scale(1.16);
+}
+
+.star-node img,
+.star-list-avatar img,
+.star-detail-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.star-node span,
+.star-list-avatar span,
+.star-detail-avatar span {
+  font-weight: 900;
+}
+
+.star-list-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  padding: 18px;
+}
+
+.star-list-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  padding: 16px;
+  border-radius: 24px;
+  cursor: pointer;
+  transition: transform 180ms ease, border-color 180ms ease;
+}
+
+.star-list-card:hover {
+  border-color: color-mix(in srgb, var(--theme-accent) 38%, var(--star-border));
+  transform: translateY(-2px);
+}
+
+.star-list-avatar,
+.star-detail-avatar {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  overflow: hidden;
+  border-radius: 24px;
+  color: #020617;
+  background: var(--tone);
+  box-shadow: 0 0 28px color-mix(in srgb, var(--tone) 36%, transparent);
+}
+
+.star-list-avatar { width: 58px; height: 58px; }
+.star-detail-avatar { width: 82px; height: 82px; margin-bottom: 16px; }
+
+.star-list-card h3 {
+  margin: 0 0 5px;
+  overflow: hidden;
+  color: var(--star-page-text);
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.star-list-card p {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  color: var(--star-page-muted);
+  font-size: 13px;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.star-list-meta {
+  display: flex;
+  gap: 8px;
+  margin-top: 9px;
+  color: var(--star-page-muted);
+  font-size: 12px;
+}
+
+.star-list-meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.star-detail-card {
+  position: absolute;
+  right: 22px;
+  bottom: 22px;
+  z-index: 5;
+  width: min(360px, calc(100% - 44px));
+  padding: 22px;
+  border-radius: 30px;
+  background: var(--star-panel-strong);
+  animation: detailIn 260ms ease both;
+}
+
+.star-detail-close {
+  position: absolute;
+  right: 14px;
+  top: 12px;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  color: var(--star-page-muted);
+  background: var(--star-panel-soft);
+}
+
+.star-detail-card h2 {
+  margin: 8px 0;
+  color: var(--star-page-text);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 34px;
+  line-height: 1;
+}
+
+.star-detail-card p,
+.latest-post {
+  color: var(--star-page-muted);
+  line-height: 1.7;
+}
+
+.star-detail-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 14px 0;
+}
+
+.star-detail-meta span,
+.latest-post {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+  border: 1px solid var(--star-border);
+  border-radius: 999px;
+  background: var(--star-panel-soft);
+  color: var(--star-page-muted);
+  font-size: 12px;
+}
+
+.star-detail-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.star-detail-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 14px;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.star-detail-actions button svg {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  stroke-width: 2.2;
+}
+
+.launch-console {
+  position: relative;
+  display: grid;
+  grid-template-columns: 0.86fr 1.14fr;
+  gap: 26px;
+  margin-top: 26px;
+  overflow: hidden;
+  padding: 24px;
+  border-radius: 36px;
+}
+
+.console-glow {
+  position: absolute;
+  width: 180px;
+  height: 180px;
+  border-radius: 999px;
+  background: radial-gradient(circle, color-mix(in srgb, var(--theme-accent) 28%, transparent), transparent 70%);
+  filter: blur(12px);
+  pointer-events: none;
+}
+
+.launch-copy {
+  position: relative;
+  z-index: 1;
+  align-self: center;
+}
+
+.launch-copy h2 {
+  margin: 12px 0;
+  color: var(--star-page-text);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(32px, 5vw, 56px);
+  line-height: 0.95;
+  letter-spacing: -0.05em;
+}
+
+.launch-copy p {
+  color: var(--star-page-muted);
+}
+
+.launch-form {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+}
+
+.launch-form label {
+  display: grid;
+  gap: 7px;
+  color: var(--star-page-muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.launch-form label > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.launch-form label em {
+  color: #ef4444;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.launch-form input,
+.launch-form textarea,
+.launch-form select {
+  width: 100%;
+  border: 1px solid var(--star-border);
+  border-radius: 16px;
+  color: var(--star-page-text);
+  background: var(--star-field);
+  outline: none;
+}
+
+.launch-form input:focus,
+.launch-form textarea:focus,
+.launch-form select:focus {
+  border-color: var(--theme-accent);
+  box-shadow: 0 0 0 3px var(--theme-accent-soft);
+}
+
+.launch-form input,
+.launch-form select {
+  height: 44px;
+  padding: 0 13px;
+}
+
+.launch-form textarea {
+  padding: 12px 13px;
+  resize: vertical;
+}
+
+.launch-form input::placeholder,
+.launch-form textarea::placeholder {
+  color: color-mix(in srgb, var(--star-page-muted) 70%, transparent);
+}
+
+.launch-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+@keyframes starFloat {
+  0%, 100% { margin-top: 0; }
+  50% { margin-top: -7px; }
+}
+
+@keyframes twinkleStars {
+  0%, 100% { opacity: 0.42; filter: brightness(0.92); }
+  45% { opacity: 0.88; filter: brightness(1.28); }
+  70% { opacity: 0.58; filter: brightness(1.05); }
+}
+
+@keyframes detailIn {
+  from { opacity: 0; transform: translateY(18px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (max-width: 1024px) {
+  .star-controls,
+  .launch-console {
+    grid-template-columns: 1fr;
+  }
+
+  .star-list-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .star-stats,
+  .star-list-grid,
+  .launch-form {
+    grid-template-columns: 1fr;
+  }
+
+  .star-observatory,
+  .star-map {
+    min-height: 520px;
+  }
+
+  .star-detail-card {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
+    width: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .star-node,
+  .star-detail-card,
+  .twinkle-field,
+  .twinkle-field::before,
+  .twinkle-field::after {
+    animation: none;
+  }
+}
+</style>

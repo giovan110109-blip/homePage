@@ -92,6 +92,14 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/travel',
+    name: 'travel-film-map',
+    component: () => import('@/pages/TravelFilmMapView.vue'),
+    meta: {
+      title: '旅行胶卷地图'
+    }
+  },
+  {
     path: '/go',
     name: 'external-link',
     component: () => import('@/pages/ExternalLinkView.vue'),
