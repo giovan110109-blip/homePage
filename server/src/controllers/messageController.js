@@ -16,6 +16,21 @@ class MessageController extends BaseController {
     return ctx.path.startsWith("/api/admin/");
   }
 
+  getListFilter(ctx) {
+    const { status, isPrivate } = ctx.query;
+    const filter = {};
+    if (this.isAdminRequest(ctx)) {
+      if (status) filter.status = status;
+      if (typeof isPrivate !== "undefined") {
+        filter.isPrivate = this.parseBoolean(isPrivate) ? true : { $ne: true };
+      }
+    } else {
+      filter.status = "approved";
+      filter.isPrivate = { $ne: true };
+    }
+    return filter;
+  }
+
   parseBoolean(value) {
     if (typeof value === "boolean") return value;
     if (typeof value === "string") {
@@ -56,6 +71,7 @@ class MessageController extends BaseController {
 
       const avatar = emailAvatar ? emailAvatar : payload.avatar;
       const filteredContent = filterSensitiveWords(content);
+      const visitorNumber = await messageService.getNextVisitorNumber();
 
       const doc = await messageService.create({
         name,
@@ -73,6 +89,7 @@ class MessageController extends BaseController {
         deviceType: client.deviceType,
         referer: client.referer,
         language: client.language,
+        visitorNumber,
         location,
       });
 
@@ -102,17 +119,8 @@ class MessageController extends BaseController {
   // GET /api/messages?page=1&pageSize=10&status=approved  分页查询留言，附带表态计数
   async list(ctx) {
     try {
-      const { page = 1, pageSize = 10, status, isPrivate } = ctx.query;
-      const filter = {};
-      if (this.isAdminRequest(ctx)) {
-        if (status) filter.status = status;
-        if (typeof isPrivate !== "undefined") {
-          filter.isPrivate = this.parseBoolean(isPrivate) ? true : { $ne: true };
-        }
-      } else {
-        filter.status = "approved";
-        filter.isPrivate = { $ne: true };
-      }
+      const { page = 1, pageSize = 10 } = ctx.query;
+      const filter = this.getListFilter(ctx);
 
       const { items, pagination } = await messageService.paginate(filter, {
         page,
@@ -121,6 +129,10 @@ class MessageController extends BaseController {
       });
       const ids = items.map((i) => String(i._id));
       const countsMap = await reactionService.getCountsMap("message", ids);
+      const emailCountsMap = await messageService.getEmailCountsMap(
+        filter,
+        items.map((i) => i.email),
+      );
       
       const commentCounts = await Comment.aggregate([
         { $match: { targetId: { $in: ids }, status: "approved" } },
@@ -131,13 +143,37 @@ class MessageController extends BaseController {
         commentCountMap[item._id] = item.count;
       });
       
-      const merged = items.map((i) => ({
+      const pageNumber = Number(pagination.page || page || 1);
+      const pageSizeNumber = Number(pagination.pageSize || pageSize || items.length || 10);
+      const totalNumber = Number(pagination.total || 0);
+      const merged = items.map((i, index) => ({
         ...i,
+        visitorNumber:
+          Number(i.visitorNumber) > 0
+            ? Number(i.visitorNumber)
+            : Math.max(totalNumber - ((pageNumber - 1) * pageSizeNumber + index), 1),
+        visitorMessageCount: emailCountsMap[String(i.email || '').trim().toLowerCase()] || 1,
         reactions: countsMap[String(i._id)] || reactionService.emptyCounts(),
         commentCount: commentCountMap[String(i._id)] || 0,
       }));
+      const passportStats = await messageService.getPassportStats(filter);
 
-      this.paginated(ctx, merged, pagination, "获取留言成功");
+      this.paginated(ctx, merged, { ...pagination, passportStats }, "获取留言成功");
+    } catch (err) {
+      this.fail(ctx, err);
+    }
+  }
+
+  // GET /api/messages/stats  获取留言护照全量统计
+  async stats(ctx) {
+    try {
+      const filter = this.getListFilter(ctx);
+      const [total, passportStats] = await Promise.all([
+        messageService.count(filter),
+        messageService.getPassportStats(filter),
+      ]);
+
+      this.ok(ctx, { total, ...passportStats }, "获取留言统计成功");
     } catch (err) {
       this.fail(ctx, err);
     }

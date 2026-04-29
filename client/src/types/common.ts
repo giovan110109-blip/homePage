@@ -80,6 +80,8 @@ export interface SiteInfo {
   wechat: string
   location: string
   website: string
+  activityStatus: string
+  activityStatusDate: string
   socialLinks: Array<{ platform: string; url: string; icon?: string }>
   siteName: string
   siteTitle: string

@@ -52,6 +52,7 @@
     </main>
     
     <Footer v-if="showLayoutChrome" />
+    <RandomPortalButton v-if="showRandomPortal" />
     <BackToTop />
   </div>
 </template>
@@ -60,6 +61,7 @@
 import { useRoute } from 'vue-router'
 import AppTransition from '@/components/ui/AppTransition'
 import BackToTop from '@/components/ui/BackToTop.vue'
+import RandomPortalButton from '@/components/random/RandomPortalButton.vue'
 import Header from './Header.vue'
 import Footer from './Footer.vue'
 
@@ -67,6 +69,7 @@ const route = useRoute()
 const transitionName = ref('page-soft')
 const cachedViewNames = ['AboutView']
 const showLayoutChrome = computed(() => !route.path.startsWith('/map'))
+const showRandomPortal = computed(() => showLayoutChrome.value && route.path !== '/go')
 
 const onBeforeEnter = (el: Element) => {
   ;(el as HTMLElement).style.transformOrigin = 'center center'

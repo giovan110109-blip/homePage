@@ -578,9 +578,10 @@ const handleViewerIndexChange = async (index: number) => {
 };
 
 const syncViewerWithRoute = async () => {
-  const rawPhotoId = Array.isArray(route.query.photoId)
-    ? route.query.photoId[0]
-    : route.query.photoId;
+  const rawRoutePhotoId = route.query.photoId ?? route.query.photo;
+  const rawPhotoId = Array.isArray(rawRoutePhotoId)
+    ? rawRoutePhotoId[0]
+    : rawRoutePhotoId;
   const routePhotoId = typeof rawPhotoId === "string" && rawPhotoId ? rawPhotoId : null;
 
   if (!routePhotoId) {
@@ -673,7 +674,7 @@ watch(
 );
 
 watch(
-  () => route.query.photoId,
+  () => [route.query.photoId, route.query.photo],
   () => {
     void syncViewerWithRoute();
   },

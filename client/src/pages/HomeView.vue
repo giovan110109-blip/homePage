@@ -52,6 +52,41 @@
             </div>
             <!-- Glow effect around avatar -->
             <div class="avatar-glow absolute inset-0 rounded-full blur-xl -z-10 transition-all duration-300"></div>
+            <div
+              class="activity-status"
+              aria-live="polite"
+              aria-label="今日动态状态"
+              :class="{ 'activity-status--editable': canManageActivityStatus }"
+              @click.stop
+              @keydown.stop
+            >
+              <span class="activity-status__pulse" aria-hidden="true"></span>
+              <span class="activity-status__prefix">今天在</span>
+              <select
+                v-if="canManageActivityStatus"
+                class="activity-status__select"
+                :value="currentActivity"
+                :disabled="isSavingActivityStatus"
+                aria-label="选择今天的状态"
+                title="选择今天的状态"
+                @change="handleActivityStatusChange"
+                @click.stop
+                @keydown.stop
+              >
+                <option
+                  v-for="status in activityStatuses"
+                  :key="status"
+                  :value="status"
+                >
+                  {{ status }}
+                </option>
+              </select>
+              <Transition v-else name="activity-status-slide" mode="out-in">
+                <span :key="currentActivity" class="activity-status__text">
+                  {{ currentActivity }}
+                </span>
+              </Transition>
+            </div>
           </div>
         </div>
 
@@ -122,7 +157,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref, shallowRef } from "vue";
 import { ElMessage } from "element-plus";
 import { useSiteInfoStore } from "@/stores/siteInfo";
 import { useAuthStore } from "@/stores/auth";
@@ -133,7 +168,43 @@ import { useTheme } from "@/composables/useTheme";
 import { buildAdminSsoUrl } from "@/utils/admin";
 
 const dotGridRef = ref<InstanceType<typeof DotGrid>>();
+const siteInfoStore = useSiteInfoStore();
+const authStore = useAuthStore();
+const authUiStore = useAuthUiStore();
 const { isDark } = useTheme();
+const canManageActivityStatus = computed(() => authStore.isAdminPlus);
+const activityStatuses = ["写代码", "修图", "看电影", "摸鱼中"] as const;
+type ActivityStatus = (typeof activityStatuses)[number];
+
+const currentActivityIndex = shallowRef(0);
+const isSavingActivityStatus = shallowRef(false);
+const getTodayDateKey = () => {
+  const now = new Date();
+  const localTime = now.getTime() - now.getTimezoneOffset() * 60_000;
+  return new Date(localTime).toISOString().slice(0, 10);
+};
+const isActivityStatus = (value: string): value is ActivityStatus =>
+  activityStatuses.includes(value as ActivityStatus);
+const savedActivityStatus = computed(() => {
+  const status = siteInfoStore.info.activityStatus;
+  if (
+    siteInfoStore.info.activityStatusDate !== getTodayDateKey() ||
+    !isActivityStatus(status)
+  ) {
+    return "";
+  }
+
+  return status;
+});
+const currentActivity = computed(
+  () =>
+    savedActivityStatus.value ||
+    (canManageActivityStatus.value
+      ? activityStatuses[0]
+      : activityStatuses[currentActivityIndex.value]),
+);
+let activityStatusTimer: ReturnType<typeof window.setInterval> | undefined;
+
 const dotGridColors = computed(() => ({
   base: isDark.value ? "#334155" : "#cbd5e1",
   active: isDark.value ? "#60a5fa" : "#2563eb",
@@ -151,12 +222,39 @@ const handleGlobalMouseLeave = () => {
   }
 };
 
-const siteInfoStore = useSiteInfoStore();
-const authStore = useAuthStore();
-const authUiStore = useAuthUiStore();
+onMounted(() => {
+  activityStatusTimer = window.setInterval(() => {
+    currentActivityIndex.value =
+      (currentActivityIndex.value + 1) % activityStatuses.length;
+  }, 3200);
+});
+
+onUnmounted(() => {
+  if (activityStatusTimer !== undefined) {
+    window.clearInterval(activityStatusTimer);
+  }
+});
+
 const hasAvailableSession = computed(
   () => authStore.isLoggedIn && !authStore.isSessionExpired,
 );
+
+const handleActivityStatusChange = async (event: Event) => {
+  if (!canManageActivityStatus.value || isSavingActivityStatus.value) return;
+
+  const nextStatus = (event.target as HTMLSelectElement).value;
+  if (!isActivityStatus(nextStatus)) return;
+
+  isSavingActivityStatus.value = true;
+  try {
+    await siteInfoStore.updateActivityStatus(nextStatus, getTodayDateKey());
+    ElMessage.success("今天的状态已更新");
+  } catch (error: any) {
+    ElMessage.error(error?.message || "状态更新失败，请稍后再试");
+  } finally {
+    isSavingActivityStatus.value = false;
+  }
+};
 
 const goToAdmin = () => {
   if (hasAvailableSession.value) {
@@ -182,6 +280,28 @@ const goToAdmin = () => {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes activityFloat {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-1deg);
+  }
+  50% {
+    transform: translateY(-6px) rotate(1deg);
+  }
+}
+
+@keyframes activityPulse {
+  0%,
+  100% {
+    opacity: 0.72;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.45);
   }
 }
 
@@ -221,5 +341,123 @@ const goToAdmin = () => {
     color-mix(in srgb, var(--theme-accent) 38%, transparent) 0%,
     transparent 72%
   );
+}
+
+.activity-status {
+  position: absolute;
+  right: -0.5rem;
+  bottom: 2.5rem;
+  z-index: 20;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 9.75rem;
+  padding: 0.55rem 0.78rem;
+  border: 1px solid color-mix(in srgb, var(--theme-accent) 34%, transparent);
+  border-radius: 999px;
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--theme-surface-strong) 92%, transparent),
+      color-mix(in srgb, var(--theme-bg-soft) 76%, transparent)
+    ),
+    color-mix(in srgb, var(--theme-surface-strong) 88%, transparent);
+  box-shadow:
+    0 16px 36px color-mix(in srgb, var(--theme-accent) 18%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.58);
+  color: var(--theme-text-secondary);
+  font-size: 0.86rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  backdrop-filter: blur(18px);
+  animation: activityFloat 4.8s ease-in-out infinite;
+}
+
+.activity-status--editable {
+  padding-right: 1.95rem;
+  cursor: default;
+}
+
+.activity-status--editable::after {
+  position: absolute;
+  right: 0.82rem;
+  color: var(--theme-text-muted);
+  font-size: 0.68rem;
+  content: "▾";
+  pointer-events: none;
+}
+
+.activity-status__pulse {
+  width: 0.48rem;
+  height: 0.48rem;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: var(--theme-accent-strong);
+  box-shadow: 0 0 0 0.28rem var(--theme-accent-soft);
+  animation: activityPulse 1.8s ease-in-out infinite;
+}
+
+.activity-status__prefix {
+  color: var(--theme-text-muted);
+}
+
+.activity-status__text {
+  display: inline-block;
+  min-width: 3.4rem;
+  color: var(--theme-text-primary);
+}
+
+.activity-status__select {
+  min-width: 3.4rem;
+  max-width: 5rem;
+  border: 0;
+  outline: 0;
+  appearance: none;
+  background: transparent;
+  color: var(--theme-text-primary);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 800;
+}
+
+.activity-status__select:disabled {
+  cursor: wait;
+  opacity: 0.64;
+}
+
+.activity-status__select:focus-visible {
+  border-radius: 0.45rem;
+  box-shadow: 0 0 0 3px var(--theme-accent-soft);
+}
+
+.activity-status-slide-enter-active,
+.activity-status-slide-leave-active {
+  transition:
+    opacity 220ms ease,
+    transform 220ms ease,
+    filter 220ms ease;
+}
+
+.activity-status-slide-enter-from {
+  opacity: 0;
+  filter: blur(4px);
+  transform: translateY(0.45rem);
+}
+
+.activity-status-slide-leave-to {
+  opacity: 0;
+  filter: blur(4px);
+  transform: translateY(-0.45rem);
+}
+
+@media (max-width: 640px) {
+  .activity-status {
+    right: 50%;
+    bottom: -0.45rem;
+    min-width: 9.2rem;
+    transform: translateX(50%);
+    animation: none;
+  }
 }
 </style>

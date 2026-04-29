@@ -26,7 +26,9 @@
         <MomentCard
           v-for="moment in moments"
           :key="moment._id"
+          :id="`moment-${moment._id}`"
           :moment="moment"
+          :class="{ 'moment-portal-highlight': moment._id === focusedMomentId }"
           @like="handleLike"
           @comment-added="handleCommentAdded"
         />
@@ -48,7 +50,8 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { computed, nextTick, onMounted, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { Camera } from 'lucide-vue-next'
 import Loading from '@/components/ui/Loading.vue'
 import AppButton from '@/components/ui/AppButton.vue'
@@ -56,6 +59,11 @@ import MomentCard from '@/components/moment/MomentCard.vue'
 import request from '@/api/request'
 import { usePagination } from '@/composables/usePagination'
 import type { Moment } from '@/types'
+
+const route = useRoute()
+const focusedMomentId = computed(() =>
+  typeof route.query.moment === 'string' ? route.query.moment : '',
+)
 
 const {
   data: moments,
@@ -97,7 +105,59 @@ const handleCommentAdded = (momentId: string) => {
   }
 }
 
-onMounted(() => {
-  fetchMoments()
+const scrollToFocusedMoment = async () => {
+  if (!focusedMomentId.value) return
+  await nextTick()
+  document
+    .getElementById(`moment-${focusedMomentId.value}`)
+    ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+}
+
+const ensureFocusedMoment = async () => {
+  const momentId = focusedMomentId.value
+  if (!momentId) return
+
+  if (!moments.value.some(moment => moment._id === momentId)) {
+    try {
+      const res: any = await request.get(`/moments/${momentId}`)
+      const moment = res?.data
+      if (moment?._id) {
+        moments.value = [moment, ...moments.value]
+      }
+    } catch (error) {
+      console.error('加载随机说说失败:', error)
+    }
+  }
+
+  await scrollToFocusedMoment()
+}
+
+watch(focusedMomentId, () => {
+  ensureFocusedMoment()
+})
+
+onMounted(async () => {
+  await fetchMoments()
+  await ensureFocusedMoment()
 })
 </script>
+
+<style scoped>
+.moment-portal-highlight {
+  position: relative;
+  border-color: color-mix(in srgb, var(--theme-accent) 68%, transparent);
+  box-shadow:
+    0 0 0 4px var(--theme-accent-soft),
+    0 24px 70px color-mix(in srgb, var(--theme-accent) 20%, transparent);
+}
+
+.moment-portal-highlight::before {
+  position: absolute;
+  inset: -0.45rem;
+  z-index: -1;
+  border: 1px solid color-mix(in srgb, var(--theme-accent) 42%, transparent);
+  border-radius: 1.35rem;
+  content: "";
+  pointer-events: none;
+}
+</style>

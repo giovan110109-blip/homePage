@@ -1,0 +1,203 @@
+const BaseController = require('../utils/baseController');
+const { HttpStatus } = require('../utils/response');
+const Article = require('../models/article');
+const FriendLink = require('../models/friendLink');
+const Moment = require('../models/moment');
+const Photo = require('../models/photo');
+
+const getFirst = (items) => (Array.isArray(items) && items.length ? items[0] : null);
+const truncateText = (value = '', maxLength = 54) => {
+  const text = String(value).replace(/\s+/g, ' ').trim();
+  return text.length > maxLength ? `${text.slice(0, maxLength)}...` : text;
+};
+
+const publicPhotoMatch = {
+  status: 'completed',
+  visibility: 'public',
+};
+const validTypes = new Set(['photo', 'article', 'moment', 'travel', 'friend']);
+const defaultAllowedTypes = ['photo', 'travel', 'friend'];
+
+const getAllowedTypes = (rawTypes) => {
+  if (!rawTypes) return new Set(defaultAllowedTypes);
+
+  const types = String(rawTypes)
+    .split(',')
+    .map((type) => type.trim())
+    .filter((type) => validTypes.has(type));
+
+  return new Set(types);
+};
+
+class RandomPortalController extends BaseController {
+  async open(ctx) {
+    try {
+      const allowedTypes = getAllowedTypes(ctx.query.types);
+      if (!allowedTypes.size) {
+        this.throwHttpError('随机传送门还没有配置可进入路径', HttpStatus.BAD_REQUEST);
+      }
+
+      const [photo, article, moment, travelPhoto, friendLink] = await Promise.all([
+        allowedTypes.has('photo') ? this.getRandomPhoto() : null,
+        allowedTypes.has('article') ? this.getRandomArticle() : null,
+        allowedTypes.has('moment') ? this.getRandomMoment() : null,
+        allowedTypes.has('travel') ? this.getRandomTravelPhoto() : null,
+        allowedTypes.has('friend') ? this.getRandomFriendLink() : null,
+      ]);
+
+      const destinations = [
+        photo && {
+          type: 'photo',
+          label: '一张照片',
+          title: photo.title || '未命名照片',
+          description: this.getPhotoDescription(photo),
+          path: `/gallery?photoId=${photo._id}`,
+        },
+        article && {
+          type: 'article',
+          label: '一篇文章',
+          title: article.title,
+          description: truncateText(article.summary || article.category || '去读一段旧想法'),
+          path: `/articles/${article._id}`,
+        },
+        moment && {
+          type: 'moment',
+          label: '一条说说',
+          title: truncateText(moment.content, 24) || '一条生活碎片',
+          description: this.getMomentDescription(moment),
+          path: `/moments?moment=${moment._id}`,
+        },
+        travelPhoto && {
+          type: 'travel',
+          label: '一个旅行地点',
+          title: this.getTravelTitle(travelPhoto),
+          description: this.getPhotoDescription(travelPhoto),
+          path: `/travel?lat=${travelPhoto.location.latitude}&lng=${travelPhoto.location.longitude}`,
+        },
+        friendLink && {
+          type: 'friend',
+          label: '一个朋友站点',
+          title: friendLink.name,
+          description: truncateText(friendLink.description || '拜访一颗朋友星球'),
+          externalUrl: friendLink.url,
+          friendLinkId: friendLink._id,
+        },
+      ].filter(Boolean);
+
+      if (!destinations.length) {
+        this.throwHttpError('暂时还没有可传送的内容', HttpStatus.NOT_FOUND);
+      }
+
+      const destination = destinations[Math.floor(Math.random() * destinations.length)];
+      this.ok(ctx, destination, '传送门已打开');
+    } catch (error) {
+      this.fail(ctx, error);
+    }
+  }
+
+  async getRandomPhoto() {
+    return getFirst(await Photo.aggregate([
+      { $match: publicPhotoMatch },
+      { $sample: { size: 1 } },
+      {
+        $project: {
+          title: 1,
+          dateTaken: 1,
+          geoinfo: 1,
+        },
+      },
+    ]));
+  }
+
+  async getRandomArticle() {
+    return getFirst(await Article.aggregate([
+      { $match: { status: 'published' } },
+      { $sample: { size: 1 } },
+      {
+        $project: {
+          title: 1,
+          summary: 1,
+          category: 1,
+        },
+      },
+    ]));
+  }
+
+  async getRandomMoment() {
+    return getFirst(await Moment.aggregate([
+      { $match: { status: 'published', visibility: 'public' } },
+      { $sample: { size: 1 } },
+      {
+        $project: {
+          content: 1,
+          type: 1,
+          location: 1,
+          createdAt: 1,
+        },
+      },
+    ]));
+  }
+
+  async getRandomTravelPhoto() {
+    return getFirst(await Photo.aggregate([
+      {
+        $match: {
+          ...publicPhotoMatch,
+          'location.latitude': { $exists: true, $ne: null },
+          'location.longitude': { $exists: true, $ne: null },
+        },
+      },
+      { $sample: { size: 1 } },
+      {
+        $project: {
+          title: 1,
+          dateTaken: 1,
+          geoinfo: 1,
+          location: 1,
+        },
+      },
+    ]));
+  }
+
+  async getRandomFriendLink() {
+    return getFirst(await FriendLink.aggregate([
+      { $match: { status: 'approved', isActive: true } },
+      { $sample: { size: 1 } },
+      {
+        $project: {
+          name: 1,
+          url: 1,
+          description: 1,
+        },
+      },
+    ]));
+  }
+
+  getPhotoDescription(photo) {
+    const place = [
+      photo.geoinfo?.locationName,
+      photo.geoinfo?.city,
+      photo.geoinfo?.region,
+      photo.geoinfo?.country,
+    ].filter(Boolean)[0];
+    const date = photo.dateTaken ? new Date(photo.dateTaken).toISOString().slice(0, 10) : '';
+    return [place, date].filter(Boolean).join(' · ') || '去翻一张被时间收藏的照片';
+  }
+
+  getMomentDescription(moment) {
+    const place = moment.location?.name;
+    const date = moment.createdAt ? new Date(moment.createdAt).toISOString().slice(0, 10) : '';
+    return [place, date].filter(Boolean).join(' · ') || '去看看某一天的心情切片';
+  }
+
+  getTravelTitle(photo) {
+    return [
+      photo.geoinfo?.locationName,
+      photo.geoinfo?.city,
+      photo.geoinfo?.region,
+      photo.geoinfo?.country,
+    ].filter(Boolean)[0] || photo.title || '未知坐标';
+  }
+}
+
+module.exports = new RandomPortalController();

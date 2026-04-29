@@ -23,6 +23,8 @@ const SiteInfoSchema = new mongoose.Schema({
   wechat: { type: String, trim: true },
   location: { type: String, trim: true },
   website: { type: String, trim: true },
+  activityStatus: { type: String, trim: true },
+  activityStatusDate: { type: String, trim: true },
   socialLinks: [SocialLinkSchema],
 
   // 网站信息

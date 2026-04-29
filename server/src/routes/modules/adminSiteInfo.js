@@ -7,5 +7,6 @@ const router = new Router({
 
 router.get('/', controller.getAdmin.bind(controller));
 router.put('/', controller.upsert.bind(controller));
+router.put('/activity-status', controller.updateActivityStatus.bind(controller));
 
 module.exports = router;

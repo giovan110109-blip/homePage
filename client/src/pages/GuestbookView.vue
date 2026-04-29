@@ -192,22 +192,40 @@
             </div>
           </form>
         </div>
-        <AppTransition
-          enter-active-class="transition-all duration-300 ease-out"
-          leave-active-class="transition-all duration-200 ease-in"
-          enter-from-class="opacity-0 translate-y-4 scale-95"
-          enter-to-class="opacity-100 translate-y-0 scale-100"
-          leave-from-class="opacity-100 translate-y-0 scale-100"
-          leave-to-class="opacity-0 translate-y-4 scale-95"
-        >
-          <div v-if="stampSuccessVisible" class="stamp-success-card">
-            <div class="stamp-success-mark">VISIT<br />APPROVED</div>
-            <div>
-              <strong>已盖章，欢迎再次来访</strong>
-              <span>{{ lastStampTitle }}</span>
+        <Teleport to="body">
+          <AppTransition
+            enter-active-class="transition-all duration-300 ease-out"
+            leave-active-class="transition-all duration-200 ease-in"
+            enter-from-class="opacity-0"
+            enter-to-class="opacity-100"
+            leave-from-class="opacity-100"
+            leave-to-class="opacity-0"
+          >
+            <div
+              v-if="stampSuccessVisible && latestPassport"
+              class="stamp-ticket-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-label="留言成功机票"
+              @click.self="closeStampModal"
+            >
+              <div class="stamp-ticket-modal__stage">
+                <VisitorPassportCard
+                  :name="latestPassport.name"
+                  :avatar="latestPassport.avatar"
+                  :location="latestPassport.location"
+                  :browser="latestPassport.browser"
+                  :os="latestPassport.os"
+                  :device-type="latestPassport.deviceType"
+                  :created-at="latestPassport.createdAt"
+                  :visitor-number="latestPassport.visitorNumber"
+                  :badge="getPrimaryBadge(latestPassport)"
+                  @close="closeStampModal"
+                />
+              </div>
             </div>
-          </div>
-        </AppTransition>
+          </AppTransition>
+        </Teleport>
       </div>
 
       <!-- Messages List -->
@@ -217,7 +235,9 @@
             护照页
           </h2>
           <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            {{ messages.length }} 枚入境章 · {{ passportStats.withWebsite }} 位有站之人 · {{ passportStats.oldFriends }} 位老朋友
+            {{ passportStats.total }} 枚入境章 ·
+            {{ passportStats.withWebsite }} 位有站之人 ·
+            {{ passportStats.oldFriends }} 位老朋友
           </p>
         </div>
 
@@ -395,7 +415,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, onUnmounted, watch, nextTick, computed } from "vue";
+import {
+  ref,
+  reactive,
+  onMounted,
+  onUnmounted,
+  watch,
+  nextTick,
+  computed,
+} from "vue";
 import {
   ExternalLink,
   Apple,
@@ -415,6 +443,7 @@ import CommentBox from "@/components/ui/CommentBox.vue";
 import EmotePicker from "@/components/ui/EmotePicker.vue";
 import EmoteRenderer from "@/components/ui/EmoteRenderer.vue";
 import RichTextarea from "@/components/ui/RichTextarea.vue";
+import VisitorPassportCard from "@/components/guestbook/VisitorPassportCard.vue";
 import request from "@/api/request";
 import { formatRelativeTime } from "@/utils/format";
 import { buildAvatarSvg } from "@/utils/avatarSvg";
@@ -441,6 +470,8 @@ interface MessageItem {
   deviceType?: string;
   referer?: string;
   language?: string;
+  visitorNumber?: number | null;
+  visitorMessageCount?: number;
   location?: string | null;
 }
 
@@ -451,6 +482,12 @@ interface FormData {
   message: string;
   isPrivate: boolean;
   requireEmailNotification: boolean;
+}
+
+interface PassportStats {
+  total: number;
+  withWebsite: number;
+  oldFriends: number;
 }
 
 const visitorStore = useVisitorStore();
@@ -464,7 +501,7 @@ const formData = ref<FormData>({
 });
 const submitting = ref(false);
 const stampSuccessVisible = ref(false);
-const lastStampTitle = ref("新来的朋友");
+const latestPassport = ref<MessageItem | null>(null);
 const messageListRef = ref<HTMLElement>();
 const loadMoreSentinelRef = ref<HTMLElement | null>(null);
 const messageRichTextareaRef = ref<InstanceType<typeof RichTextarea> | null>(
@@ -475,8 +512,10 @@ const processedMessageMap = new Map<string, MessageItem>();
 let loadMoreObserver: IntersectionObserver | null = null;
 let stampSuccessTimer: number | null = null;
 let processToken = 0;
+let previousBodyOverflow = "";
 const MESSAGE_PAGE_SIZE = 10;
 const reachedMessageEnd = ref(false);
+const totalPassportStats = ref<PassportStats | null>(null);
 
 const {
   showEmotePicker,
@@ -492,6 +531,24 @@ const {
     }
   },
 });
+
+const normalizePassportStats = (payload: any): PassportStats | null => {
+  if (!payload || typeof payload !== "object") return null;
+  const nestedStats = payload.passportStats;
+  const hasStats =
+    typeof payload.withWebsite !== "undefined" ||
+    typeof payload.oldFriends !== "undefined" ||
+    typeof nestedStats?.withWebsite !== "undefined" ||
+    typeof nestedStats?.oldFriends !== "undefined";
+
+  if (!hasStats) return null;
+
+  return {
+    total: Number(payload.total || 0),
+    withWebsite: Number(payload.withWebsite ?? nestedStats?.withWebsite ?? 0),
+    oldFriends: Number(payload.oldFriends ?? nestedStats?.oldFriends ?? 0),
+  };
+};
 
 const mapMessage = (item: any): MessageItem | null => {
   const id = String(item?._id ?? item?.id ?? "");
@@ -521,6 +578,12 @@ const mapMessage = (item: any): MessageItem | null => {
     deviceType: item.deviceType,
     referer: typeof item?.referer === "string" ? item.referer : "",
     language: item.language,
+    visitorNumber:
+      Number(item.visitorNumber) > 0 ? Number(item.visitorNumber) : null,
+    visitorMessageCount:
+      Number(item.visitorMessageCount) > 0
+        ? Number(item.visitorMessageCount)
+        : undefined,
     location,
   };
 };
@@ -530,6 +593,7 @@ const {
   loading,
   loadingMore,
   hasMore,
+  meta: paginationMeta,
   fetch: fetchMessages,
   loadMore,
   refresh,
@@ -538,6 +602,8 @@ const {
     const res = await request.get("/messages", {
       params: { page, pageSize, status: "approved" },
     });
+    const metaStats = normalizePassportStats((res as any)?.meta);
+    if (metaStats) totalPassportStats.value = metaStats;
     return {
       data: (res as any)?.data ?? [],
       meta: (res as any)?.meta ?? { page, pageSize, total: 0, pageCount: 1 },
@@ -548,7 +614,9 @@ const {
 
 const messages = ref<MessageItem[]>([]);
 const canLoadMore = computed(() => hasMore.value && !reachedMessageEnd.value);
-const isStampReady = computed(() => Boolean(formData.value.name.trim() && formData.value.message.trim()));
+const isStampReady = computed(() =>
+  Boolean(formData.value.name.trim() && formData.value.message.trim()),
+);
 const formStampLabel = computed(() => {
   const name = formData.value.name.trim();
   return name ? name.slice(0, 8).toUpperCase() : "GUEST";
@@ -557,7 +625,8 @@ const formStampLabel = computed(() => {
 const visitorMessageCount = computed(() => {
   const counts = new Map<string, number>();
   messages.value.forEach((message) => {
-    const key = (message.email || message.name || message.id).toLowerCase();
+    const key = message.email?.trim().toLowerCase();
+    if (!key) return;
     counts.set(key, (counts.get(key) || 0) + 1);
   });
   return counts;
@@ -565,26 +634,72 @@ const visitorMessageCount = computed(() => {
 
 const getMessageBadges = (message: MessageItem) => {
   const badges = new Set<string>();
-  const visitorKey = (message.email || message.name || message.id).toLowerCase();
-  const visitCount = visitorMessageCount.value.get(visitorKey) || 1;
+  const visitorKey = message.email?.trim().toLowerCase();
+  const visitCount =
+    Number(message.visitorMessageCount) > 0
+      ? Number(message.visitorMessageCount)
+      : visitorKey
+        ? visitorMessageCount.value.get(visitorKey) || 1
+        : 1;
   const createdHour = new Date(message.createdAt).getHours();
 
-  badges.add(visitCount >= 3 ? "老朋友" : "新来的朋友");
+  badges.add(visitCount >= 2 ? "老朋友" : "新来的朋友");
   if (createdHour >= 0 && createdHour < 5) badges.add("深夜访客");
-  if (message.deviceType?.toLowerCase().includes("mobile")) badges.add("移动端旅人");
-  if (message.deviceType?.toLowerCase().includes("desktop")) badges.add("桌面访客");
+  if (message.deviceType?.toLowerCase().includes("mobile"))
+    badges.add("移动端旅人");
+  if (message.deviceType?.toLowerCase().includes("desktop"))
+    badges.add("桌面访客");
   if (message.website) badges.add("有站之人");
-  if (/\[emote:|emote-webp|<img/i.test(message.content || "")) badges.add("表情玩家");
-  if (message.location && !String(message.location).includes("中国")) badges.add("远方来客");
+  if (/\[emote:|emote-webp|<img/i.test(message.content || ""))
+    badges.add("表情玩家");
+  if (message.location && !String(message.location).includes("中国"))
+    badges.add("远方来客");
   return [...badges].slice(0, 4);
 };
 
-const getPrimaryBadge = (message: MessageItem) => getMessageBadges(message)[0] || "访客";
+const getPrimaryBadge = (message: MessageItem) =>
+  getMessageBadges(message)[0] || "访客";
+
+const getDisplayVisitorNumber = (message: MessageItem, index = 0) => {
+  if (message.visitorNumber && message.visitorNumber > 0)
+    return message.visitorNumber;
+  const fallback =
+    Number(paginationMeta.value.total || messages.value.length) - index;
+  return fallback > 0 ? fallback : undefined;
+};
+
+const closeStampModal = () => {
+  stampSuccessVisible.value = false;
+  if (stampSuccessTimer) {
+    window.clearTimeout(stampSuccessTimer);
+    stampSuccessTimer = null;
+  }
+};
 
 const passportStats = computed(() => ({
-  withWebsite: messages.value.filter((message) => Boolean(message.website)).length,
-  oldFriends: messages.value.filter((message) => getMessageBadges(message).includes("老朋友")).length,
+  total:
+    totalPassportStats.value?.total ??
+    paginationMeta.value.total ??
+    messages.value.length,
+  withWebsite:
+    totalPassportStats.value?.withWebsite ??
+    messages.value.filter((message) => Boolean(message.website)).length,
+  oldFriends:
+    totalPassportStats.value?.oldFriends ??
+    messages.value.filter((message) =>
+      getMessageBadges(message).includes("老朋友"),
+    ).length,
 }));
+
+const fetchPassportStats = async () => {
+  try {
+    const res: any = await request.get("/messages/stats");
+    const stats = normalizePassportStats(res?.data);
+    if (stats) totalPassportStats.value = stats;
+  } catch (error) {
+    console.error("获取留言统计失败:", error);
+  }
+};
 
 const buildFallbackAvatar = async (messageId: string) => {
   const cachedAvatar = avatarCache.get(messageId);
@@ -697,6 +812,18 @@ watch(canLoadMore, async () => {
   await ensureLoadMoreObserver();
 });
 
+watch(stampSuccessVisible, (visible) => {
+  if (typeof document === "undefined") return;
+
+  if (visible) {
+    previousBodyOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return;
+  }
+
+  document.body.style.overflow = previousBodyOverflow;
+});
+
 const submitMessage = async () => {
   if (
     !formData.value.name ||
@@ -711,7 +838,7 @@ const submitMessage = async () => {
   try {
     const websiteNormalized = normalizeWebsite(formData.value.website);
     const avatarSvg = await buildAvatarSvg();
-    await request.post("/messages", {
+    const res: any = await request.post("/messages", {
       name: formData.value.name,
       email: formData.value.email,
       website: websiteNormalized || undefined,
@@ -725,27 +852,39 @@ const submitMessage = async () => {
       email: formData.value.email,
       website: formData.value.website,
     });
-    lastStampTitle.value = getMessageBadges({
-      id: "preview",
+
+    const fallbackPassport: MessageItem = {
+      id: `preview-${Date.now()}`,
       name: formData.value.name,
       email: formData.value.email,
       website: websiteNormalized,
+      avatar: avatarSvg,
       content: formData.value.message,
       createdAt: new Date().toISOString(),
-      deviceType: /Mobile|Android|iPhone/i.test(navigator.userAgent) ? "mobile" : "desktop",
-    })[0] || "新来的朋友";
-    stampSuccessVisible.value = true;
-    if (stampSuccessTimer) window.clearTimeout(stampSuccessTimer);
-    stampSuccessTimer = window.setTimeout(() => {
-      stampSuccessVisible.value = false;
+      deviceType: /Mobile|Android|iPhone/i.test(navigator.userAgent)
+        ? "mobile"
+        : "desktop",
+      visitorNumber:
+        Number(paginationMeta.value.total || messages.value.length) + 1,
+      location: null,
+    };
+    const createdMessage = mapMessage(res?.data) || fallbackPassport;
+    latestPassport.value = {
+      ...createdMessage,
+      visitorNumber:
+        createdMessage.visitorNumber || fallbackPassport.visitorNumber,
+    };
+    if (stampSuccessTimer) {
+      window.clearTimeout(stampSuccessTimer);
       stampSuccessTimer = null;
-    }, 1600);
+    }
+    stampSuccessVisible.value = true;
     formData.value.message = "";
     formData.value.isPrivate = false;
     formData.value.requireEmailNotification = false;
-    ElMessage.success("已盖章，待审核通过后展示");
+    ElMessage.success("已盖章，欢迎入境");
     reachedMessageEnd.value = false;
-    refresh();
+    await Promise.all([refresh(), fetchPassportStats()]);
   } catch (error) {
     console.error("提交留言失败:", error);
     const msg =
@@ -862,7 +1001,7 @@ const insertEmote = (emoteName: string) => {
 
 onMounted(async () => {
   reachedMessageEnd.value = false;
-  await fetchMessages();
+  await Promise.all([fetchMessages(), fetchPassportStats()]);
   await ensureLoadMoreObserver();
 });
 
@@ -873,10 +1012,51 @@ onUnmounted(() => {
     window.clearTimeout(stampSuccessTimer);
     stampSuccessTimer = null;
   }
+  if (typeof document !== "undefined") {
+    document.body.style.overflow = previousBodyOverflow;
+  }
 });
 </script>
 
 <style scoped>
+.stamp-ticket-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background:
+    radial-gradient(
+      circle at 50% 36%,
+      color-mix(in srgb, var(--theme-accent) 18%, transparent),
+      transparent 34%
+    ),
+    rgba(15, 23, 42, 0.58);
+  backdrop-filter: blur(14px);
+}
+
+.stamp-ticket-modal__stage {
+  width: min(680px, 100%);
+  animation: ticketModalPop 420ms cubic-bezier(0.19, 1, 0.22, 1) both;
+}
+
+.stamp-ticket-modal__stage :deep(.visitor-passport-card) {
+  width: 100%;
+  margin: 0;
+}
+
+@keyframes ticketModalPop {
+  from {
+    opacity: 0;
+    transform: translateY(22px) scale(0.94) rotateX(10deg);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1) rotateX(0);
+  }
+}
+
 .passport-kicker {
   display: inline-flex;
   align-items: center;
@@ -892,14 +1072,22 @@ onUnmounted(() => {
   --passport-muted: var(--theme-text-muted);
   --passport-border: var(--theme-border);
   --passport-border-strong: var(--theme-border-strong);
-  --passport-field: color-mix(in srgb, var(--theme-surface-strong) 78%, transparent);
+  --passport-field: color-mix(
+    in srgb,
+    var(--theme-surface-strong) 78%,
+    transparent
+  );
   --passport-field-focus: var(--theme-surface-strong);
   --passport-accent: var(--theme-accent);
   --passport-accent-strong: var(--theme-accent-strong);
   --passport-accent-soft: var(--theme-accent-soft);
   color: var(--passport-ink);
   background:
-    radial-gradient(circle at 18% 0%, color-mix(in srgb, var(--theme-accent) 18%, transparent), transparent 34%),
+    radial-gradient(
+      circle at 18% 0%,
+      color-mix(in srgb, var(--theme-accent) 18%, transparent),
+      transparent 34%
+    ),
     linear-gradient(135deg, var(--theme-surface-strong), var(--theme-surface)),
     repeating-linear-gradient(
       0deg,
@@ -911,16 +1099,17 @@ onUnmounted(() => {
 }
 
 .passport-entry-card::before {
-  content: '';
+  content: "";
   position: absolute;
   inset: 14px;
   pointer-events: none;
-  border: 1px dashed color-mix(in srgb, var(--theme-accent) 24%, var(--theme-border));
+  border: 1px dashed
+    color-mix(in srgb, var(--theme-accent) 24%, var(--theme-border));
   border-radius: 22px;
 }
 
 .passport-entry-card::after {
-  content: '';
+  content: "";
   position: absolute;
   right: -42px;
   top: -46px;
@@ -928,7 +1117,11 @@ onUnmounted(() => {
   height: 190px;
   pointer-events: none;
   border-radius: 999px;
-  background: radial-gradient(circle, var(--passport-accent-soft), transparent 68%);
+  background: radial-gradient(
+    circle,
+    var(--passport-accent-soft),
+    transparent 68%
+  );
 }
 
 .passport-entry-card h2 {
@@ -963,10 +1156,11 @@ onUnmounted(() => {
   justify-content: center;
   width: 96px;
   height: 96px;
-  border: 2px dashed color-mix(in srgb, var(--theme-text-muted) 42%, transparent);
+  border: 2px dashed
+    color-mix(in srgb, var(--theme-text-muted) 42%, transparent);
   border-radius: 999px;
   color: color-mix(in srgb, var(--theme-text-muted) 72%, transparent);
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: Georgia, "Times New Roman", serif;
   letter-spacing: 0.08em;
   text-align: center;
   transform: rotate(-10deg);
@@ -993,16 +1187,17 @@ onUnmounted(() => {
   white-space: nowrap;
 }
 
-.passport-entry-card :deep(input[type='text']),
-.passport-entry-card :deep(input[type='email']),
-.passport-entry-card :deep(input[type='url']),
+.passport-entry-card :deep(input[type="text"]),
+.passport-entry-card :deep(input[type="email"]),
+.passport-entry-card :deep(input[type="url"]),
 .passport-entry-card :deep(textarea),
-.passport-entry-card :deep([contenteditable='true']) {
+.passport-entry-card :deep([contenteditable="true"]) {
   color: var(--passport-ink) !important;
   caret-color: var(--passport-accent);
   background: var(--passport-field) !important;
   border-color: var(--passport-border) !important;
-  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--theme-bg-elevated) 34%, transparent);
+  box-shadow: inset 0 1px 0
+    color-mix(in srgb, var(--theme-bg-elevated) 34%, transparent);
 }
 
 .passport-entry-card :deep(input::placeholder),
@@ -1012,7 +1207,7 @@ onUnmounted(() => {
 
 .passport-entry-card :deep(input:focus),
 .passport-entry-card :deep(textarea:focus),
-.passport-entry-card :deep([contenteditable='true']:focus) {
+.passport-entry-card :deep([contenteditable="true"]:focus) {
   background: var(--passport-field-focus) !important;
   border-color: var(--passport-accent) !important;
   box-shadow:
@@ -1029,16 +1224,21 @@ onUnmounted(() => {
   color: var(--passport-ink) !important;
 }
 
-.passport-entry-card :deep(input[type='checkbox']) {
+.passport-entry-card :deep(input[type="checkbox"]) {
   color: var(--passport-accent) !important;
   border-color: var(--passport-border-strong) !important;
 }
 
-.passport-entry-card :deep(button[type='submit']) {
+.passport-entry-card :deep(button[type="submit"]) {
   border: 1px solid color-mix(in srgb, var(--passport-accent) 42%, transparent) !important;
   color: var(--theme-bg-elevated) !important;
-  background: linear-gradient(135deg, var(--passport-accent-strong), var(--passport-accent)) !important;
-  box-shadow: 0 14px 34px color-mix(in srgb, var(--passport-accent) 24%, transparent) !important;
+  background: linear-gradient(
+    135deg,
+    var(--passport-accent-strong),
+    var(--passport-accent)
+  ) !important;
+  box-shadow: 0 14px 34px
+    color-mix(in srgb, var(--passport-accent) 24%, transparent) !important;
 }
 
 .stamp-success-card {
@@ -1066,13 +1266,13 @@ onUnmounted(() => {
   height: 74px;
   border: 2px solid currentColor;
   border-radius: 999px;
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: Georgia, "Times New Roman", serif;
   font-size: 12px;
   font-weight: 900;
   line-height: 1.1;
   text-align: center;
   transform: rotate(-9deg);
-  animation: stampDrop 560ms cubic-bezier(.18,.88,.26,1.15) both;
+  animation: stampDrop 560ms cubic-bezier(0.18, 0.88, 0.26, 1.15) both;
 }
 
 .stamp-success-card strong,
@@ -1087,7 +1287,7 @@ onUnmounted(() => {
 }
 
 .passport-message-card::before {
-  content: '';
+  content: "";
   position: absolute;
   inset: 12px;
   pointer-events: none;
@@ -1096,13 +1296,21 @@ onUnmounted(() => {
 }
 
 .passport-message-card::after {
-  content: '';
+  content: "";
   position: absolute;
   inset: 0;
   pointer-events: none;
   background:
-    radial-gradient(circle at 12% 18%, rgba(255, 255, 255, 0.32), transparent 25%),
-    repeating-linear-gradient(0deg, rgba(120, 53, 15, 0.035) 0 1px, transparent 1px 9px);
+    radial-gradient(
+      circle at 12% 18%,
+      rgba(255, 255, 255, 0.32),
+      transparent 25%
+    ),
+    repeating-linear-gradient(
+      0deg,
+      rgba(120, 53, 15, 0.035) 0 1px,
+      transparent 1px 9px
+    );
   mix-blend-mode: soft-light;
 }
 
@@ -1119,10 +1327,11 @@ onUnmounted(() => {
   justify-content: center;
   width: 106px;
   height: 106px;
-  border: 2px dashed color-mix(in srgb, var(--theme-text-muted) 42%, transparent);
+  border: 2px dashed
+    color-mix(in srgb, var(--theme-text-muted) 42%, transparent);
   border-radius: 999px;
   color: color-mix(in srgb, var(--theme-text-muted) 72%, transparent);
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: Georgia, "Times New Roman", serif;
   text-align: center;
   transform: rotate(-12deg);
   transition: all 220ms ease;
@@ -1131,7 +1340,6 @@ onUnmounted(() => {
 :global(.dark) .passport-card-stamp {
   opacity: 0.62;
 }
-
 
 .passport-message-card {
   overflow: visible;
@@ -1142,7 +1350,6 @@ onUnmounted(() => {
   position: relative;
   z-index: 1;
 }
-
 
 .passport-card-stamp span {
   font-size: 10px;
@@ -1173,16 +1380,37 @@ onUnmounted(() => {
   transform: rotate(-1deg);
 }
 
+.passport-badge--rank {
+  color: #7f1d1d;
+  background: rgba(254, 226, 226, 0.78);
+  border-color: rgba(185, 28, 28, 0.2);
+}
+
 :global(.dark) .passport-badge {
   color: #fde68a;
   background: rgba(120, 53, 15, 0.5);
   border-color: rgba(253, 230, 138, 0.18);
 }
 
+:global(.dark) .passport-badge--rank {
+  color: #fecaca;
+  background: rgba(127, 29, 29, 0.42);
+  border-color: rgba(252, 165, 165, 0.16);
+}
+
 @keyframes stampDrop {
-  0% { opacity: 0; transform: translateY(-28px) scale(1.28) rotate(-9deg); }
-  58% { opacity: 1; transform: translateY(3px) scale(0.92) rotate(-9deg); }
-  100% { opacity: 1; transform: translateY(0) scale(1) rotate(-9deg); }
+  0% {
+    opacity: 0;
+    transform: translateY(-28px) scale(1.28) rotate(-9deg);
+  }
+  58% {
+    opacity: 1;
+    transform: translateY(3px) scale(0.92) rotate(-9deg);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1) rotate(-9deg);
+  }
 }
 
 @media (max-width: 640px) {
@@ -1192,7 +1420,6 @@ onUnmounted(() => {
     width: 82px;
     height: 82px;
   }
-
 
   .passport-card-stamp {
     width: 84px;

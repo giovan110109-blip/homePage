@@ -48,6 +48,7 @@ function registerRoutes(app) {
         'wechatAuth.js',
         'moments.js',
         'adminMoments.js',
+        'randomPortal.js',
         'adminRbac.js',
         'fileManage.js',
         'share.js',

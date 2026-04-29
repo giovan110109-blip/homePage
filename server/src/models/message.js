@@ -27,6 +27,7 @@ const MessageSchema = new mongoose.Schema({
     deviceType: { type: String, trim: true },
     referer: { type: String, trim: true },
     language: { type: String, trim: true },
+    visitorNumber: { type: Number, index: true },
     location: LocationSchema
 }, { timestamps: true });
 

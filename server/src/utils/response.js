@@ -78,6 +78,7 @@ class Response {
         const pageCount = Number(pagination.pageCount || (pageSize ? Math.ceil(total / pageSize) : 0));
 
         return Response.success(items, message || HttpMessage[code], code, {
+            ...pagination,
             page,
             pageSize,
             total,

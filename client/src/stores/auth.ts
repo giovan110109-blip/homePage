@@ -9,6 +9,7 @@ interface AdminUser {
   avatar?: string
   email?: string
   expiresAt?: string
+  role?: string
   roleIds?: string[]
   roles?: Array<{
     _id: string
@@ -41,6 +42,15 @@ export const useAuthStore = defineStore('auth', {
     displayName: (state) => state.user?.nickname || state.user?.username || '',
     userEmail: (state) => state.user?.email || '',
     userAvatar: (state) => state.user?.avatar || '',
+    isAdminPlus: (state) =>
+      !!state.token &&
+      !(
+        state.expiresAt &&
+        new Date(state.expiresAt).getTime() <= Date.now()
+      ) &&
+      ((Array.isArray(state.user?.roles) &&
+        state.user.roles.some((role) => role?.code === 'admin-plus')) ||
+        state.user?.role === 'admin-plus'),
     isSessionExpired: (state) => {
       if (!state.expiresAt) return false
       return new Date(state.expiresAt).getTime() <= Date.now()

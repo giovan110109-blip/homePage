@@ -125,7 +125,11 @@ class MomentController extends BaseController {
   async getMomentDetail(ctx) {
     try {
       const { id } = ctx.params;
-      const moment = await Moment.findById(id).lean();
+      const moment = await Moment.findOne({
+        _id: id,
+        status: "published",
+        visibility: "public",
+      }).lean();
 
       if (!moment) {
         this.throwHttpError("说说不存在", HttpStatus.NOT_FOUND);

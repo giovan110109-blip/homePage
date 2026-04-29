@@ -11,6 +11,8 @@ const defaultSiteInfo: SiteInfo = {
   wechat: '',
   location: '',
   website: '',
+  activityStatus: '',
+  activityStatusDate: '',
   socialLinks: [],
   siteName: '',
   siteTitle: '',
@@ -83,6 +85,20 @@ export const useSiteInfoStore = defineStore('siteInfo', {
         },
       }
       this.lastFetchTime = Date.now()
+    },
+
+    async updateActivityStatus(activityStatus: string, activityStatusDate: string) {
+      const res = await request.put('/admin/site-info/activity-status', {
+        activityStatus,
+        activityStatusDate,
+      })
+      const payload = (res as any)?.data || res || {}
+      const data = payload?.data || payload
+      this.setInfo({
+        activityStatus: data?.activityStatus || activityStatus,
+        activityStatusDate: data?.activityStatusDate || activityStatusDate,
+      })
+      return data
     },
 
     clearError() {

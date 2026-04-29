@@ -53,6 +53,7 @@ declare module 'vue' {
     ProgressBar: typeof import('./src/components/ui/ProgressBar.vue')['default']
     ProgressiveImage: typeof import('./src/components/photo/ProgressiveImage.vue')['default']
     ProjectMagicCard: typeof import('./src/components/ui/ProjectMagicCard.vue')['default']
+    RandomPortalButton: typeof import('./src/components/random/RandomPortalButton.vue')['default']
     ReactionConfetti: typeof import('./src/components/reaction/ReactionConfetti.vue')['default']
     RichTextarea: typeof import('./src/components/ui/RichTextarea.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
@@ -66,5 +67,6 @@ declare module 'vue' {
     Timeline: typeof import('./src/components/ui/Timeline.vue')['default']
     UButton: typeof import('./src/components/ui/UButton.vue')['default']
     VideoPlayer: typeof import('./src/components/ui/VideoPlayer.vue')['default']
+    VisitorPassportCard: typeof import('./src/components/guestbook/VisitorPassportCard.vue')['default']
   }
 }
