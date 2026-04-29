@@ -9,7 +9,7 @@
       class="relative min-h-screen flex items-center justify-center overflow-hidden"
     >
       <!-- DotGrid Background -->
-      <div class="fixed inset-0 z-0 h-full w-full">
+      <div class="absolute inset-0 z-0 h-full w-full">
         <DotGrid
           ref="dotGridRef"
           :dot-size="4"
