@@ -2,9 +2,16 @@ import { ref, computed, watchEffect, onMounted, onUnmounted } from 'vue'
 
 type Theme = 'light' | 'dark'
 
-const getPreferredTheme = (): Theme => {
+const getSavedTheme = (): Theme | null => {
+  if (typeof localStorage === 'undefined') return null
+
   const saved = localStorage.getItem('theme') as Theme | null
-  if (saved === 'light' || saved === 'dark') {
+  return saved === 'light' || saved === 'dark' ? saved : null
+}
+
+const getPreferredTheme = (): Theme => {
+  const saved = getSavedTheme()
+  if (saved) {
     return saved
   }
   return typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
@@ -42,29 +49,49 @@ const applyTheme = (t: Theme, transition = false) => {
 }
 
 const globalTheme = ref<Theme>(getPreferredTheme())
-let isUserSet = false
-let initialized = false
-let mediaQueryHandler: (() => void) | null = null
+let isUserSet = getSavedTheme() !== null
+let activeThemeConsumers = 0
+let mediaQuery: MediaQueryList | null = null
+let mediaQueryHandler: ((event: MediaQueryListEvent) => void) | null = null
+
+const stopTransitionTimer = () => {
+  if (!transitionTimer) return
+
+  clearTimeout(transitionTimer)
+  transitionTimer = null
+  document.documentElement.classList.remove('theme-transition')
+}
+
+const startSystemThemeListener = () => {
+  if (typeof window === 'undefined' || mediaQueryHandler) return
+
+  mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+  mediaQueryHandler = () => {
+    if (!isUserSet && mediaQuery) {
+      globalTheme.value = mediaQuery.matches ? 'dark' : 'light'
+    }
+  }
+  mediaQuery.addEventListener('change', mediaQueryHandler)
+}
+
+const stopSystemThemeListener = () => {
+  if (!mediaQuery || !mediaQueryHandler) return
+
+  mediaQuery.removeEventListener('change', mediaQueryHandler)
+  mediaQuery = null
+  mediaQueryHandler = null
+}
 
 applyTheme(globalTheme.value)
 
 export function useTheme() {
   onMounted(() => {
-    if (!initialized) {
-      if (isUserSet) {
-        localStorage.setItem('theme', globalTheme.value)
-      }
-      
-      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
-      mediaQueryHandler = () => {
-        if (!isUserSet) {
-          globalTheme.value = mediaQuery.matches ? 'dark' : 'light'
-        }
-      }
-      mediaQuery.addEventListener('change', mediaQueryHandler)
-      
-      initialized = true
+    activeThemeConsumers += 1
+
+    if (isUserSet) {
+      localStorage.setItem('theme', globalTheme.value)
     }
+    startSystemThemeListener()
   })
 
   watchEffect(() => {
@@ -82,14 +109,14 @@ export function useTheme() {
   }
 
   onUnmounted(() => {
-    if (transitionTimer) {
-      clearTimeout(transitionTimer)
-      transitionTimer = null
+    activeThemeConsumers = Math.max(0, activeThemeConsumers - 1)
+    if (activeThemeConsumers > 0) {
+      return
     }
-    if (mediaQueryHandler) {
-      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
-      mediaQuery.removeEventListener('change', mediaQueryHandler)
-      mediaQueryHandler = null
+
+    stopSystemThemeListener()
+    if (typeof document !== 'undefined') {
+      stopTransitionTimer()
     }
   })
 

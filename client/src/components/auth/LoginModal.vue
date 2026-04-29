@@ -116,34 +116,6 @@ const handleLogin = async () => {
   width: 100%;
 }
 
-.login-modal :deep(.relative) {
-  border-radius: 28px;
-  border-color: rgba(226, 232, 240, 0.9);
-  box-shadow: 0 28px 80px rgba(15, 23, 42, 0.16);
-  overflow: hidden;
-}
-
-.login-modal :deep(.flex.items-center.justify-between.p-6) {
-  padding: 1.5rem 1.5rem 1rem;
-  border-bottom-color: rgba(226, 232, 240, 0.75);
-}
-
-.login-modal :deep(#modal-title) {
-  font-size: 2rem;
-  line-height: 1.1;
-  font-weight: 700;
-  letter-spacing: -0.04em;
-  color: #0f172a;
-}
-
-.login-modal :deep(.text-gray-400) {
-  color: #64748b;
-}
-
-.login-modal :deep(.p-6) {
-  padding: 1.25rem 1.5rem 1.5rem;
-}
-
 .login-form {
   display: flex;
   flex-direction: column;
@@ -158,11 +130,16 @@ const handleLogin = async () => {
   width: 100%;
   height: 3.5rem;
   border-radius: 1.1rem;
-  border: 1px solid #dbe4f0;
-  background: linear-gradient(180deg, #fbfdff 0%, #f7faff 100%);
+  border: 1px solid var(--theme-border);
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--theme-surface-strong) 92%, white 8%) 0%,
+      var(--theme-surface-soft) 100%
+    );
   padding: 0 1rem;
   font-size: 1rem;
-  color: #0f172a;
+  color: var(--theme-text-primary);
   outline: none;
   transition:
     border-color 0.2s ease,
@@ -171,13 +148,13 @@ const handleLogin = async () => {
 }
 
 .login-input::placeholder {
-  color: #94a3b8;
+  color: var(--theme-text-muted);
 }
 
 .login-input:focus {
-  border-color: #7cb6df;
-  box-shadow: 0 0 0 4px rgba(125, 182, 223, 0.16);
-  background: #ffffff;
+  border-color: var(--theme-accent);
+  box-shadow: 0 0 0 4px var(--theme-accent-soft);
+  background: var(--theme-surface-strong);
 }
 
 .login-actions {
@@ -190,26 +167,15 @@ const handleLogin = async () => {
 
 .login-cancel {
   min-width: 4.5rem;
-  color: #64748b;
   box-shadow: none;
 }
 
 .login-submit {
   min-width: 7.5rem;
   border-radius: 1rem;
-  background: linear-gradient(135deg, #8ec3e6 0%, #6ea7d3 100%);
-  box-shadow: 0 14px 30px rgba(110, 167, 211, 0.3);
-}
-
-.login-submit:hover {
-  background: linear-gradient(135deg, #84bcdf 0%, #629fce 100%);
 }
 
 @media (max-width: 640px) {
-  .login-modal :deep(#modal-title) {
-    font-size: 1.5rem;
-  }
-
   .login-actions {
     justify-content: space-between;
   }

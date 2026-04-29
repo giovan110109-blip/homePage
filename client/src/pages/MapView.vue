@@ -86,6 +86,11 @@ const currentPopup = ref<mapboxgl.Popup | null>(null)
 const { isDark } = useTheme()
 const route = useRoute()
 const hasAppliedRouteFocus = ref(false)
+const MAP_SOURCE_ID = 'photos-source'
+const CLUSTER_LAYER_ID = 'clusters'
+const CLUSTER_COUNT_LAYER_ID = 'cluster-count'
+const UNCLUSTERED_LAYER_ID = 'unclustered-point'
+let mapLayerHandlersBound = false
 
 const initMap = () => {
   if (!mapContainer.value) return
@@ -160,6 +165,13 @@ const cleanupPopupApps = () => {
     }
   })
   popupApps.length = 0
+}
+
+const closeCurrentPopup = () => {
+  const popup = currentPopup.value
+  currentPopup.value = null
+  popup?.remove()
+  cleanupPopupApps()
 }
 
 const createPhotoPopupContent = (location: MapLocation): HTMLElement => {
@@ -347,8 +359,7 @@ const openLocationPopup = (location: MapLocation) => {
   }
 
   if (currentPopup.value) {
-    currentPopup.value.remove()
-    cleanupPopupApps()
+    closeCurrentPopup()
   }
 
   const popupContent = createPhotoPopupContent(location)
@@ -363,9 +374,13 @@ const openLocationPopup = (location: MapLocation) => {
     .setDOMContent(popupContent)
     .addTo(map.value)
 
-  popupContent.querySelector('.popup-close')?.addEventListener('click', () => {
-    currentPopup.value?.remove()
+  currentPopup.value.on('close', () => {
     currentPopup.value = null
+    cleanupPopupApps()
+  })
+
+  popupContent.querySelector('.popup-close')?.addEventListener('click', () => {
+    closeCurrentPopup()
   })
 }
 
@@ -450,12 +465,89 @@ const applyRouteFocus = async () => {
   }, 260)
 }
 
+const handleClusterClick = (e: mapboxgl.MapMouseEvent & { features?: mapboxgl.MapboxGeoJSONFeature[] }) => {
+  if (!map.value) return
+
+  const feature = e.features?.[0]
+  if (!feature?.properties) return
+
+  const clusterId = feature.properties.cluster_id
+  ;(map.value.getSource(MAP_SOURCE_ID) as mapboxgl.GeoJSONSource).getClusterExpansionZoom(
+    clusterId,
+    (err, zoom) => {
+      if (err || !map.value) return
+
+      map.value.easeTo({
+        center: (feature.geometry as GeoJSON.Point).coordinates as [number, number],
+        zoom,
+        duration: 500
+      })
+    }
+  )
+}
+
+const handleUnclusteredPointClick = (e: mapboxgl.MapMouseEvent & { features?: mapboxgl.MapboxGeoJSONFeature[] }) => {
+  const feature = e.features?.[0]
+  const properties = feature?.properties
+  if (!properties) return
+
+  const coordinates = (feature.geometry as GeoJSON.Point)?.coordinates as [number, number]
+
+  const location: MapLocation = {
+    city: properties.city,
+    location: {
+      latitude: coordinates[1],
+      longitude: coordinates[0]
+    },
+    count: properties.count,
+    photos: JSON.parse(properties.photos)
+  }
+
+  openLocationPopup(location)
+}
+
+const handleClusterMouseEnter = () => {
+  if (map.value) {
+    map.value.getCanvas().style.cursor = 'pointer'
+  }
+}
+
+const handleClusterMouseLeave = () => {
+  if (map.value) {
+    map.value.getCanvas().style.cursor = ''
+  }
+}
+
+const removeMapLayerHandlers = () => {
+  if (!map.value || !mapLayerHandlersBound) return
+
+  map.value.off('click', CLUSTER_LAYER_ID, handleClusterClick)
+  map.value.off('click', UNCLUSTERED_LAYER_ID, handleUnclusteredPointClick)
+  map.value.off('mouseenter', CLUSTER_LAYER_ID, handleClusterMouseEnter)
+  map.value.off('mouseleave', CLUSTER_LAYER_ID, handleClusterMouseLeave)
+  map.value.off('mouseenter', UNCLUSTERED_LAYER_ID, handleClusterMouseEnter)
+  map.value.off('mouseleave', UNCLUSTERED_LAYER_ID, handleClusterMouseLeave)
+  mapLayerHandlersBound = false
+}
+
+const addMapLayerHandlers = () => {
+  if (!map.value) return
+
+  removeMapLayerHandlers()
+  map.value.on('click', CLUSTER_LAYER_ID, handleClusterClick)
+  map.value.on('click', UNCLUSTERED_LAYER_ID, handleUnclusteredPointClick)
+  map.value.on('mouseenter', CLUSTER_LAYER_ID, handleClusterMouseEnter)
+  map.value.on('mouseleave', CLUSTER_LAYER_ID, handleClusterMouseLeave)
+  map.value.on('mouseenter', UNCLUSTERED_LAYER_ID, handleClusterMouseEnter)
+  map.value.on('mouseleave', UNCLUSTERED_LAYER_ID, handleClusterMouseLeave)
+  mapLayerHandlersBound = true
+}
+
 const addClusterLayer = () => {
   if (!map.value) return
 
   if (currentPopup.value) {
-    currentPopup.value.remove()
-    currentPopup.value = null
+    closeCurrentPopup()
   }
 
   const geojsonData: GeoJSON.FeatureCollection<GeoJSON.Geometry> = {
@@ -484,25 +576,22 @@ const addClusterLayer = () => {
       }))
   }
 
-  const sourceId = 'photos-source'
-  const clusterLayerId = 'clusters'
-  const clusterCountLayerId = 'cluster-count'
-  const unclusteredLayerId = 'unclustered-point'
+  removeMapLayerHandlers()
 
-  if (map.value.getLayer(clusterLayerId)) {
-    map.value.removeLayer(clusterLayerId)
+  if (map.value.getLayer(CLUSTER_LAYER_ID)) {
+    map.value.removeLayer(CLUSTER_LAYER_ID)
   }
-  if (map.value.getLayer(clusterCountLayerId)) {
-    map.value.removeLayer(clusterCountLayerId)
+  if (map.value.getLayer(CLUSTER_COUNT_LAYER_ID)) {
+    map.value.removeLayer(CLUSTER_COUNT_LAYER_ID)
   }
-  if (map.value.getLayer(unclusteredLayerId)) {
-    map.value.removeLayer(unclusteredLayerId)
+  if (map.value.getLayer(UNCLUSTERED_LAYER_ID)) {
+    map.value.removeLayer(UNCLUSTERED_LAYER_ID)
   }
-  if (map.value.getSource(sourceId)) {
-    map.value.removeSource(sourceId)
+  if (map.value.getSource(MAP_SOURCE_ID)) {
+    map.value.removeSource(MAP_SOURCE_ID)
   }
 
-  map.value.addSource(sourceId, {
+  map.value.addSource(MAP_SOURCE_ID, {
     type: 'geojson',
     data: geojsonData,
     cluster: true,
@@ -511,9 +600,9 @@ const addClusterLayer = () => {
   })
 
   map.value.addLayer({
-    id: clusterLayerId,
+    id: CLUSTER_LAYER_ID,
     type: 'circle',
-    source: sourceId,
+    source: MAP_SOURCE_ID,
     filter: ['has', 'point_count'],
     paint: {
       'circle-color': [
@@ -541,9 +630,9 @@ const addClusterLayer = () => {
   })
 
   map.value.addLayer({
-    id: clusterCountLayerId,
+    id: CLUSTER_COUNT_LAYER_ID,
     type: 'symbol',
-    source: sourceId,
+    source: MAP_SOURCE_ID,
     filter: ['has', 'point_count'],
     layout: {
       'text-field': ['get', 'point_count_abbreviated'],
@@ -559,9 +648,9 @@ const addClusterLayer = () => {
   })
 
   map.value.addLayer({
-    id: unclusteredLayerId,
+    id: UNCLUSTERED_LAYER_ID,
     type: 'circle',
-    source: sourceId,
+    source: MAP_SOURCE_ID,
     filter: ['!', ['has', 'point_count']],
     paint: {
       'circle-color': 'rgba(99, 102, 241, 0.9)',
@@ -572,56 +661,7 @@ const addClusterLayer = () => {
     }
   })
 
-  map.value.on('click', clusterLayerId, (e) => {
-    const features = map.value!.queryRenderedFeatures(e.point, {
-      layers: [clusterLayerId]
-    })
-    const clusterId = features[0].properties.cluster_id
-    ;(map.value!.getSource(sourceId) as mapboxgl.GeoJSONSource).getClusterExpansionZoom(
-      clusterId,
-      (err, zoom) => {
-        if (err) return
-
-        map.value!.easeTo({
-          center: (features[0].geometry as GeoJSON.Point).coordinates as [number, number],
-          zoom: zoom,
-          duration: 500
-        })
-      }
-    )
-  })
-
-  map.value.on('click', unclusteredLayerId, (e) => {
-    const properties = e.features?.[0]?.properties
-    if (!properties) return
-
-    const coordinates = (e.features?.[0]?.geometry as GeoJSON.Point)?.coordinates as [number, number]
-    
-    const location: MapLocation = {
-      city: properties.city,
-      location: {
-        latitude: coordinates[1],
-        longitude: coordinates[0]
-      },
-      count: properties.count,
-      photos: JSON.parse(properties.photos)
-    }
-
-    openLocationPopup(location)
-  })
-
-  map.value.on('mouseenter', clusterLayerId, () => {
-    map.value!.getCanvas().style.cursor = 'pointer'
-  })
-  map.value.on('mouseleave', clusterLayerId, () => {
-    map.value!.getCanvas().style.cursor = ''
-  })
-  map.value.on('mouseenter', unclusteredLayerId, () => {
-    map.value!.getCanvas().style.cursor = 'pointer'
-  })
-  map.value.on('mouseleave', unclusteredLayerId, () => {
-    map.value!.getCanvas().style.cursor = ''
-  })
+  addMapLayerHandlers()
 }
 
 const fitMapBounds = () => {
@@ -672,8 +712,8 @@ watch(
 )
 
 onUnmounted(() => {
-  cleanupPopupApps()
-  currentPopup.value?.remove()
+  removeMapLayerHandlers()
+  closeCurrentPopup()
   map.value?.remove()
 })
 </script>
