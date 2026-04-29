@@ -96,7 +96,7 @@ class FriendLinkController extends BaseController {
   async list(ctx) {
     try {
       const links = await friendLinkService.getApprovedLinks();
-      const linksWithLatestPosts = await rssService.attachLatestPosts(links);
+      const linksWithLatestPosts = rssService.attachCachedLatestPosts(links);
       this.ok(ctx, linksWithLatestPosts);
     } catch (err) {
       this.fail(ctx, err);

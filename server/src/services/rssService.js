@@ -18,6 +18,7 @@ const parser = new XMLParser({
 });
 
 const cache = new Map();
+const pendingFetches = new Map();
 
 const toArray = (value) => {
   if (!value) return [];
@@ -178,48 +179,102 @@ class RssService {
       return cached.value;
     }
 
-    try {
-      const response = await fetch(feedUrl, {
-        headers: {
-          Accept:
-            "application/rss+xml, application/atom+xml, application/xml, text/xml;q=0.9, */*;q=0.8",
-          "User-Agent": "GiovanHomePageRSSBot/1.0 (+https://giovan.cn)",
-        },
-        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-      });
+    const pending = pendingFetches.get(feedUrl);
+    if (pending) return pending;
 
-      if (!response.ok) {
-        throw new Error(`RSS fetch failed: ${response.status}`);
+    const fetchPromise = (async () => {
+      try {
+        const response = await fetch(feedUrl, {
+          headers: {
+            Accept:
+              "application/rss+xml, application/atom+xml, application/xml, text/xml;q=0.9, */*;q=0.8",
+            "User-Agent": "GiovanHomePageRSSBot/1.0 (+https://giovan.cn)",
+          },
+          signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+        });
+
+        if (!response.ok) {
+          throw new Error(`RSS fetch failed: ${response.status}`);
+        }
+
+        const contentLength = Number(response.headers.get("content-length") || 0);
+        if (contentLength > MAX_FEED_BYTES) {
+          throw new Error("RSS feed is too large");
+        }
+
+        const xml = await response.text();
+        if (Buffer.byteLength(xml, "utf8") > MAX_FEED_BYTES) {
+          throw new Error("RSS feed is too large");
+        }
+
+        const parsed = parser.parse(xml);
+        const { feedTitle, items } = getItemsFromParsedFeed(parsed);
+        const posts = items.map((item) =>
+          normalizePost(item, feedUrl, feedTitle),
+        );
+        const latestPost = pickLatestPost(posts);
+
+        cache.set(feedUrl, {
+          value: latestPost,
+          expiresAt: Date.now() + CACHE_TTL_MS,
+        });
+
+        return latestPost;
+      } catch (error) {
+        cache.set(feedUrl, {
+          value: null,
+          expiresAt: Date.now() + ERROR_CACHE_TTL_MS,
+        });
+        return null;
       }
+    })().finally(() => {
+      pendingFetches.delete(feedUrl);
+    });
 
-      const contentLength = Number(response.headers.get("content-length") || 0);
-      if (contentLength > MAX_FEED_BYTES) {
-        throw new Error("RSS feed is too large");
+    pendingFetches.set(feedUrl, fetchPromise);
+    return fetchPromise;
+  }
+
+  getCachedLatestPost(feedUrl, { allowStale = true } = {}) {
+    if (!isHttpUrl(feedUrl)) return null;
+
+    const cached = cache.get(feedUrl);
+    if (!cached) return null;
+    if (!allowStale && cached.expiresAt <= Date.now()) return null;
+
+    return cached.value;
+  }
+
+  async refreshLatestPosts(links = []) {
+    const rssLinks = links.filter((link) => link.rss);
+    let cursor = 0;
+
+    const worker = async () => {
+      while (cursor < rssLinks.length) {
+        const index = cursor;
+        cursor += 1;
+        await this.fetchLatestPost(rssLinks[index].rss);
       }
+    };
 
-      const xml = await response.text();
-      if (Buffer.byteLength(xml, "utf8") > MAX_FEED_BYTES) {
-        throw new Error("RSS feed is too large");
-      }
+    const workerCount = Math.min(MAX_CONCURRENT_FETCHES, rssLinks.length);
 
-      const parsed = parser.parse(xml);
-      const { feedTitle, items } = getItemsFromParsedFeed(parsed);
-      const posts = items.map((item) => normalizePost(item, feedUrl, feedTitle));
-      const latestPost = pickLatestPost(posts);
-
-      cache.set(feedUrl, {
-        value: latestPost,
-        expiresAt: Date.now() + CACHE_TTL_MS,
-      });
-
-      return latestPost;
-    } catch (error) {
-      cache.set(feedUrl, {
-        value: null,
-        expiresAt: Date.now() + ERROR_CACHE_TTL_MS,
-      });
-      return null;
+    if (workerCount > 0) {
+      await Promise.all(Array.from({ length: workerCount }, worker));
     }
+  }
+
+  attachCachedLatestPosts(links = []) {
+    const result = links.map((link) => ({
+      ...link,
+      latestPost: link.rss
+        ? this.getCachedLatestPost(link.rss, { allowStale: true })
+        : null,
+    }));
+
+    this.refreshLatestPosts(result).catch(() => undefined);
+
+    return result;
   }
 
   async attachLatestPosts(links = []) {
