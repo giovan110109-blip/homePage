@@ -2,6 +2,7 @@ const BaseController = require('../utils/baseController');
 const { HttpStatus } = require('../utils/response');
 const Article = require('../models/article');
 const FriendLink = require('../models/friendLink');
+const Message = require('../models/message');
 const Moment = require('../models/moment');
 const Photo = require('../models/photo');
 
@@ -15,8 +16,8 @@ const publicPhotoMatch = {
   status: 'completed',
   visibility: 'public',
 };
-const validTypes = new Set(['photo', 'article', 'moment', 'travel', 'friend']);
-const defaultAllowedTypes = ['photo', 'travel', 'friend'];
+const validTypes = new Set(['photo', 'article', 'moment', 'travel', 'friend', 'message']);
+const defaultAllowedTypes = ['photo', 'travel', 'friend', 'message'];
 
 const getAllowedTypes = (rawTypes) => {
   if (!rawTypes) return new Set(defaultAllowedTypes);
@@ -37,12 +38,13 @@ class RandomPortalController extends BaseController {
         this.throwHttpError('随机传送门还没有配置可进入路径', HttpStatus.BAD_REQUEST);
       }
 
-      const [photo, article, moment, travelPhoto, friendLink] = await Promise.all([
+      const [photo, article, moment, travelPhoto, friendLink, message] = await Promise.all([
         allowedTypes.has('photo') ? this.getRandomPhoto() : null,
         allowedTypes.has('article') ? this.getRandomArticle() : null,
         allowedTypes.has('moment') ? this.getRandomMoment() : null,
         allowedTypes.has('travel') ? this.getRandomTravelPhoto() : null,
         allowedTypes.has('friend') ? this.getRandomFriendLink() : null,
+        allowedTypes.has('message') ? this.getRandomMessage() : null,
       ]);
 
       const destinations = [
@@ -52,6 +54,7 @@ class RandomPortalController extends BaseController {
           title: photo.title || '未命名照片',
           description: this.getPhotoDescription(photo),
           path: `/gallery?photoId=${photo._id}`,
+          memory: this.getPhotoMemory(photo),
         },
         article && {
           type: 'article',
@@ -59,6 +62,10 @@ class RandomPortalController extends BaseController {
           title: article.title,
           description: truncateText(article.summary || article.category || '去读一段旧想法'),
           path: `/articles/${article._id}`,
+          memory: {
+            year: article.createdAt ? new Date(article.createdAt).getFullYear() : '',
+            excerpt: truncateText(article.summary || article.category || '', 82),
+          },
         },
         moment && {
           type: 'moment',
@@ -66,6 +73,11 @@ class RandomPortalController extends BaseController {
           title: truncateText(moment.content, 24) || '一条生活碎片',
           description: this.getMomentDescription(moment),
           path: `/moments?moment=${moment._id}`,
+          memory: {
+            year: moment.createdAt ? new Date(moment.createdAt).getFullYear() : '',
+            place: moment.location?.name || '',
+            excerpt: truncateText(moment.content, 92),
+          },
         },
         travelPhoto && {
           type: 'travel',
@@ -73,6 +85,7 @@ class RandomPortalController extends BaseController {
           title: this.getTravelTitle(travelPhoto),
           description: this.getPhotoDescription(travelPhoto),
           path: `/travel?lat=${travelPhoto.location.latitude}&lng=${travelPhoto.location.longitude}`,
+          memory: this.getPhotoMemory(travelPhoto),
         },
         friendLink && {
           type: 'friend',
@@ -81,6 +94,23 @@ class RandomPortalController extends BaseController {
           description: truncateText(friendLink.description || '拜访一颗朋友星球'),
           externalUrl: friendLink.url,
           friendLinkId: friendLink._id,
+          memory: {
+            excerpt: truncateText(friendLink.description || '', 92),
+          },
+        },
+        message && {
+          type: 'message',
+          label: '一条留言',
+          title: `${message.name || '访客'} 的留言`,
+          description: this.getMessageDescription(message),
+          path: `/note?message=${message._id}`,
+          memory: {
+            year: message.createdAt ? new Date(message.createdAt).getFullYear() : '',
+            place: this.getMessagePlace(message),
+            messageAuthor: message.name || '访客',
+            messageContent: truncateText(message.content, 96),
+            avatar: message.avatar || '',
+          },
         },
       ].filter(Boolean);
 
@@ -104,6 +134,10 @@ class RandomPortalController extends BaseController {
           title: 1,
           dateTaken: 1,
           geoinfo: 1,
+          originalUrl: 1,
+          thumbnailUrl: 1,
+          originalFileUrl: 1,
+          camera: 1,
         },
       },
     ]));
@@ -118,6 +152,7 @@ class RandomPortalController extends BaseController {
           title: 1,
           summary: 1,
           category: 1,
+          createdAt: 1,
         },
       },
     ]));
@@ -154,6 +189,10 @@ class RandomPortalController extends BaseController {
           dateTaken: 1,
           geoinfo: 1,
           location: 1,
+          originalUrl: 1,
+          thumbnailUrl: 1,
+          originalFileUrl: 1,
+          camera: 1,
         },
       },
     ]));
@@ -173,6 +212,22 @@ class RandomPortalController extends BaseController {
     ]));
   }
 
+  async getRandomMessage() {
+    return getFirst(await Message.aggregate([
+      { $match: { status: 'approved', isPrivate: { $ne: true } } },
+      { $sample: { size: 1 } },
+      {
+        $project: {
+          name: 1,
+          content: 1,
+          avatar: 1,
+          createdAt: 1,
+          location: 1,
+        },
+      },
+    ]));
+  }
+
   getPhotoDescription(photo) {
     const place = [
       photo.geoinfo?.locationName,
@@ -184,10 +239,41 @@ class RandomPortalController extends BaseController {
     return [place, date].filter(Boolean).join(' · ') || '去翻一张被时间收藏的照片';
   }
 
+  getPhotoMemory(photo) {
+    return {
+      imageUrl: photo.originalUrl || photo.originalFileUrl || '',
+      placeholderUrl: photo.thumbnailUrl || '',
+      year: photo.dateTaken ? new Date(photo.dateTaken).getFullYear() : '',
+      place: this.getTravelTitle(photo),
+      camera: this.getCameraLabel(photo.camera),
+    };
+  }
+
+  getCameraLabel(camera = {}) {
+    return [
+      camera.make,
+      camera.model,
+      camera.lens,
+    ].filter(Boolean).join(' · ');
+  }
+
   getMomentDescription(moment) {
     const place = moment.location?.name;
     const date = moment.createdAt ? new Date(moment.createdAt).toISOString().slice(0, 10) : '';
     return [place, date].filter(Boolean).join(' · ') || '去看看某一天的心情切片';
+  }
+
+  getMessagePlace(message) {
+    return [
+      message.location?.city,
+      message.location?.region,
+      message.location?.country,
+    ].filter(Boolean).join(' · ');
+  }
+
+  getMessageDescription(message) {
+    const date = message.createdAt ? new Date(message.createdAt).toISOString().slice(0, 10) : '';
+    return [this.getMessagePlace(message), date].filter(Boolean).join(' · ') || '去看看一位访客留下的字句';
   }
 
   getTravelTitle(photo) {

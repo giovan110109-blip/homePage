@@ -5,6 +5,7 @@ import { ElMessage } from "element-plus";
 import { Orbit, Shuffle, Sparkles } from "lucide-vue-next";
 import request from "@/api/request";
 import { recordFriendLinkClick } from "@/api/friendLink";
+import MemoryCardModal from "@/components/random/MemoryCardModal.vue";
 import {
   getEnabledRandomPortalTypes,
   getRandomPortalIntroText,
@@ -22,12 +23,15 @@ interface RandomPortalDestination {
   path?: string;
   externalUrl?: string;
   friendLinkId?: string;
+  memory?: Record<string, any>;
 }
 
 const router = useRouter();
 const isOpening = shallowRef(false);
+const cardVisible = shallowRef(false);
+const currentDestination = shallowRef<RandomPortalDestination | null>(null);
 const portalStatus = computed(() => {
-  if (isOpening.value) return "正在打开一段旧时光……";
+  if (isOpening.value) return "正在抽一张旧时光……";
   return getRandomPortalIntroText();
 });
 
@@ -75,12 +79,19 @@ const openRandomPortal = async () => {
       return;
     }
 
-    await goToDestination(destination);
+    currentDestination.value = destination;
+    cardVisible.value = true;
   } catch (error: any) {
     ElMessage.error(error?.message || "传送门暂时打不开，请稍后再试");
   } finally {
     isOpening.value = false;
   }
+};
+
+const confirmDestination = async () => {
+  if (!currentDestination.value) return;
+  cardVisible.value = false;
+  await goToDestination(currentDestination.value);
 };
 </script>
 
@@ -99,11 +110,19 @@ const openRandomPortal = async () => {
         <Shuffle v-else class="random-portal__shuffle" />
       </span>
       <span class="random-portal__text">
-        <span class="random-portal__label">随便带我看看</span>
+        <span class="random-portal__label">抽一张记忆卡</span>
         <span class="random-portal__status">{{ portalStatus }}</span>
       </span>
       <Sparkles class="random-portal__sparkle" aria-hidden="true" />
     </button>
+
+    <MemoryCardModal
+      v-model="cardVisible"
+      :destination="currentDestination"
+      :drawing="isOpening"
+      @redraw="openRandomPortal"
+      @confirm="confirmDestination"
+    />
   </div>
 </template>
 

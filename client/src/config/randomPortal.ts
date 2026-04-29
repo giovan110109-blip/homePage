@@ -1,4 +1,4 @@
-export type RandomPortalType = "photo" | "article" | "moment" | "travel" | "friend";
+export type RandomPortalType = "photo" | "article" | "moment" | "travel" | "friend" | "message";
 
 export interface RandomPortalAccessItem {
   type: RandomPortalType;
@@ -13,6 +13,7 @@ export const randomPortalAccessList: RandomPortalAccessItem[] = [
   { type: "photo", enabled: true, routeBase: "/gallery", label: "一张照片" },
   { type: "travel", enabled: true, routeBase: "/travel", label: "一个旅行地点" },
   { type: "friend", enabled: true, routeBase: "/friends", label: "一个朋友站点" },
+  { type: "message", enabled: true, routeBase: "/note", label: "一条留言" },
   { type: "article", enabled: false, routeBase: "/articles", label: "一篇文章" },
   { type: "moment", enabled: false, routeBase: "/moments", label: "一条说说" },
 ];

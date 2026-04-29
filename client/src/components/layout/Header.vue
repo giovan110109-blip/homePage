@@ -115,16 +115,16 @@ const siteInfoStore = useSiteInfoStore();
 const mobileMenuOpen = ref(false);
 
 const navigation = [
-  { name: "首页", href: "/" },
-  { name: "关于我", href: "/about" },
-  { name: "访客护照", href: "/note" },
   // { name: "说说", href: "/moments" },
-  { name: "星图", href: "/friends" },
   // { name: "文章列表", href: "/articles" },
   // { name: "我的网站", href: "/sites" },
   // { name: '赞助支持', href: '/sponsor' },
-  { name: "画廊", href: "/gallery" },
-  { name: "旅行胶卷", href: "/travel" },
+  { name: "起点", href: "/" },
+  { name: "自述", href: "/about" },
+  { name: "来客", href: "/note" },
+  { name: "星图", href: "/friends" },
+  { name: "光影", href: "/gallery" },
+  { name: "远行", href: "/travel" },
 ];
 
 // 移动端菜单控制

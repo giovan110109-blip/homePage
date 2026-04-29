@@ -179,6 +179,21 @@ class MessageController extends BaseController {
     }
   }
 
+  // GET /api/messages/:id  获取单条公开留言
+  async detail(ctx) {
+    try {
+      const message = await messageService.findOneByFields({
+        _id: ctx.params.id,
+        status: "approved",
+        isPrivate: { $ne: true },
+      });
+      if (!message) this.throwHttpError("留言未找到", HttpStatus.NOT_FOUND);
+      this.ok(ctx, message, "获取留言成功");
+    } catch (err) {
+      this.fail(ctx, err);
+    }
+  }
+
   // PATCH /api/messages/:id/approve  审核通过
   async approve(ctx) {
     try {

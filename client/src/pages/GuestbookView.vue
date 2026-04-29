@@ -1,5 +1,66 @@
 <template>
   <div class="theme-page min-h-screen py-16 sm:py-20">
+    <Teleport to="body">
+      <Transition name="portal-message">
+        <div
+          v-if="portalMessageVisible"
+          class="portal-message-modal"
+          @click.self="closePortalMessage"
+        >
+          <section class="portal-message-modal__card" role="dialog" aria-modal="true">
+            <button
+              class="portal-message-modal__close"
+              type="button"
+              aria-label="关闭留言"
+              @click="closePortalMessage"
+            >
+              ×
+            </button>
+            <div v-if="portalMessageLoading" class="portal-message-modal__loading">
+              <Loading />
+            </div>
+            <div v-else-if="portalMessage" class="portal-message-modal__content">
+              <span class="portal-message-modal__kicker">
+                <Stamp class="h-4 w-4" />
+                VISITOR NOTE
+              </span>
+              <div class="portal-message-modal__author">
+                <div v-if="portalMessage.avatar" class="portal-message-modal__avatar">
+                  <img
+                    v-if="isHttpAvatar(portalMessage.avatar)"
+                    :src="portalMessage.avatar"
+                    alt="avatar"
+                  />
+                  <div v-else v-html="sanitizeAvatar(portalMessage.avatar)"></div>
+                </div>
+                <div>
+                  <h2>{{ portalMessage.name }}</h2>
+                  <p>{{ formatDate(portalMessage.createdAt) }}</p>
+                </div>
+              </div>
+              <p class="portal-message-modal__text">
+                <EmoteRenderer :text="portalMessage.content" :size="100" />
+              </p>
+              <div class="portal-message-modal__badges">
+                <span
+                  v-for="badge in getMessageBadges(portalMessage)"
+                  :key="badge"
+                >
+                  {{ badge }}
+                </span>
+                <span v-if="portalMessage.location">
+                  来源：{{ formatLocation(portalMessage.location) }}
+                </span>
+              </div>
+            </div>
+            <div v-else class="portal-message-modal__empty">
+              {{ portalMessageError || "这条留言暂时没有找到" }}
+            </div>
+          </section>
+        </div>
+      </Transition>
+    </Teleport>
+
     <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
       <!-- 页面标题 -->
       <div class="text-center mb-12 sm:mb-16">
@@ -424,6 +485,7 @@ import {
   nextTick,
   computed,
 } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import {
   ExternalLink,
   Apple,
@@ -491,6 +553,8 @@ interface PassportStats {
 }
 
 const visitorStore = useVisitorStore();
+const route = useRoute();
+const router = useRouter();
 const formData = ref<FormData>({
   name: visitorStore.name,
   email: visitorStore.email,
@@ -516,6 +580,12 @@ let previousBodyOverflow = "";
 const MESSAGE_PAGE_SIZE = 10;
 const reachedMessageEnd = ref(false);
 const totalPassportStats = ref<PassportStats | null>(null);
+const portalMessage = ref<MessageItem | null>(null);
+const portalMessageLoading = ref(false);
+const portalMessageError = ref("");
+const portalMessageVisible = computed(
+  () => Boolean(typeof route.query.message === "string" && route.query.message),
+);
 
 const {
   showEmotePicker,
@@ -752,6 +822,34 @@ const processMessages = async () => {
   });
 };
 
+const fetchPortalMessage = async (messageId: string) => {
+  portalMessageLoading.value = true;
+  portalMessageError.value = "";
+  portalMessage.value = null;
+
+  try {
+    const res: any = await request.get(`/messages/${messageId}`);
+    const message = mapMessage(res?.data);
+    if (!message) {
+      portalMessageError.value = "这条留言暂时没有找到";
+      return;
+    }
+
+    const avatar = message.avatar || (await buildFallbackAvatar(message.id));
+    portalMessage.value = avatar ? { ...message, avatar } : message;
+  } catch (error: any) {
+    portalMessageError.value =
+      error?.response?.data?.message || error?.message || "这条留言暂时没有找到";
+  } finally {
+    portalMessageLoading.value = false;
+  }
+};
+
+const closePortalMessage = () => {
+  const { message: _message, ...restQuery } = route.query;
+  router.replace({ query: restQuery }).catch(() => undefined);
+};
+
 const ensureLoadMoreObserver = async () => {
   await nextTick();
 
@@ -823,6 +921,21 @@ watch(stampSuccessVisible, (visible) => {
 
   document.body.style.overflow = previousBodyOverflow;
 });
+
+watch(
+  () => route.query.message,
+  (messageId) => {
+    if (typeof messageId !== "string" || !messageId) {
+      portalMessage.value = null;
+      portalMessageError.value = "";
+      portalMessageLoading.value = false;
+      return;
+    }
+
+    fetchPortalMessage(messageId);
+  },
+  { immediate: true },
+);
 
 const submitMessage = async () => {
   if (
@@ -1019,6 +1132,154 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.portal-message-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 10030;
+  display: grid;
+  place-items: center;
+  padding: 22px;
+  background:
+    radial-gradient(circle at 50% 28%, rgba(255, 255, 255, 0.2), transparent 30%),
+    rgba(15, 23, 42, 0.62);
+  backdrop-filter: blur(16px);
+}
+
+.portal-message-modal__card {
+  position: relative;
+  width: min(520px, 100%);
+  overflow: hidden;
+  border: 1px solid var(--theme-border);
+  border-radius: 28px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--theme-surface) 92%, transparent), var(--theme-surface-soft)),
+    var(--theme-surface);
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.28);
+}
+
+.portal-message-modal__close {
+  position: absolute;
+  right: 14px;
+  top: 14px;
+  z-index: 2;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--theme-border);
+  border-radius: 999px;
+  color: var(--theme-text-muted);
+  background: var(--theme-surface-soft);
+  font-size: 22px;
+  line-height: 1;
+}
+
+.portal-message-modal__content,
+.portal-message-modal__loading,
+.portal-message-modal__empty {
+  padding: 28px;
+}
+
+.portal-message-modal__loading,
+.portal-message-modal__empty {
+  display: grid;
+  min-height: 260px;
+  place-items: center;
+  color: var(--theme-text-muted);
+}
+
+.portal-message-modal__kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--theme-accent-strong);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.portal-message-modal__author {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.portal-message-modal__avatar {
+  width: 58px;
+  height: 58px;
+  flex: 0 0 auto;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--theme-surface-soft);
+}
+
+.portal-message-modal__avatar img,
+.portal-message-modal__avatar :deep(svg) {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.portal-message-modal__author h2 {
+  margin: 0;
+  color: var(--theme-text-primary);
+  font-size: 24px;
+  font-weight: 800;
+}
+
+.portal-message-modal__author p {
+  margin: 4px 0 0;
+  color: var(--theme-text-muted);
+  font-size: 13px;
+}
+
+.portal-message-modal__text {
+  margin: 20px 0 0;
+  padding: 16px;
+  border: 1px solid var(--theme-border);
+  border-radius: 18px;
+  color: var(--theme-text-primary);
+  background: var(--theme-surface-soft);
+  font-size: 15px;
+  line-height: 1.8;
+}
+
+.portal-message-modal__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.portal-message-modal__badges span {
+  min-height: 30px;
+  padding: 6px 10px;
+  border: 1px solid var(--theme-border);
+  border-radius: 999px;
+  color: var(--theme-text-muted);
+  background: var(--theme-surface-soft);
+  font-size: 12px;
+}
+
+.portal-message-enter-active,
+.portal-message-leave-active {
+  transition: opacity 180ms ease;
+}
+
+.portal-message-enter-active .portal-message-modal__card,
+.portal-message-leave-active .portal-message-modal__card {
+  transition: transform 220ms ease, opacity 180ms ease;
+}
+
+.portal-message-enter-from,
+.portal-message-leave-to {
+  opacity: 0;
+}
+
+.portal-message-enter-from .portal-message-modal__card,
+.portal-message-leave-to .portal-message-modal__card {
+  opacity: 0;
+  transform: translateY(14px) scale(0.98);
+}
+
 .stamp-ticket-modal {
   position: fixed;
   inset: 0;
