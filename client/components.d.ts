@@ -62,6 +62,7 @@ declare module 'vue' {
     ShareModal: typeof import('./src/components/photo/ShareModal.vue')['default']
     SparklesText: typeof import('./src/components/ui/SparklesText.vue')['default']
     SplitText: typeof import('./src/components/SplitText.vue')['default']
+    SystemVitalsPanel: typeof import('./src/components/layout/SystemVitalsPanel.vue')['default']
     TenYearPromise: typeof import('./src/components/ui/TenYearPromise.vue')['default']
     ThemeToggle: typeof import('./src/components/ui/ThemeToggle.vue')['default']
     ThumbHash: typeof import('./src/components/ui/ThumbHash.vue')['default']

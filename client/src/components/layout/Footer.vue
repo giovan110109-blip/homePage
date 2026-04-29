@@ -1,5 +1,5 @@
 <template>
-  <footer class="relative overflow-hidden">
+  <footer class="site-footer relative overflow-hidden">
     <MagicCard
       ref="footerRef"
       :glow-color="'37, 99, 235'"
@@ -7,7 +7,7 @@
       :enable-border-glow="true"
       :enable-spotlight="true"
       :disable-animations="false"
-      class="relative text-gray-900 border-t overflow-hidden"
+      class="footer-card relative text-gray-900 border-t overflow-hidden"
     >
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
@@ -88,6 +88,10 @@
           </div>
         </div>
         
+        <div class="mt-8">
+          <SystemVitalsPanel />
+        </div>
+
         <div class="border-t border-gray-300/50 dark:border-gray-800 mt-8 pt-8 flex flex-col md:flex-row justify-between items-center">
             <p class="text-gray-500 dark:text-gray-400 text-sm">
             &copy; {{ currentYear }} {{ siteInfoStore.info.name }}. 保留所有权利。<br/>
@@ -104,6 +108,7 @@ import { Mail, MapPin, MessageSquareQuote } from 'lucide-vue-next'
 import { useSiteInfoStore } from '@/stores/siteInfo'
 import { useAuthStore } from '@/stores/auth'
 import MagicCard from '@/components/ui/MagicCard.vue'
+import SystemVitalsPanel from './SystemVitalsPanel.vue'
 import { buildAdminSsoUrl } from '@/utils/admin'
 
 const siteInfoStore = useSiteInfoStore()
@@ -116,3 +121,22 @@ const navigation = [
   { name: '后台管理', href: () => buildAdminSsoUrl(authStore.token), external: true },
 ]
 </script>
+
+<style scoped>
+.site-footer {
+  background: var(--theme-bg-elevated);
+}
+
+.footer-card {
+  border-right: 0;
+  border-bottom: 0;
+  border-left: 0;
+  border-radius: 0;
+  background: var(--theme-bg-elevated);
+  box-shadow: 0 -18px 52px rgba(15, 23, 42, 0.08);
+}
+
+:global(:root.dark) .footer-card {
+  box-shadow: 0 -18px 52px rgba(2, 6, 23, 0.22);
+}
+</style>

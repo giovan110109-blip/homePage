@@ -1,6 +1,7 @@
 import { createRouter, createWebHashHistory, type RouteRecordRaw } from 'vue-router'
 import NProgress from 'nprogress'
 import 'nprogress/nprogress.css'
+import { recordPageView } from '@/api/accessLogs'
 
 NProgress.configure({
   showSpinner: false,
@@ -154,6 +155,12 @@ router.afterEach((to, from) => {
     metaDescription.setAttribute('content', description)
   }
 
+  if (to.fullPath !== from.fullPath) {
+    void recordPageView({
+      path: to.fullPath,
+      title: pageTitle || document.title,
+    }).catch(() => {})
+  }
 })
 
 export default router
