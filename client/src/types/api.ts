@@ -115,8 +115,19 @@ export interface FriendLink {
   lastClickedAt?: string          // 最后点击时间
   reviewedAt?: string             // 审核时间
   reviewedBy?: string             // 审核人
+  latestPost?: FriendLinkLatestPost | null // RSS 最新文章
   createdAt: string               // 创建时间
   updatedAt: string               // 更新时间
+}
+
+export interface FriendLinkLatestPost {
+  title: string
+  url: string
+  publishedAt?: string | null
+  summary?: string
+  author?: string
+  feedTitle?: string
+  fetchedAt: string
 }
 
 export interface FriendLinkFormData {

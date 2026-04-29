@@ -31,13 +31,39 @@ export const useEmotes = () => {
     return emoteGroups.value.flatMap((group) => group.emotes);
   });
 
+  const normalizeEmoteName = (name: string) =>
+    name
+      .trim()
+      .replace(/\u00a0/g, " ")
+      .replace(/\s+/g, " ");
+
   const getEmoteByName = (name: string): EmoteItem | undefined => {
-    return allEmotes.value.find((emote) => emote.name === name);
+    const normalizedName = normalizeEmoteName(name);
+    return allEmotes.value.find(
+      (emote) => normalizeEmoteName(emote.name) === normalizedName,
+    );
   };
 
   const getEmoteUrl = (name: string): string => {
-    const emote = getEmoteByName(name);
-    return emote?.url || "";
+    const normalizedName = normalizeEmoteName(name);
+    const emote = getEmoteByName(normalizedName);
+    if (emote?.url) return emote.url;
+
+    if (/[\\/?:#]/.test(normalizedName)) return "";
+
+    if (/^\d{3}-网络抽象静态表情包\.webp$/i.test(normalizedName)) {
+      return `/emote-webp/抽象/${normalizedName}`;
+    }
+
+    if (/^\d{3}-草地牛牛静态表情包\.webp$/i.test(normalizedName)) {
+      return `/emote-webp/牛牛/${normalizedName}`;
+    }
+
+    if (/^\d{3}-高雅人士企鹅表情包\.webp$/i.test(normalizedName)) {
+      return `/emote-webp/高雅人士/${normalizedName}`;
+    }
+
+    return "";
   };
 
   const setActiveGroup = (groupName: string) => {

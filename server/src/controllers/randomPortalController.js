@@ -11,6 +11,24 @@ const truncateText = (value = '', maxLength = 54) => {
   const text = String(value).replace(/\s+/g, ' ').trim();
   return text.length > maxLength ? `${text.slice(0, maxLength)}...` : text;
 };
+const normalizeText = (value = '') => String(value || '').replace(/\s+/g, ' ').trim();
+const splitAddress = (value = '') => normalizeText(value)
+  .split(/[，,、]/)
+  .map((part) => part.trim())
+  .filter((part) => part && !/^\d{5,}$/.test(part));
+const uniqueParts = (parts = []) => {
+  const seen = new Set();
+  return parts.filter((part) => {
+    const normalized = normalizeText(part);
+    if (!normalized || seen.has(normalized)) return false;
+    seen.add(normalized);
+    return true;
+  });
+};
+const isVerboseAddress = (value = '') => {
+  const text = normalizeText(value);
+  return text.length > 18 && splitAddress(text).length >= 4;
+};
 
 const publicPhotoMatch = {
   status: 'completed',
@@ -51,7 +69,7 @@ class RandomPortalController extends BaseController {
         photo && {
           type: 'photo',
           label: '一张照片',
-          title: photo.title || '未命名照片',
+          title: this.getPhotoTitle(photo),
           description: this.getPhotoDescription(photo),
           path: `/gallery?photoId=${photo._id}`,
           memory: this.getPhotoMemory(photo),
@@ -229,14 +247,8 @@ class RandomPortalController extends BaseController {
   }
 
   getPhotoDescription(photo) {
-    const place = [
-      photo.geoinfo?.locationName,
-      photo.geoinfo?.city,
-      photo.geoinfo?.region,
-      photo.geoinfo?.country,
-    ].filter(Boolean)[0];
     const date = photo.dateTaken ? new Date(photo.dateTaken).toISOString().slice(0, 10) : '';
-    return [place, date].filter(Boolean).join(' · ') || '去翻一张被时间收藏的照片';
+    return date || '去翻一张被时间收藏的照片';
   }
 
   getPhotoMemory(photo) {
@@ -244,7 +256,7 @@ class RandomPortalController extends BaseController {
       imageUrl: photo.originalUrl || photo.originalFileUrl || '',
       placeholderUrl: photo.thumbnailUrl || '',
       year: photo.dateTaken ? new Date(photo.dateTaken).getFullYear() : '',
-      place: this.getTravelTitle(photo),
+      place: this.getPhotoPlaceSummary(photo),
       camera: this.getCameraLabel(photo.camera),
     };
   }
@@ -277,12 +289,33 @@ class RandomPortalController extends BaseController {
   }
 
   getTravelTitle(photo) {
-    return [
-      photo.geoinfo?.locationName,
+    return this.getPhotoTitle(photo);
+  }
+
+  getPhotoTitle(photo) {
+    const title = normalizeText(photo.title);
+    if (title && !isVerboseAddress(title)) return title;
+
+    const locationName = normalizeText(photo.geoinfo?.locationName);
+    const addressParts = splitAddress(locationName).filter((part) => part !== '中国');
+    return addressParts[0] || photo.geoinfo?.city || photo.geoinfo?.region || photo.geoinfo?.country || title || '未知坐标';
+  }
+
+  getPhotoPlaceSummary(photo) {
+    const locationName = normalizeText(photo.geoinfo?.locationName);
+    const addressParts = splitAddress(locationName);
+    const broadParts = uniqueParts([
       photo.geoinfo?.city,
       photo.geoinfo?.region,
       photo.geoinfo?.country,
-    ].filter(Boolean)[0] || photo.title || '未知坐标';
+    ]);
+
+    if (broadParts.length) return broadParts.join(' · ');
+
+    return [
+      ...addressParts.filter((part) => part !== '中国').slice(-3),
+      addressParts.includes('中国') ? '中国' : '',
+    ].filter(Boolean).join(' · ');
   }
 }
 

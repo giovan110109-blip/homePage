@@ -107,13 +107,21 @@ const getFriendLinkHref = (url: string) => {
   const normalized = normalizeHttpUrl(url);
   return normalized ? getExternalLinkRedirectUrl(normalized) : "#";
 };
-const getDaysSince = (value?: string) => {
+const getLatestPostHref = (link: FriendLink) => {
+  const normalized = normalizeHttpUrl(link.latestPost?.url || "");
+  return normalized ? getExternalLinkRedirectUrl(normalized) : "#";
+};
+const getLatestPostTime = (link: FriendLink) =>
+  link.latestPost?.publishedAt
+    ? formatSignalTime(link.latestPost.publishedAt)
+    : "时间未知";
+const getDaysSince = (value?: string | null) => {
   if (!value) return null;
   const timestamp = new Date(value).getTime();
   if (!Number.isFinite(timestamp)) return null;
   return Math.max(0, Math.floor((Date.now() - timestamp) / 86_400_000));
 };
-const formatSignalTime = (value?: string) => {
+const formatSignalTime = (value?: string | null) => {
   const days = getDaysSince(value);
   if (days === null) return "尚未记录";
   if (days === 0) return "今天";
@@ -719,8 +727,20 @@ onMounted(() => {
           <div v-if="selectedPlanetStatus" class="planet-status-copy">
             {{ selectedPlanetStatus.description }}
           </div>
-          <div v-if="(selectedLink as any).latestPost" class="latest-post">
-            最新信号：{{ (selectedLink as any).latestPost.title }}
+          <div
+            v-if="selectedLink.latestPost"
+            class="latest-post latest-post--active"
+          >
+            <span>最新信号</span>
+            <a
+              :href="getLatestPostHref(selectedLink)"
+              target="_blank"
+              rel="noopener noreferrer"
+              @click.stop
+            >
+              {{ selectedLink.latestPost.title }}
+            </a>
+            <small>{{ getLatestPostTime(selectedLink) }}</small>
           </div>
           <div v-else class="latest-post">
             最新信号：{{
@@ -1584,6 +1604,36 @@ onMounted(() => {
 
 .latest-post {
   margin-top: 8px;
+}
+
+.latest-post--active {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.latest-post--active span {
+  color: var(--theme-accent-strong);
+  font-weight: 800;
+}
+
+.latest-post--active a {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--star-page-text);
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.latest-post--active a:hover {
+  color: var(--theme-accent-strong);
+}
+
+.latest-post--active small {
+  color: var(--star-page-muted);
+  font-size: 11px;
+  white-space: nowrap;
 }
 
 .star-detail-actions {

@@ -1,6 +1,7 @@
 const BaseController = require("../utils/baseController");
 const { HttpStatus } = require("../utils/response");
 const friendLinkService = require("../services/friendLinkService");
+const rssService = require("../services/rssService");
 const { getClientInfo } = require("../utils/requestInfo");
 const { getLocationByIp } = require("../utils/ipLocator");
 const { sendEmail } = require("../utils/sendEmail");
@@ -95,7 +96,8 @@ class FriendLinkController extends BaseController {
   async list(ctx) {
     try {
       const links = await friendLinkService.getApprovedLinks();
-      this.ok(ctx, links);
+      const linksWithLatestPosts = await rssService.attachLatestPosts(links);
+      this.ok(ctx, linksWithLatestPosts);
     } catch (err) {
       this.fail(ctx, err);
     }

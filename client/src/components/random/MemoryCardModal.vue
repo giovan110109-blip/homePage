@@ -9,6 +9,7 @@ import {
   Timer,
   X,
 } from "lucide-vue-next";
+import EmoteRenderer from "@/components/ui/EmoteRenderer.vue";
 import { getUploadURL } from "@/utils";
 
 const props = defineProps<{
@@ -34,18 +35,62 @@ const imageUrl = computed(() => {
   const value = String(memory.value.imageUrl || memory.value.avatar || "");
   return normalizeImageUrl(value);
 });
-const title = computed(() => props.destination?.title || "一段旧时光");
 const label = computed(() => props.destination?.label || "记忆盲盒");
-const description = computed(
-  () => props.destination?.description || "抽到了一张还没有写说明的记忆卡。",
-);
 const hasMessage = computed(() => Boolean(memory.value.messageContent));
+
+const normalizeText = (value: unknown) =>
+  String(value || "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const isPostalCode = (value: string) => /^\d{5,}$/.test(value.trim());
+const splitAddress = (value: string) =>
+  normalizeText(value)
+    .split(/[，,、]/)
+    .map((part) => part.trim())
+    .filter((part) => part && !isPostalCode(part));
+
+const isVerboseAddress = (value: string) =>
+  splitAddress(value).length >= 4 && normalizeText(value).length > 18;
+
+const compactAddressTitle = (value: string) => {
+  if (!isVerboseAddress(value)) return value;
+  return splitAddress(value).filter((part) => part !== "中国")[0] || value;
+};
+
+const title = computed(() =>
+  compactAddressTitle(normalizeText(props.destination?.title || "一段旧时光")),
+);
+const description = computed(() => {
+  const rawDescription = normalizeText(
+    props.destination?.description || "抽到了一张还没有写说明的记忆卡。",
+  );
+  if (!rawDescription) return "";
+
+  const dateText = rawDescription.match(/\d{4}-\d{2}-\d{2}/)?.[0];
+  if (isVerboseAddress(rawDescription) && dateText) return dateText;
+
+  const compactedDescription = compactAddressTitle(rawDescription);
+  return compactedDescription === title.value ? "" : compactedDescription;
+});
+
+const isDuplicateMeta = (text: string) => {
+  const normalized = normalizeText(text);
+  return (
+    normalized === title.value ||
+    (Boolean(description.value) && normalized === description.value)
+  );
+};
+
 const metaItems = computed(() =>
   [
     memory.value.year && { icon: Timer, text: `${memory.value.year}` },
     memory.value.place && { icon: MapPin, text: memory.value.place },
     memory.value.camera && { icon: Camera, text: memory.value.camera },
-  ].filter(Boolean) as Array<{ icon: any; text: string }>,
+  ].filter((item) => {
+    if (!item) return false;
+    return !isDuplicateMeta(item.text);
+  }) as Array<{ icon: any; text: string }>,
 );
 
 const close = () => emit("update:modelValue", false);
@@ -74,7 +119,7 @@ const close = () => emit("update:modelValue", false);
               MEMORY CARD
             </span>
             <h2>{{ title }}</h2>
-            <p>{{ description }}</p>
+            <p v-if="description">{{ description }}</p>
 
             <div v-if="metaItems.length" class="memory-card-modal__meta">
               <span v-for="item in metaItems" :key="item.text">
@@ -87,7 +132,11 @@ const close = () => emit("update:modelValue", false);
               <MessageCircle class="h-4 w-4" />
               <div>
                 <strong>{{ memory.messageAuthor || "访客" }}</strong>
-                <span>{{ memory.messageContent }}</span>
+                <EmoteRenderer
+                  class="memory-card-modal__message-content"
+                  :text="memory.messageContent"
+                  :size="72"
+                />
               </div>
             </blockquote>
 
@@ -252,7 +301,7 @@ const close = () => emit("update:modelValue", false);
 }
 
 .memory-card-modal__message strong,
-.memory-card-modal__message span {
+.memory-card-modal__message-content {
   display: block;
 }
 
