@@ -47,6 +47,16 @@ if (VITE_SITE_DESCRIPTION) {
 router.isReady().then(() => {
   const siteInfoStore = useSiteInfoStore()
   siteInfoStore.fetchSiteInfo()
+
+  const prewarmAboutRoute = () => {
+    void import('./pages/AboutView.vue')
+  }
+
+  if ('requestIdleCallback' in window) {
+    window.requestIdleCallback(prewarmAboutRoute, { timeout: 3000 })
+  } else {
+    setTimeout(prewarmAboutRoute, 1200)
+  }
   
   const redirectPath = sessionStorage.getItem('redirectPath')
   if (redirectPath) {

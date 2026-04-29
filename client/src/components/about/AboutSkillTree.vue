@@ -16,7 +16,7 @@ interface Props {
 
 const props = defineProps<Props>();
 
-const nodeStrength = (level: number) => Math.max(0.72, Math.min(level / 100, 1));
+const clampSkillLevel = (level: number) => Math.max(0, Math.min(Math.round(level), 100));
 </script>
 
 <template>
@@ -48,19 +48,34 @@ const nodeStrength = (level: number) => Math.max(0.72, Math.min(level / 100, 1))
           <span>{{ branch.signal }}</span>
         </div>
         <h3>{{ branch.title }}</h3>
-        <div class="skill-constellation__chips">
-          <span
+        <div class="skill-constellation__chips" role="list">
+          <article
             v-for="(skill, skillIndex) in branch.skills"
             :key="skill.name"
             class="skill-chip"
+            role="listitem"
             :style="{
-              '--skill-strength': nodeStrength(skill.level),
+              '--skill-level': `${clampSkillLevel(skill.level)}%`,
               '--chip-index': skillIndex,
             }"
           >
-            <i aria-hidden="true"></i>
-            {{ skill.name }}
-          </span>
+            <div class="skill-chip__meta">
+              <span class="skill-chip__name">{{ skill.name }}</span>
+              <data class="skill-chip__value" :value="clampSkillLevel(skill.level)">
+                {{ clampSkillLevel(skill.level) }}%
+              </data>
+            </div>
+            <div
+              class="skill-chip__meter"
+              role="progressbar"
+              :aria-label="`${skill.name} 熟练度 ${clampSkillLevel(skill.level)}%`"
+              aria-valuemin="0"
+              aria-valuemax="100"
+              :aria-valuenow="clampSkillLevel(skill.level)"
+            >
+              <span aria-hidden="true"></span>
+            </div>
+          </article>
         </div>
       </section>
 
@@ -86,6 +101,8 @@ const nodeStrength = (level: number) => Math.max(0.72, Math.min(level / 100, 1))
   width: 100%;
   margin-top: clamp(24px, 4vw, 42px);
   padding: clamp(24px, 4vw, 46px);
+  content-visibility: auto;
+  contain-intrinsic-size: 820px;
   overflow: hidden;
   border: 1px solid var(--skill-border);
   background:
@@ -96,7 +113,7 @@ const nodeStrength = (level: number) => Math.max(0.72, Math.min(level / 100, 1))
   box-shadow:
     12px 16px 0 color-mix(in srgb, var(--skill-accent) 7%, transparent),
     inset 0 0 80px color-mix(in srgb, var(--skill-accent) 8%, transparent);
-  backdrop-filter: blur(18px);
+  backdrop-filter: blur(10px);
 }
 
 .skill-tree-card::before,
@@ -157,7 +174,7 @@ const nodeStrength = (level: number) => Math.max(0.72, Math.min(level / 100, 1))
   margin: 0;
   color: var(--skill-ink);
   font-family: Georgia, "Songti SC", serif;
-  font-size: clamp(2.2rem, 4.6vw, 5rem);
+  font-size: clamp(1.8rem, 3vw, 3.2rem);
   line-height: 1;
   text-shadow: 6px 6px 0 var(--skill-accent-soft);
 }
@@ -359,19 +376,17 @@ const nodeStrength = (level: number) => Math.max(0.72, Math.min(level / 100, 1))
 }
 
 .skill-constellation__chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
+  display: grid;
+  gap: 12px;
 }
 
 .skill-chip {
-  --skill-strength: 0.8;
+  --skill-level: 0%;
   --chip-index: 0;
   position: relative;
-  display: inline-flex;
-  align-items: center;
+  display: grid;
   gap: 8px;
-  padding: 9px 11px;
+  padding: 10px 11px;
   border: 1px solid color-mix(in srgb, var(--skill-border) 72%, transparent);
   background: color-mix(in srgb, var(--skill-card) 86%, transparent);
   color: var(--skill-muted);
@@ -380,13 +395,43 @@ const nodeStrength = (level: number) => Math.max(0.72, Math.min(level / 100, 1))
   transform: translateY(calc((var(--chip-index) % 2) * 4px));
 }
 
-.skill-chip i {
-  width: calc(7px + (var(--skill-strength) * 6px));
-  height: calc(7px + (var(--skill-strength) * 6px));
-  border-radius: 999px;
-  background: var(--skill-accent);
-  box-shadow: 0 0 calc(12px + (var(--skill-strength) * 20px)) color-mix(in srgb, var(--skill-accent) 76%, transparent);
-  animation: nodePulse 2.4s ease-in-out infinite;
+.skill-chip__meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.skill-chip__name {
+  color: var(--skill-ink);
+}
+
+.skill-chip__value {
+  color: var(--skill-accent-strong);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 0.95rem;
+  font-weight: 900;
+}
+
+.skill-chip__meter {
+  position: relative;
+  height: 8px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--skill-border) 70%, transparent);
+  background:
+    repeating-linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--skill-border) 42%, transparent) 0 1px,
+      transparent 1px 20%
+    ),
+    color-mix(in srgb, var(--skill-soft) 76%, transparent);
+}
+
+.skill-chip__meter span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--skill-level);
+  background: linear-gradient(90deg, var(--skill-accent), var(--skill-accent-strong));
 }
 
 .skill-satellite {
@@ -451,15 +496,6 @@ const nodeStrength = (level: number) => Math.max(0.72, Math.min(level / 100, 1))
   }
 }
 
-@keyframes nodePulse {
-  0%, 100% {
-    transform: scale(0.9);
-  }
-  50% {
-    transform: scale(1.18);
-  }
-}
-
 @keyframes satelliteOuter {
   from {
     transform: rotate(0deg) translateX(min(35vw, 330px)) rotate(0deg);
@@ -479,6 +515,11 @@ const nodeStrength = (level: number) => Math.max(0.72, Math.min(level / 100, 1))
 }
 
 @media (max-width: 760px) {
+  .skill-tree-card {
+    backdrop-filter: none;
+    contain-intrinsic-size: 980px;
+  }
+
   .skill-tree-card__header {
     display: grid;
   }
@@ -513,6 +554,17 @@ const nodeStrength = (level: number) => Math.max(0.72, Math.min(level / 100, 1))
   .skill-constellation--3:hover,
   .skill-constellation--4:hover {
     transform: translateY(-4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skill-tree-card__scan,
+  .skill-galaxy__orbit,
+  .skill-core::before,
+  .skill-core::after,
+  .skill-constellation__signal,
+  .skill-satellite {
+    animation: none;
   }
 }
 </style>

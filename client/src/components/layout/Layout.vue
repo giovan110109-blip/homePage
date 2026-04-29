@@ -44,7 +44,9 @@
         @enter="onEnter"
         @leave="onLeave"
       >
-        <component :is="Component" :key="currentRoute.path" />
+        <KeepAlive :include="cachedViewNames" :max="3">
+          <component :is="Component" :key="currentRoute.path" />
+        </KeepAlive>
       </AppTransition>
     </RouterView>
     </main>
@@ -62,67 +64,20 @@ import Header from './Header.vue'
 import Footer from './Footer.vue'
 
 const route = useRoute()
-const transitionName = ref('page')
-const prevRoute = ref('')
+const transitionName = ref('page-soft')
+const cachedViewNames = ['AboutView']
 const showLayoutChrome = computed(() => !route.path.startsWith('/map'))
 
-// 路由顺序映射，用于判断前进还是后退
-const routeOrder = {
-  '/': 0,
-  '/about': 1,
-  '/note': 2,
-   '/moments': 3,
-  '/friends': 4,
-   '/articles': 5,
-  '/gallery': 6,
-}
-
-// 监听路由变化，动态设置过渡动画
-watch(
-  () => route.path,
-  (newPath, oldPath) => {
-    if (!oldPath) {
-      transitionName.value = 'page'
-      return
-    }
-    
-    const newIndex = routeOrder[newPath as keyof typeof routeOrder] ?? -1
-    const oldIndex = routeOrder[oldPath as keyof typeof routeOrder] ?? -1
-    
-    if (newIndex > oldIndex) {
-      // 前进动画
-      transitionName.value = 'page-forward'
-    } else if (newIndex < oldIndex) {
-      // 后退动画
-      transitionName.value = 'page-backward'
-    } else {
-      // 默认动画
-      transitionName.value = 'page'
-    }
-    
-    prevRoute.value = oldPath
-  },
-  { immediate: true }
-)
-
-// 动画生命周期钩子
 const onBeforeEnter = (el: Element) => {
-  // 添加进入前的准备工作
   ;(el as HTMLElement).style.transformOrigin = 'center center'
 }
 
-const onEnter = (el: Element, done: () => void) => {
-  // 进入动画完成后的回调
-  setTimeout(() => {
-    done()
-  }, 600)
+const onEnter = (_el: Element, done: () => void) => {
+  setTimeout(done, 260)
 }
 
-const onLeave = (el: Element, done: () => void) => {
-  // 离开动画完成后的回调
-  setTimeout(() => {
-    done()
-  }, 400)
+const onLeave = (_el: Element, done: () => void) => {
+  setTimeout(done, 180)
 }
 
 // ===== 全局鼠标光晕逻辑（与 Portfolio 卡片鼠标光晕风格协调） =====
@@ -177,125 +132,40 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.page-enter-active {
-  transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+.page-soft-enter-active {
+  transition:
+    opacity 260ms ease,
+    transform 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  will-change: opacity, transform;
 }
 
-.page-leave-active {
-  transition: all 0.4s cubic-bezier(0.55, 0, 1, 0.45);
+.page-soft-leave-active {
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease;
+  will-change: opacity, transform;
 }
 
-.page-enter-from {
+.page-soft-enter-from {
   opacity: 0;
-  transform: translateX(100px) rotateY(15deg) scale(0.9);
-  filter: blur(10px);
+  transform: translateY(16px);
 }
 
-.page-leave-to {
+.page-soft-leave-to {
   opacity: 0;
-  transform: translateX(-50px) rotateY(-10deg) scale(1.05);
-  filter: blur(5px);
+  transform: translateY(-10px);
 }
 
-.page-enter-to {
+.page-soft-enter-to,
+.page-soft-leave-from {
   opacity: 1;
-  transform: translateX(0) rotateY(0deg) scale(1);
-  filter: blur(0px);
+  transform: translateY(0);
 }
 
-.page-leave-from {
-  opacity: 1;
-  transform: translateX(0) rotateY(0deg) scale(1);
-  filter: blur(0px);
-}
-
-/* 添加3D透视效果 */
-main {
-  perspective: 1200px;
-  perspective-origin: center center;
-}
-
-/* 前进动画 - 从右侧滑入 */
-.page-forward-enter-active {
-  transition: all 0.7s cubic-bezier(0.23, 1, 0.32, 1);
-}
-
-.page-forward-leave-active {
-  transition: all 0.5s cubic-bezier(0.55, 0, 1, 0.45);
-}
-
-.page-forward-enter-from {
-  opacity: 0;
-  transform: translateX(120px) rotateY(25deg) scale(0.85);
-  filter: blur(12px) brightness(1.2);
-}
-
-.page-forward-leave-to {
-  opacity: 0;
-  transform: translateX(-80px) rotateY(-15deg) scale(1.1);
-  filter: blur(8px) brightness(0.8);
-}
-
-/* 后退动画 - 从左侧滑入 */
-.page-backward-enter-active {
-  transition: all 0.7s cubic-bezier(0.23, 1, 0.32, 1);
-}
-
-.page-backward-leave-active {
-  transition: all 0.5s cubic-bezier(0.55, 0, 1, 0.45);
-}
-
-.page-backward-enter-from {
-  opacity: 0;
-  transform: translateX(-120px) rotateY(-25deg) scale(0.85);
-  filter: blur(12px) brightness(1.2);
-}
-
-.page-backward-leave-to {
-  opacity: 0;
-  transform: translateX(80px) rotateY(15deg) scale(1.1);
-  filter: blur(8px) brightness(0.8);
-}
-
-/* 添加页面切换时的动态背景效果 */
-@keyframes backgroundPulse {
-  0% {
-    background-size: 100% 100%;
-    filter: brightness(1);
+@media (prefers-reduced-motion: reduce) {
+  .page-soft-enter-active,
+  .page-soft-leave-active {
+    transition: none;
   }
-  50% {
-    background-size: 110% 110%;
-    filter: brightness(1.05);
-  }
-  100% {
-    background-size: 100% 100%;
-    filter: brightness(1);
-  }
-}
-
-/* 为页面容器添加动态效果 */
-.page-forward-enter-active,
-.page-backward-enter-active {
-  animation: backgroundPulse 0.7s ease-in-out;
-}
-
-/* 添加微妙的阴影动画 */
-@keyframes shadowFlow {
-  0% {
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
-  }
-  50% {
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
-  }
-  100% {
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
-  }
-}
-
-/* 为所有页面切换添加阴影效果 */
-.page-enter-active,
-.page-forward-enter-active,
-.page-backward-enter-active {
-  animation: shadowFlow 0.6s ease-in-out;
 }
 </style>

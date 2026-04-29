@@ -84,6 +84,8 @@ const openPreview = (images: string[] | undefined, index: number) => {
           :src="props.info.avatar"
           :alt="props.info.name || '个人头像'"
           class="about-cover__portrait"
+          decoding="async"
+          fetchpriority="high"
         />
         <div v-else class="about-cover__portrait about-cover__portrait--empty">
           {{ (props.info.name || "ME").slice(0, 2) }}
@@ -144,7 +146,12 @@ const openPreview = (images: string[] | undefined, index: number) => {
                   class="about-timeline__thumb"
                   @click="openPreview(experience.images, imageIndex)"
                 >
-                  <img :src="image" :alt="`${experience.position}截图 ${imageIndex + 1}`" />
+                  <img
+                    :src="image"
+                    :alt="`${experience.position}截图 ${imageIndex + 1}`"
+                    loading="lazy"
+                    decoding="async"
+                  />
                 </button>
               </div>
             </div>
@@ -348,7 +355,7 @@ const openPreview = (images: string[] | undefined, index: number) => {
   border: 1px solid var(--about-border-strong);
   background: var(--about-card);
   box-shadow: 12px 16px 0 color-mix(in srgb, var(--about-accent) 7%, transparent);
-  backdrop-filter: blur(18px);
+  backdrop-filter: blur(10px);
 }
 
 .about-identity__card {
@@ -403,6 +410,8 @@ const openPreview = (images: string[] | undefined, index: number) => {
 .collage-card {
   position: relative;
   padding: clamp(26px, 4vw, 46px);
+  content-visibility: auto;
+  contain-intrinsic-size: 460px;
   transition:
     transform 220ms ease,
     border-color 220ms ease,
@@ -444,6 +453,7 @@ const openPreview = (images: string[] | undefined, index: number) => {
 
 .collage-card--timeline {
   width: 100%;
+  contain-intrinsic-size: 620px;
 }
 
 .about-timeline {
@@ -571,6 +581,7 @@ const openPreview = (images: string[] | undefined, index: number) => {
 .collage-card--interests {
   width: 100%;
   margin-top: clamp(24px, 4vw, 42px);
+  contain-intrinsic-size: 260px;
   background:
     linear-gradient(145deg, var(--about-accent-soft), transparent 48%),
     var(--about-card);
@@ -623,6 +634,13 @@ const openPreview = (images: string[] | undefined, index: number) => {
 
   .about-cover__portrait-card {
     width: min(82vw, 360px);
+  }
+}
+
+@media (max-width: 760px) {
+  .about-identity__card,
+  .collage-card {
+    backdrop-filter: none;
   }
 }
 

@@ -4,6 +4,8 @@ import AboutMagazineCollage from "@/components/about/AboutMagazineCollage.vue";
 import { useSiteInfoStore } from "@/stores/siteInfo";
 import weCode from "@/assets/weCode.png";
 
+defineOptions({ name: "AboutView" });
+
 const siteInfoStore = useSiteInfoStore();
 
 const experiences = [
@@ -78,7 +80,7 @@ const skillTree = [
 ];
 
 const showPreview = shallowRef(false);
-const previewImages = ref<string[]>([]);
+const previewImages = shallowRef<string[]>([]);
 const previewInitialIndex = shallowRef(0);
 
 const handleImagePreview = (images: string[], index: number) => {
